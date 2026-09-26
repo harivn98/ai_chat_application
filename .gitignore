@@ -1,3 +1,6 @@
-
-./siteco-case-ai-document-chat.html
-
+.env
+node_modules/
+.next/
+__pycache__/
+*.tsbuildinfo
+siteco-case-ai-document-chat.html
