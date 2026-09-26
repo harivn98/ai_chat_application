@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Case Study // AI Document Chat with Retrieval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --gray-100:#ECEDED; --gray-200:#D7D8D9; --gray-300:#BFC0C1; --gray-400:#AAABAD;
+  --gray-500:#85888C; --gray-600:#797A7C; --gray-700:#5B5C5D;
+  --accent:#B61918; --accent-soft:#8E1312;
+  --red-100:#F7E3E3; --red-500:#B61918; --red-600:#8E1312;
+  --blue-500:#5B5C5D; --teal-500:#141414; --green-500:#2E8B57; --green-600:#2E8B57;
+  --gold-500:#D2B940; --vineyard-500:#A7052C;
+  --ssco-white:#FFFFFF; --ssco-surface:#F5F5F5;
+  --text-strong:#1A1A1C; --text-body:#26262A; --text-muted:#6E7276; --text-inverse:#FFFFFF;
+  --page:#FFFFFF; --line:#D7D8D9; --rule:#97999B;
+  --font-sans:"Inter","Helvetica Neue",Arial,system-ui,sans-serif;
+  --font-serif:"Tinos","Times New Roman",Georgia,serif;
+  --font-mono:"SFMono-Regular",ui-monospace,Consolas,monospace;
+  --ease:cubic-bezier(.4,0,.2,1);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root:not([data-theme="light"]){ color-scheme:light; }
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--page);color:var(--text-body);
+  font-family:var(--font-sans);font-size:15px;line-height:1.46;
+  font-weight:400;
+}
+img{max-width:100%}
+
+/* ---------- HERO ---------- */
+.hero{
+  position:relative;background:#1D1F21;
+  color:var(--text-inverse);overflow:hidden;
+}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,#1D1F21 0%,#2B2E31 58%,#38282A 100%)}
+.hero-inner{position:relative;z-index:2;max-width:1060px;margin:0 auto;padding:40px 56px 46px}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:76px}
+.hero-logo{height:26px;width:auto;flex:none}
+.eyebrow{
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--gray-300);margin:0;padding-top:4px;
+}
+.hero h1{
+  margin:0;font-weight:700;font-size:44px;line-height:1.06;letter-spacing:-.01em;
+  color:#fff;max-width:20ch;
+}
+.hero h1 .reg{font-weight:400;color:var(--gray-200)}
+.hero-meta{
+  margin-top:28px;padding-top:14px;border-top:1px solid rgba(255,255,255,.28);
+  display:flex;flex-wrap:wrap;gap:0 40px;font-size:13px;color:var(--gray-200);
+}
+.hero-meta b{color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:11px;display:block;margin-bottom:2px;color:var(--gray-400)}
+.hero-meta div{padding:4px 0}
+.hero-meta span{color:#fff}
+
+/* ---------- KEY TAKE-AWAY ---------- */
+.takeaway{max-width:1060px;margin:0 auto;padding:36px 56px 0}
+.takeaway .bar{border-left:3px solid var(--red-500);padding-left:18px}
+.takeaway .lbl{
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--red-500);margin-bottom:6px;
+}
+.takeaway .msg{font-size:22px;font-weight:700;color:var(--text-strong);line-height:1.24;max-width:60ch}
+
+/* ---------- LAYOUT ---------- */
+main{max-width:1060px;margin:0 auto;padding:0 56px 0}
+section{padding:34px 0 0;border-top:1px solid var(--line);margin-top:34px}
+section:first-of-type{border-top:0;margin-top:26px}
+.sec-head{display:flex;gap:16px;align-items:baseline;margin:0 0 6px}
+.sec-num{
+  font-size:13px;font-weight:700;color:var(--red-500);letter-spacing:.1em;
+  flex:none;width:26px;padding-top:4px;
+}
+h2{margin:0;font-size:24px;font-weight:700;line-height:1.16;color:var(--text-strong)}
+.sec-body{padding-left:42px}
+.lede{margin:0 0 18px;font-size:15px;color:var(--text-body);max-width:78ch}
+.lede em{font-style:normal;font-weight:700}
+h3{
+  margin:0 0 8px;font-size:13px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--text-strong);
+  padding-bottom:5px;border-bottom:1px solid var(--rule);
+}
+ul{margin:0;padding:0;list-style:none}
+li{position:relative;padding-left:15px;margin-bottom:7px;max-width:82ch}
+li::before{content:"";position:absolute;left:0;top:9px;width:5px;height:1.5px;background:var(--gray-500)}
+li b{font-weight:700;color:var(--text-strong)}
+.mono{font-family:var(--font-mono);font-size:13px;background:var(--ssco-surface);padding:1px 5px;border-radius:2px;color:var(--text-strong)}
+
+/* ---------- FLOW ---------- */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--gray-200);margin:4px 0 0}
+.flow .step{background:var(--ssco-surface);padding:16px 18px 18px}
+.flow .n{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;background:var(--gray-500);color:#fff;
+  font-size:12px;font-weight:700;margin-bottom:10px;border-radius:2px;
+}
+.flow h4{margin:0 0 4px;font-size:15px;font-weight:700;color:var(--text-strong)}
+.flow p{margin:0;font-size:13px;color:var(--text-muted);line-height:1.38}
+
+/* ---------- SPEC TABLE ---------- */
+.spec{width:100%;border-collapse:collapse;margin-top:2px}
+.spec th,.spec td{text-align:left;vertical-align:top;padding:9px 16px 9px 0;border-bottom:1px solid var(--line)}
+.spec thead th{
+  font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--gray-600);
+  font-weight:700;border-bottom:1px solid var(--rule);padding-bottom:6px;
+}
+.spec tbody th{font-weight:700;color:var(--text-strong);width:22%;font-size:15px}
+.spec td:last-child{width:34%;color:var(--text-muted);font-size:14px}
+
+/* ---------- DO / DON'T ---------- */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.rules .col h3{border-bottom:none;padding-bottom:0;margin-bottom:10px}
+.rules .tag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;padding:3px 9px;color:#fff;border-radius:2px;margin-bottom:12px;
+}
+.tag-do{background:var(--green-600)}
+.tag-dont{background:#3A3D41}
+.rules .do li::before{background:var(--green-500);width:7px;height:2px}
+.rules .dont li::before{background:#1D1F21;width:7px;height:2px}
+.rules-note{
+  margin:20px 0 0;padding:12px 0 0;border-top:1px solid var(--rule);
+  font-size:15px;font-weight:700;color:var(--text-strong);
+}
+
+/* ---------- TRACKS ---------- */
+.tracks{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:4px}
+.track{background:var(--ssco-surface);padding:18px 20px 20px;border-top:3px solid var(--gray-500)}
+.track.a{border-top-color:var(--red-500)}
+.track.b{border-top-color:var(--blue-500)}
+.track.c{border-top-color:var(--teal-500)}
+.track .k{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-600);margin-bottom:4px}
+.track h4{margin:0 0 10px;font-size:17px;font-weight:700;color:var(--text-strong);line-height:1.15}
+.track li{font-size:13.5px;margin-bottom:5px;line-height:1.36;color:var(--text-body)}
+.track li::before{top:8px}
+
+/* ---------- COLUMNS ---------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.two.wide{grid-template-columns:1.15fr .85fr}
+
+/* ---------- AGENDA ---------- */
+.agenda{margin-top:2px}
+.agenda .row{display:grid;grid-template-columns:76px 1fr;gap:18px;padding:11px 0;border-bottom:1px solid var(--line)}
+.agenda .row:last-child{border-bottom:none}
+.agenda .t{font-weight:700;color:var(--red-500);font-size:14px;letter-spacing:.04em;padding-top:1px}
+.agenda .d b{display:block;font-size:15px;color:var(--text-strong);margin-bottom:1px}
+.agenda .d span{font-size:14px;color:var(--text-muted)}
+
+/* ---------- CLOSING ---------- */
+.closing{background:var(--gray-500);color:#fff;margin-top:40px}
+.closing-inner{max-width:1060px;margin:0 auto;padding:30px 56px 34px}
+.closing .q{font-size:26px;font-weight:700;line-height:1.16;margin:0 0 6px;max-width:34ch}
+.closing .q .reg{font-weight:400;color:var(--gray-100)}
+.closing .sub{margin:0;font-size:14px;color:var(--gray-100);max-width:72ch}
+
+/* ---------- ADMIN / PLACEHOLDERS ---------- */
+.admin{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--gray-200);margin-top:4px}
+.admin div{background:#fff;padding:0 16px 12px 0}
+.admin .k{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-600);margin-bottom:4px}
+.admin .v{font-size:15px;color:var(--text-strong);font-weight:700}
+.ph{background:var(--red-100);color:var(--red-600);padding:0 5px;border-radius:2px;font-weight:700}
+
+/* ---------- FOOTER ---------- */
+footer{max-width:1060px;margin:0 auto;padding:22px 56px 40px;display:flex;justify-content:space-between;gap:24px;align-items:flex-end}
+footer .fn{font-size:12px;color:var(--gray-600);line-height:1.4;max-width:68ch}
+footer .cp{font-size:12px;color:var(--gray-400);white-space:nowrap}
+footer .flogo{height:22px;width:auto}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width:900px){
+  .hero-inner,.takeaway,main,footer,.closing-inner{padding-left:28px;padding-right:28px}
+  .hero-top{margin-bottom:44px}
+  .hero h1{font-size:32px}
+  .flow{grid-template-columns:1fr 1fr}
+  .tracks{grid-template-columns:1fr}
+  .two,.two.wide,.rules{grid-template-columns:1fr;gap:22px}
+  .admin{grid-template-columns:1fr;gap:1px}
+  .admin div{padding:12px 0}
+  .sec-body{padding-left:0}
+  .sec-head{gap:10px}
+  footer{flex-direction:column;align-items:flex-start}
+}
+@media (max-width:560px){
+  .flow{grid-template-columns:1fr}
+  .spec,.spec thead,.spec tbody,.spec tr,.spec th,.spec td{display:block;width:auto}
+  .spec thead{display:none}
+  .spec tbody th{padding-bottom:2px;border-bottom:none}
+  .spec td{border-bottom:none;padding-top:0;width:auto}
+  .spec tr{border-bottom:1px solid var(--line);padding:10px 0}
+  .spec td:last-child{width:auto;padding-top:4px}
+}
+
+@media print{
+  body{font-size:10pt}
+  .hero{background:#5B5C5D !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  section{break-inside:avoid}
+  .closing{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-top">
+      <p class="eyebrow">Case Study // AI Engineering // Candidate Brief</p>
+      <img class="hero-logo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjwhLS0gQ3JlYXRlZCB3aXRoIElua3NjYXBlIChodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy8pIGJ5IE1hcnN1cGlsYW1pIC0tPgo8c3ZnCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgdmVyc2lvbj0iMS4xIgogICBpZD0ic3ZnNzU3MCIKICAgd2lkdGg9IjEwMjQiCiAgIGhlaWdodD0iMjY1IgogICB2aWV3Qm94PSItMS4xODkzMzIwNiAtMS4xODkzMzIwNiAxNjIuMzc4NjY0MTIgNDIuMDIzMDY2MTIiPgogIDxkZWZzCiAgICAgaWQ9ImRlZnM3NTcyIiAvPgogIDxwYXRoCiAgICAgc3R5bGU9ImZpbGw6I2ZmZmZmZjtmaWxsLW9wYWNpdHk6MSIKICAgICBpZD0icGF0aDc1MTIiCiAgICAgZD0iTSAxMC41ODc4OSwxMy42NDYxIEMgMy41NjM4MywxMy42NDYxIDAsMTcuMjU4OSAwLDIxLjYyNDYgYyAwLDguNDgxMyAxMC4wODc4OSw1Ljk3MjkgMTAuMDg3ODksMTAuMzg4NyAwLDEuNjU1NCAtMS42MDQ0LDIuNjYwMiAtNC4wNjQ0NSwyLjY2MDIgLTEuOTA3NjEsMCAtMy44MTM4MywtMC4zNDk3IC01LjM3MTEsLTAuNzUyIEwgMC41MDE5NSwzOS4xOTEgYyAxLjYwNTM5LDAuMjUwMyAzLjQxMzIsMC40NTMyIDUuMjIwNywwLjQ1MzIgNi44MjM4NywwIDExLjE0MDYzLC0zLjMxMjMgMTEuMTQwNjMsLTguMjMwNSAwLC04LjA4MDkgLTEwLjI0MDIzLC02LjI3NDQgLTEwLjI0MDIzLC0xMC4zMzk5IDAsLTEuNTU1MyAxLjIwNDcxLC0yLjU2MDUgMy43MTI4OSwtMi41NjA1IDEuNTU1MzQsMCAzLjIxMzk0LDAuMjUgNC42MTkxNCwwLjY1MjMgTCAxNS4xNTQzLDE0LjA5NzMgQyAxMy42NDksMTMuODQ3IDEyLjA0MzEzLDEzLjY0NjEgMTAuNTg3ODksMTMuNjQ2MSBaIG0gNzguMDkzNzUsMCBjIC03LjQ3ODM0NSwwIC0xMS42OTMzNiw1LjYxOTYgLTExLjY5MzM2LDEzLjI0ODEgMCw4Ljc4MzQgNC40MTY5MjYsMTIuNzUgMTIuMzQ1NzAzLDEyLjc1IDMuMTEwNjg0LDAgNi4yNzMzNDQsLTAuNTUyNiA4LjkzMzU5NCwtMS42MDc1IEwgOTcuNjY2MDE1LDMzLjA2OCBjIC0yLjE1Nzg0NCwxLjAwMjkgLTQuODE5MjM5LDEuNTU0NyAtNy4yNzkyOTcsMS41NTQ3IC00LjYxNzkwMiwwIC02LjkyNTA0OCwtMi4yNTc5IC02Ljg3NSwtNi45MjU4IGwgMTUuNDU3MDMxLDAgYyAwLjE1MjA2OSwtMS4wNTI5IDAuMjAxMTcyLC0yLjA1NzQgMC4yMDExNzIsLTIuOTEwMiAwLC02LjE3MzIgLTMuMjEyMDU0LC0xMS4xNDA2IC0xMC40ODgyODEsLTExLjE0MDYgeiBtIDU5LjY3MzgzLDAuMDQ5IGMgLTcuNTc4NDQsMCAtMTIuNzQ4MDUsNS42MjE4IC0xMi43NDgwNSwxMy40MDI0IDAsOC44ODM1IDQuNTY4NSwxMi41NDY5IDExLjY0NDUzLDEyLjU0NjkgQyAxNTQuNzMwMywzOS42NDQ0IDE2MCwzNC4wMjE5IDE2MCwyNi4xOTMyIDE2MCwxNy42MDk5IDE1NS40MzE1LDEzLjY5NTEgMTQ4LjM1NTQ3LDEzLjY5NTEgWiBtIC0yNi42NTYyNSwwLjA1MSBjIC04LjgzMzUsMCAtMTIuODk4NDQsNS45NzMzIC0xMi44OTg0NCwxMy43NTIgMCw4LjQ4MTIgNC4zMTYzLDEyLjA5NTcgMTEuMjQyMTksMTIuMDk1NyAyLjY1ODMyLDAgNS4xMTY4MSwtMC41MDM3IDYuODI0MjIsLTEuMTU0MyBsIC0wLjUwMzkxLC01LjQ3MDcgYyAtMS4zNTUxNSwwLjcwMjYgLTMuMjEyNDgsMS4wNTI3IC00LjkxNzk3LDEuMDUyNyAtNC4yNjU2NCwwIC01LjkxOTkyLC0yLjkxMDEgLTUuOTE5OTIsLTcuMTc1OCAwLC00LjcxOCAyLjA1NzYsLTcuNzI4NSA2LjEyMzA1LC03LjcyODUgMS42MDUzOSwwIDMuMTYyNDMsMC40IDQuNTE3NTgsMC45MDI0IGwgMC42NTIzNCwtNS41NzA0IGMgLTEuNjA1MzksLTAuNDUyMyAtMy40MTM2NiwtMC43MDMxIC01LjExOTE0LC0wLjcwMzEgeiBtIC03NS43MTA5NCwwLjA2MiAwLDUuNTcwMyA4Ljc4MzIwMywwIDAsMTkuNzg3MSA2LjUyMzQzOCwwIDAsLTE5Ljc4NzEgOC43ODMyMDMsMCAwLC01LjU3MDMgLTI0LjA4OTg0NCwwIHogbSAtMTIuMjkxMDIsMC4zMTA2IGMgLTIuODAxNzYsMC4wMTkgLTUuNTY4OSwwLjE3ODcgLTcuOTM5NDUsMC40ODA0IGwgMCw0LjAxNTcgYyAxLjQ1NTI1LDAuMTAwMSAzLjE2MDIzLDAuMjk5OCA0LjM2NTI0LDAuNTAxOSBsIDAsMjAuMDI1NCA2LjM3MzA0LDAgMCwtMjQuOTk2MSBDIDM1LjU2NzgsMTQuMTIxIDM0LjYzMTE4LDE0LjExMiAzMy42OTcyNiwxNC4xMTkgWiBtIDU0Ljc4MzIwOCw0LjI0NDEgYyAyLjcwODM3MywwIDQuNDE2NTAyLDEuODU2MiA0LjMxNjQwNiw0Ljk2ODggbCAtOS4xODM1OTQsMCBjIDAuMzUwMzM3LC0zLjAxMDYgMi4yMDY5MzcsLTQuOTY4OCA0Ljg2NzE4OCwtNC45Njg4IHogbSA1OS40MjM4MzIsMC43NTM5IGMgMy43NjUxNiwwIDUuNDcwNywyLjYwOTYgNS40NzA3LDcuNDI1OCAwLDUuMDY4MyAtMi40MTE1Myw3LjYyODkgLTUuNTcyMjcsNy42Mjg5IC0zLjcxMzE4LDAgLTUuNTcwMzEsLTIuNjEwMSAtNS41NzAzMSwtNy43Mjg1IDAsLTUuMTE4NCAyLjgxMTQzLC03LjMyNjIgNS42NzE4OCwtNy4zMjYyIHoiIC8+CiAgPHBhdGgKICAgICBpZD0icGF0aDc1MTgiCiAgICAgZD0iTSAzNy4zMDEyNSwzLjg2NTIgQyAzNy4zMDEyNSwxLjcwNzQgMzUuNDkzNzQsMCAzMy4yODU4NSwwIDMxLjEyODAxLDAgMjkuMzIwNSwxLjc1NzQgMjkuMzIwNSwzLjg2NTIgYyAwLDIuMTU3OSAxLjgwNzUxLDMuOTE1MyAzLjk2NTM1LDMuOTE1MyAyLjIwNzg5LDAgNC4wMTU0LC0xLjc1NzQgNC4wMTU0LC0zLjkxNTMgeiIKICAgICBzdHlsZT0iZmlsbDojYjYxOTE4IiAvPgo8L3N2Zz4KPCEtLSB2ZXJzaW9uOiAyMDE3MTIyMywgb3JpZ2luYWwgc2l6ZTogMTYwIDM5LjY0NDQwMiwgYm9yZGVyOiAzJSAtLT4K" alt="Siteco">
+    </div>
+    <h1>Build a Document Chat<br><span class="reg">Upload, retrieve, converse. Your frontend, your backend.</span></h1>
+    <div class="hero-meta">
+      <div><b>Deliverable</b><span>GitHub repository + live demo</span></div>
+      <div><b>Presentation</b><span>30-minute call</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="takeaway">
+  <div class="bar">
+    <div class="lbl">Key Take-away</div>
+    <div class="msg">We assess how you decide, not whether every corner is polished. It does not have to be perfect. It has to work.</div>
+  </div>
+</div>
+
+<main>
+
+  <section>
+    <div class="sec-head"><div class="sec-num">01</div><h2>The Assignment</h2></div>
+    <div class="sec-body">
+      <p class="lede">Build a working AI chat application in which a user uploads documents and then asks questions about them. Retrieval-augmented generation is the expected pattern. How you implement retrieval is entirely your call.</p>
+      <div class="flow">
+        <div class="step"><div class="n">1</div><h4>Upload</h4><p>User adds one or more documents through your interface.</p></div>
+        <div class="step"><div class="n">2</div><h4>Process</h4><p>Backend parses, chunks, embeds and indexes the content.</p></div>
+        <div class="step"><div class="n">3</div><h4>Retrieve</h4><p>A question pulls the passages that actually matter.</p></div>
+        <div class="step"><div class="n">4</div><h4>Answer</h4><p>Model responds in chat, grounded in the uploaded document.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="sec-num">02</div><h2>Scope and Technology Choices</h2></div>
+    <div class="sec-body">
+      <p class="lede">Two components: a frontend and a backend. Everything inside them is your decision. We care about the reasoning behind each choice far more than the choice itself.</p>
+      <table class="spec">
+        <thead><tr><th>Component</th><th>Requirement</th><th>Our position</th></tr></thead>
+        <tbody>
+          <tr><th>Frontend</th><td>Chat interface with document upload. Framework entirely free: Next.js, plain React, Svelte, Vue, anything.</td><td>No preference. Build the UI yourself.</td></tr>
+          <tr><th>Backend</th><td>Document processing, retrieval and model orchestration. Language free.</td><td>Python recommended, not required.</td></tr>
+          <tr><th>Retrieval</th><td>RAG or an alternative you can defend. Chunking, embedding and index are yours to pick.</td><td>Free choice: managed, embedded or hand-rolled.</td></tr>
+          <tr><th>Model</th><td>Any provider, any model, hosted or local.</td><td>Free choice. Be ready to say why.</td></tr>
+          <tr><th>Packaging</th><td>Runs locally, and starts as a containerised application via Docker. Document the start command and the environment variables required.</td><td>Required, so we can run it ourselves.</td></tr>
+          <tr><th>Deployment</th><td>Not required. A local run in the call is sufficient.</td><td>Do not spend time on hosting.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="sec-num">03</div><h2>Ground Rules</h2></div>
+    <div class="sec-body">
+      <div class="rules">
+        <div class="col">
+          <span class="tag tag-do">Encouraged</span>
+          <ul class="do">
+            <li><b>AI coding assistants: use them as much as you can.</b> We work this way and expect you to.</li>
+            <li><b>Component libraries and pre-built UI blocks.</b> Examples, not requirements: shadcn/ui, MUI, Mantine, Chakra, Tailwind kits. Anything equivalent is equally welcome.</li>
+            <li><b>Framework scaffolding and starters</b>, established RAG libraries, any vector store.</li>
+            <li><b>Shortcuts you can justify.</b> Deliberate simplification is a skill, not a gap.</li>
+          </ul>
+        </div>
+        <div class="col">
+          <span class="tag tag-dont">Not in scope</span>
+          <ul class="dont">
+            <li><b>Forking a finished chat product</b>, for example LibreChat, Open WebUI, AnythingLLM or comparable ready-made applications.</li>
+            <li><b>Any drop-in that ships the chat UI and the RAG backend pre-assembled.</b></li>
+          </ul>
+        </div>
+      </div>
+      <p class="rules-note">The frontend and the backend must be your build. Everything underneath that line is fair game.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="sec-num">04</div><h2>Deliverables</h2></div>
+    <div class="sec-body">
+      <div class="two wide">
+        <div>
+          <h3>What you hand over</h3>
+          <ul>
+            <li><b>GitHub repository</b> with full source and commit history intact.</li>
+            <li><b>Container setup</b> so the application starts on our machine via Docker. Name the required environment variables and keys.</li>
+            <li><b>README</b> covering how to run it, what you built, which decisions you took and why, and what you would do next with more time.</li>
+            <li><b>Live demo</b>, run locally from your machine during the call.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Optional, on top of a working baseline</h3>
+          <ul>
+            <li>Chat artifacts and rich rendering</li>
+            <li>Citation highlighting in the source document</li>
+            <li>Multi-model routing or side-by-side comparison</li>
+            <li>Retrieval evaluation with numbers attached</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="sec-num">05</div><h2>The Call, 30 Minutes</h2></div>
+    <div class="sec-body">
+      <div class="two wide">
+        <div>
+          <div class="agenda">
+            <div class="row"><div class="t">~10 min</div><div class="d"><b>Demo</b><span>You run the application end to end and walk us through it.</span></div></div>
+            <div class="row"><div class="t">~20 min</div><div class="d"><b>Questions on frontend and backend</b><span>Architecture, trade-offs, what broke, what you would change.</span></div></div>
+          </div>
+        </div>
+        <div>
+          <h3>How we evaluate</h3>
+          <ul>
+            <li><b>Decision quality:</b> you can explain why, and name the option you rejected.</li>
+            <li><b>It works:</b> the happy path runs on our machine, from the container.</li>
+            <li><b>Depth where it counts:</b> the parts you went deepest on hold up under questioning.</li>
+            <li><b>Judgment on scope:</b> you know what to leave out.</li>
+            <li><b>Readable code:</b> structure, naming, boundaries.</li>
+          </ul>
+          <p class="lede" style="margin-top:14px;font-size:14px;color:var(--text-muted)">Not evaluated: pixel-perfect design, exhaustive edge cases, production hardening.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="closing">
+  <div class="closing-inner">
+    <p class="q">Not everything has to be perfect.<br><span class="reg">Everything has to work.</span></p>
+    <p class="sub">We are looking for how you think, what you are genuinely strong at, and whether you can defend the decisions you made. Build the version of this you would be proud to explain.</p>
+  </div>
+</div>
+
+<footer>
+  <div class="fn">
+    1. Local execution is sufficient; no hosting or public deployment is expected.<br>
+    CONFIDENTIAL AND PROPRIETARY // Any use of this material without specific permission of SITECO GmbH is strictly prohibited.
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+    <img class="flogo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjwhLS0gQ3JlYXRlZCB3aXRoIElua3NjYXBlIChodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy8pIGJ5IE1hcnN1cGlsYW1pIC0tPgo8c3ZnCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgdmVyc2lvbj0iMS4xIgogICBpZD0ic3ZnNzU3MCIKICAgd2lkdGg9IjEwMjQiCiAgIGhlaWdodD0iMjY1IgogICB2aWV3Qm94PSItMS4xODkzMzIwNiAtMS4xODkzMzIwNiAxNjIuMzc4NjY0MTIgNDIuMDIzMDY2MTIiPgogIDxkZWZzCiAgICAgaWQ9ImRlZnM3NTcyIiAvPgogIDxwYXRoCiAgICAgc3R5bGU9ImZpbGw6Izg1ODg4YztmaWxsLW9wYWNpdHk6MSIKICAgICBpZD0icGF0aDc1MTIiCiAgICAgZD0iTSAxMC41ODc4OSwxMy42NDYxIEMgMy41NjM4MywxMy42NDYxIDAsMTcuMjU4OSAwLDIxLjYyNDYgYyAwLDguNDgxMyAxMC4wODc4OSw1Ljk3MjkgMTAuMDg3ODksMTAuMzg4NyAwLDEuNjU1NCAtMS42MDQ0LDIuNjYwMiAtNC4wNjQ0NSwyLjY2MDIgLTEuOTA3NjEsMCAtMy44MTM4MywtMC4zNDk3IC01LjM3MTEsLTAuNzUyIEwgMC41MDE5NSwzOS4xOTEgYyAxLjYwNTM5LDAuMjUwMyAzLjQxMzIsMC40NTMyIDUuMjIwNywwLjQ1MzIgNi44MjM4NywwIDExLjE0MDYzLC0zLjMxMjMgMTEuMTQwNjMsLTguMjMwNSAwLC04LjA4MDkgLTEwLjI0MDIzLC02LjI3NDQgLTEwLjI0MDIzLC0xMC4zMzk5IDAsLTEuNTU1MyAxLjIwNDcxLC0yLjU2MDUgMy43MTI4OSwtMi41NjA1IDEuNTU1MzQsMCAzLjIxMzk0LDAuMjUgNC42MTkxNCwwLjY1MjMgTCAxNS4xNTQzLDE0LjA5NzMgQyAxMy42NDksMTMuODQ3IDEyLjA0MzEzLDEzLjY0NjEgMTAuNTg3ODksMTMuNjQ2MSBaIG0gNzguMDkzNzUsMCBjIC03LjQ3ODM0NSwwIC0xMS42OTMzNiw1LjYxOTYgLTExLjY5MzM2LDEzLjI0ODEgMCw4Ljc4MzQgNC40MTY5MjYsMTIuNzUgMTIuMzQ1NzAzLDEyLjc1IDMuMTEwNjg0LDAgNi4yNzMzNDQsLTAuNTUyNiA4LjkzMzU5NCwtMS42MDc1IEwgOTcuNjY2MDE1LDMzLjA2OCBjIC0yLjE1Nzg0NCwxLjAwMjkgLTQuODE5MjM5LDEuNTU0NyAtNy4yNzkyOTcsMS41NTQ3IC00LjYxNzkwMiwwIC02LjkyNTA0OCwtMi4yNTc5IC02Ljg3NSwtNi45MjU4IGwgMTUuNDU3MDMxLDAgYyAwLjE1MjA2OSwtMS4wNTI5IDAuMjAxMTcyLC0yLjA1NzQgMC4yMDExNzIsLTIuOTEwMiAwLC02LjE3MzIgLTMuMjEyMDU0LC0xMS4xNDA2IC0xMC40ODgyODEsLTExLjE0MDYgeiBtIDU5LjY3MzgzLDAuMDQ5IGMgLTcuNTc4NDQsMCAtMTIuNzQ4MDUsNS42MjE4IC0xMi43NDgwNSwxMy40MDI0IDAsOC44ODM1IDQuNTY4NSwxMi41NDY5IDExLjY0NDUzLDEyLjU0NjkgQyAxNTQuNzMwMywzOS42NDQ0IDE2MCwzNC4wMjE5IDE2MCwyNi4xOTMyIDE2MCwxNy42MDk5IDE1NS40MzE1LDEzLjY5NTEgMTQ4LjM1NTQ3LDEzLjY5NTEgWiBtIC0yNi42NTYyNSwwLjA1MSBjIC04LjgzMzUsMCAtMTIuODk4NDQsNS45NzMzIC0xMi44OTg0NCwxMy43NTIgMCw4LjQ4MTIgNC4zMTYzLDEyLjA5NTcgMTEuMjQyMTksMTIuMDk1NyAyLjY1ODMyLDAgNS4xMTY4MSwtMC41MDM3IDYuODI0MjIsLTEuMTU0MyBsIC0wLjUwMzkxLC01LjQ3MDcgYyAtMS4zNTUxNSwwLjcwMjYgLTMuMjEyNDgsMS4wNTI3IC00LjkxNzk3LDEuMDUyNyAtNC4yNjU2NCwwIC01LjkxOTkyLC0yLjkxMDEgLTUuOTE5OTIsLTcuMTc1OCAwLC00LjcxOCAyLjA1NzYsLTcuNzI4NSA2LjEyMzA1LC03LjcyODUgMS42MDUzOSwwIDMuMTYyNDMsMC40IDQuNTE3NTgsMC45MDI0IGwgMC42NTIzNCwtNS41NzA0IGMgLTEuNjA1MzksLTAuNDUyMyAtMy40MTM2NiwtMC43MDMxIC01LjExOTE0LC0wLjcwMzEgeiBtIC03NS43MTA5NCwwLjA2MiAwLDUuNTcwMyA4Ljc4MzIwMywwIDAsMTkuNzg3MSA2LjUyMzQzOCwwIDAsLTE5Ljc4NzEgOC43ODMyMDMsMCAwLC01LjU3MDMgLTI0LjA4OTg0NCwwIHogbSAtMTIuMjkxMDIsMC4zMTA2IGMgLTIuODAxNzYsMC4wMTkgLTUuNTY4OSwwLjE3ODcgLTcuOTM5NDUsMC40ODA0IGwgMCw0LjAxNTcgYyAxLjQ1NTI1LDAuMTAwMSAzLjE2MDIzLDAuMjk5OCA0LjM2NTI0LDAuNTAxOSBsIDAsMjAuMDI1NCA2LjM3MzA0LDAgMCwtMjQuOTk2MSBDIDM1LjU2NzgsMTQuMTIxIDM0LjYzMTE4LDE0LjExMiAzMy42OTcyNiwxNC4xMTkgWiBtIDU0Ljc4MzIwOCw0LjI0NDEgYyAyLjcwODM3MywwIDQuNDE2NTAyLDEuODU2MiA0LjMxNjQwNiw0Ljk2ODggbCAtOS4xODM1OTQsMCBjIDAuMzUwMzM3LC0zLjAxMDYgMi4yMDY5MzcsLTQuOTY4OCA0Ljg2NzE4OCwtNC45Njg4IHogbSA1OS40MjM4MzIsMC43NTM5IGMgMy43NjUxNiwwIDUuNDcwNywyLjYwOTYgNS40NzA3LDcuNDI1OCAwLDUuMDY4MyAtMi40MTE1Myw3LjYyODkgLTUuNTcyMjcsNy42Mjg5IC0zLjcxMzE4LDAgLTUuNTcwMzEsLTIuNjEwMSAtNS41NzAzMSwtNy43Mjg1IDAsLTUuMTE4NCAyLjgxMTQzLC03LjMyNjIgNS42NzE4OCwtNy4zMjYyIHoiIC8+CiAgPHBhdGgKICAgICBpZD0icGF0aDc1MTgiCiAgICAgZD0iTSAzNy4zMDEyNSwzLjg2NTIgQyAzNy4zMDEyNSwxLjcwNzQgMzUuNDkzNzQsMCAzMy4yODU4NSwwIDMxLjEyODAxLDAgMjkuMzIwNSwxLjc1NzQgMjkuMzIwNSwzLjg2NTIgYyAwLDIuMTU3OSAxLjgwNzUxLDMuOTE1MyAzLjk2NTM1LDMuOTE1MyAyLjIwNzg5LDAgNC4wMTU0LC0xLjc1NzQgNC4wMTU0LC0zLjkxNTMgeiIKICAgICBzdHlsZT0iZmlsbDojYjYxOTE4IiAvPgo8L3N2Zz4KPCEtLSB2ZXJzaW9uOiAyMDE3MTIyMywgb3JpZ2luYWwgc2l6ZTogMTYwIDM5LjY0NDQwMiwgYm9yZGVyOiAzJSAtLT4K" alt="Siteco">
+    <div class="cp">Copyright &copy; 2026 Siteco GmbH // All rights reserved.</div>
+  </div>
+</footer>
+
+</body>
+</html>
