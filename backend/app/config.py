@@ -52,6 +52,16 @@ class Settings:
     reranker_model: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
     rerank_candidates: int = int(os.getenv("RERANK_CANDIDATES", "20"))
 
+    # Cloud mode (chosen per upload in the UI): every cloud model runs through OpenRouter, so document text and
+    # questions leave this machine. The API key comes from the machine's environment, never from the committed .env.
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+    openrouter_url: str = os.getenv("OPENROUTER_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    cloud_embed_model: str = os.getenv("CLOUD_EMBED_MODEL", "google/gemini-embedding-2")
+    cloud_embed_dim: int = int(os.getenv("CLOUD_EMBED_DIM", "768"))
+    cloud_vector_min_score: float = float(os.getenv("CLOUD_VECTOR_MIN_SCORE", "0"))  # 0: no cutoff (not tuned yet)
+    cloud_context_model: str = os.getenv("CLOUD_CONTEXT_MODEL", "google/gemini-3.5-flash-lite")
+    cloud_llm_model: str = os.getenv("CLOUD_LLM_MODEL", "deepseek/deepseek-v4.1-flash")
+
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
 

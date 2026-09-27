@@ -1,4 +1,4 @@
-"""MongoDB access and the Atlas Vector Search index over the chunk embeddings."""
+"""MongoDB access and the Atlas Vector Search indexes over the chunk embeddings (one per mode)."""
 import logging
 import time
 from functools import lru_cache
@@ -8,6 +8,7 @@ from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel
 
 from .config import settings
+from .modes import MODES, Mode
 
 log = logging.getLogger("db")
 
@@ -32,20 +33,21 @@ def chunks():
     return db()["chunks"]
 
 
-VECTOR_INDEX_DEFINITION = {
-    "fields": [
-        {"type": "vector", "path": "embedding", "numDimensions": settings.embed_dim, "similarity": "cosine"},
-        {"type": "filter", "path": "doc_id"},
-    ]
-}
+def _index_definition(mode: Mode) -> dict:
+    return {
+        "fields": [
+            {"type": "vector", "path": mode.embedding_field, "numDimensions": mode.embed_dim, "similarity": "cosine"},
+            {"type": "filter", "path": "doc_id"},
+        ]
+    }
 
 
-def _find_vector_index() -> dict | None:
-    return next(iter(chunks().list_search_indexes(settings.vector_index)), None)
+def _find_vector_index(name: str) -> dict | None:
+    return next(iter(chunks().list_search_indexes(name)), None)
 
 
 def ensure_vector_index(timeout_s: int = 180) -> bool:
-    """Create the vector index if missing and wait until it is queryable.
+    """Create each mode's vector index if missing and wait until all of them are queryable.
 
     Returns False (and retrieval falls back to in-process cosine search) when the
     MongoDB deployment has no search support, e.g. a plain `mongo` image.
@@ -58,16 +60,17 @@ def ensure_vector_index(timeout_s: int = 180) -> bool:
     deadline = time.time() + timeout_s
     while True:
         try:
-            if _find_vector_index() is None:
-                chunks().create_search_index(
-                    SearchIndexModel(
-                        definition=VECTOR_INDEX_DEFINITION, name=settings.vector_index, type="vectorSearch"
+            queryable = True
+            for mode in MODES.values():
+                if _find_vector_index(mode.vector_index) is None:
+                    chunks().create_search_index(
+                        SearchIndexModel(definition=_index_definition(mode), name=mode.vector_index, type="vectorSearch")
                     )
-                )
-                log.info("Created vector search index %s", settings.vector_index)
-            index = _find_vector_index()
-            if index and index.get("queryable"):
-                log.info("Vector search index is queryable")
+                    log.info("Created vector search index %s", mode.vector_index)
+                index = _find_vector_index(mode.vector_index)
+                queryable = queryable and bool(index and index.get("queryable"))
+            if queryable:
+                log.info("Vector search indexes are queryable")
                 vector_index_ready = True
                 return True
         except OperationFailure as e:
@@ -80,17 +83,17 @@ def ensure_vector_index(timeout_s: int = 180) -> bool:
         time.sleep(3)
 
 
-def wait_until_searchable(doc_id: str, expected: int, timeout_s: int = 120) -> bool:
-    """mongot syncs asynchronously: wait until the vector index sees all `expected` chunks of the document."""
+def wait_until_searchable(doc_id: str, expected: int, mode: Mode, timeout_s: int = 120) -> bool:
+    """mongot syncs asynchronously: wait until the mode's vector index sees all `expected` chunks of the document."""
     if not vector_index_ready:
         return True
-    probe = [0.0] * settings.embed_dim
+    probe = [0.0] * mode.embed_dim
     probe[0] = 1.0
     pipeline = [
         {
             "$vectorSearch": {
-                "index": settings.vector_index,
-                "path": "embedding",
+                "index": mode.vector_index,
+                "path": mode.embedding_field,
                 "queryVector": probe,
                 "exact": True,
                 "limit": expected,

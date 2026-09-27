@@ -77,11 +77,14 @@ export default function Home() {
           <span className="logo" aria-hidden />
           AI_chat_application
         </div>
-        <div className="pipeline">
-          <span>bge-small-en-v1.5</span>
-          <span>BM25 + vector · RRF</span>
-          <span>qwen3:8b</span>
-        </div>
+        {doc && (
+          <div className="pipeline">
+            <span className={`mode-tag mode-${doc.mode}`}>{doc.mode === "cloud" ? "Cloud mode" : "Private mode"}</span>
+            <span>{doc.embed_model}</span>
+            <span>BM25 + vector · RRF</span>
+            <span>{doc.llm_model}</span>
+          </div>
+        )}
       </header>
 
       {!loaded ? null : doc ? (

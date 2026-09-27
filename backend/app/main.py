@@ -6,11 +6,11 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import db, embeddings, llm, prejudge, reranker, retrieval
+from . import db, embeddings, llm, modes, prejudge, reranker, retrieval
 from .config import ALLOWED_EXTENSIONS, UPLOAD_DIR, settings
 from .ingest import ingest
 
@@ -53,9 +53,13 @@ class ChatRequest(BaseModel):
 
 def _doc_info(doc: dict) -> dict:
     """What the UI shows about a document (DocInfo in frontend/lib/api.ts)."""
+    mode = modes.get(doc.get("mode"))
     return {
         "doc_id": doc["_id"],
         "filename": doc["filename"],
+        "mode": mode.name,
+        "embed_model": mode.embed_model,
+        "llm_model": mode.llm_model,
         "status": doc["status"],
         "progress": doc.get("progress", 0),
         "num_chunks": doc.get("num_chunks"),
@@ -99,8 +103,21 @@ def health():
     }
 
 
+@app.get("/modes")
+def list_modes():
+    """Private and cloud mode with their models; cloud mode lists the API keys it still needs."""
+    return [mode.info() for mode in modes.MODES.values()]
+
+
 @app.post("/documents", status_code=202)
-async def upload_document(background: BackgroundTasks, file: UploadFile = File(...)):
+async def upload_document(
+    background: BackgroundTasks, file: UploadFile = File(...), mode_name: str = Form(modes.PRIVATE, alias="mode")
+):
+    if mode_name not in modes.MODES:
+        raise HTTPException(400, f"Unknown mode {mode_name!r}.")
+    mode = modes.MODES[mode_name]
+    if mode.missing_keys():
+        raise HTTPException(400, f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
     name = Path(file.filename or "").name
     ext = Path(name).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
@@ -121,15 +138,16 @@ async def upload_document(background: BackgroundTasks, file: UploadFile = File(.
         "_id": doc_id,
         "filename": name,
         "size": len(data),
+        "mode": mode.name,
         "status": "queued",
         "progress": 0,
         "contextual": settings.contextual_embedding,
-        "context_model": settings.context_model if settings.contextual_embedding else None,
+        "context_model": mode.context_model if settings.contextual_embedding else None,
         "created_at": now,
         "updated_at": now,
     }
     db.documents().insert_one(doc)
-    background.add_task(ingest, doc_id, path, name)  # sync fn -> runs in threadpool
+    background.add_task(ingest, doc_id, path, name, mode)  # sync fn -> runs in threadpool
     return _doc_info(doc)
 
 
@@ -160,13 +178,16 @@ def delete_document(doc_id: str):
 
 @app.post("/chat")
 def chat(req: ChatRequest):
-    doc = db.documents().find_one({"_id": req.doc_id}, {"status": 1})
+    doc = db.documents().find_one({"_id": req.doc_id}, {"status": 1, "mode": 1})
     if not doc:
         raise HTTPException(404, "Document not found.")
     if doc["status"] != "ready":
         raise HTTPException(409, "Document is not indexed yet.")
+    mode = modes.get(doc.get("mode"))  # a document is answered in the mode it was uploaded in
+    if mode.missing_keys():
+        raise HTTPException(400, f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
 
-    passages = retrieval.search(req.doc_id, req.question)
+    passages = retrieval.search(req.doc_id, req.question, mode)
     messages = llm.build_messages(req.question, passages, [h.model_dump() for h in req.history])
 
     def events():
@@ -176,7 +197,7 @@ def chat(req: ChatRequest):
         # Pre-judge: skip the answering LLM when the passages can't answer the question
         if settings.prejudge_enabled:
             try:
-                can_answer = prejudge.can_answer(req.question, passages)
+                can_answer = prejudge.can_answer(req.question, passages, mode)
             except Exception:  # noqa: BLE001
                 log.exception("pre-judge failed; answering anyway")
                 can_answer = True
@@ -186,7 +207,7 @@ def chat(req: ChatRequest):
                 return
 
         try:
-            for token in llm.stream_chat(messages):
+            for token in mode.stream_answer(messages):
                 yield _ndjson({"type": "token", "content": token})
             yield _ndjson({"type": "done"})
         except Exception as e:  # noqa: BLE001

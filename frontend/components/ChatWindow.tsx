@@ -127,6 +127,7 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
           <div>
             <div className="doc-name">{doc.filename}</div>
             <div className="muted small">
+              {doc.mode === "cloud" ? "Cloud mode · " : "Private mode · "}
               {ready
                 ? `Indexed · ${doc.num_chunks} chunks · hybrid BM25 + vector retrieval`
                 : failed

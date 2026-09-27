@@ -6,7 +6,7 @@ const STEPS: { key: DocStatus; label: string }[] = [
   { key: "converting", label: "Converting to Markdown" },
   { key: "chunking", label: "Chunking by headings" },
   { key: "contextualizing", label: "Adding context to each chunk" },
-  { key: "embedding", label: "Embedding with bge-small-en-v1.5" },
+  { key: "embedding", label: "Embedding" },
   { key: "storing", label: "Storing in MongoDB" },
   { key: "indexing", label: "Syncing vector index" },
 ];
@@ -39,8 +39,12 @@ export default function IngestProgress({ doc, onRetry }: { doc: DocInfo; onRetry
                   {doc.num_chunks ? ` · ${doc.context_done ?? 0}/${doc.num_chunks} chunks` : ""}
                 </span>
               ) : null}
-              {s.key === "embedding" && doc.num_chunks ? (
-                <span className="muted"> · {doc.num_chunks} chunks</span>
+              {s.key === "embedding" ? (
+                <span className="muted">
+                  {" "}
+                  · {doc.embed_model}
+                  {doc.num_chunks ? ` · ${doc.num_chunks} chunks` : ""}
+                </span>
               ) : null}
             </li>
           );

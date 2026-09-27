@@ -1,12 +1,13 @@
 """QASPER evaluation of the RAG pipeline (allenai/qasper: NLP papers + questions + gold answers + evidence).
 
 Runs only when triggered:
-    python -m app.evaluate --run-id <id> [--papers 5] [--seed 0] [--split test]
+    python -m app.evaluate --run-id <id> [--papers 5] [--seed 0] [--split test] [--mode private|cloud]
 
 Runs in four phases, one Ollama model at a time: (1) each sampled paper is converted to Markdown and
 ingested like an upload (chunk + optional Contextual Retrieval contexts + embed + store), (2) every
 question goes through hybrid retrieval + the pre-judge, (3) the questions the pre-judge let through are
 answered, (4) the judge grades the answers. Each stage is timed; model switches are not.
+--mode cloud runs steps 1-3 with the cloud models (see modes.py); the judge is always JUDGE_MODEL in Ollama.
 
 Metrics:
   - Answer F1     official QASPER token F1 against the best-matching annotator answer
@@ -35,8 +36,8 @@ from . import db, embeddings, llm, prejudge, reranker, retrieval
 from .chunker import chunk_markdown
 from .config import settings
 from .contextual import contextualize, hand_over, indexed_content
-from .embeddings import embed_passages
 from .ingest import store_chunks
+from .modes import MODES, PRIVATE, Mode
 from .qasper import (
     ANSWER_TYPES,
     SPLITS,
@@ -191,10 +192,10 @@ class _Ingested:
     embedding_times: list[float] = dataclasses.field(default_factory=list)  # seconds per paper
 
 
-def _ingest_papers(data: dict, paper_ids: list[str], doc_ids: dict[str, str]) -> _Ingested:
+def _ingest_papers(data: dict, paper_ids: list[str], doc_ids: dict[str, str], mode: Mode) -> _Ingested:
     _say(f"\n--- Phase 1/4: ingesting papers "
-         f"({'with contexts from ' + settings.context_model if settings.contextual_embedding else 'no contexts'}) ---")
-    if settings.contextual_embedding:
+         f"({'with contexts from ' + mode.context_model if settings.contextual_embedding else 'no contexts'}) ---")
+    if settings.contextual_embedding and mode.local:
         _load_model(settings.context_model, settings.context_num_ctx)
     ingested = _Ingested()
     for n, pid in enumerate(paper_ids, start=1):
@@ -202,7 +203,7 @@ def _ingest_papers(data: dict, paper_ids: list[str], doc_ids: dict[str, str]) ->
         markdown, paragraphs = paper_markdown(paper)
         _say(f"\n[paper {n}/{len(paper_ids)}] {_short(paper['title'])} ({len(paper['qas'])} questions)")
         try:
-            _ingest_paper(doc_ids[pid], markdown, ingested)
+            _ingest_paper(doc_ids[pid], markdown, ingested, mode)
             ingested.paragraphs[pid] = paragraphs
         except Exception as e:  # noqa: BLE001
             log.exception("Ingesting paper %s failed", pid)
@@ -211,14 +212,14 @@ def _ingest_papers(data: dict, paper_ids: list[str], doc_ids: dict[str, str]) ->
     return ingested
 
 
-def _ingest_paper(doc_id: str, markdown: str, ingested: _Ingested) -> None:
+def _ingest_paper(doc_id: str, markdown: str, ingested: _Ingested, mode: Mode) -> None:
     """Chunk, add contexts, embed and store one paper like an upload, timing the context and embedding steps."""
     chunks = chunk_markdown(markdown, settings.chunk_size, settings.chunk_overlap)
     contexts = [""] * len(chunks)
     if settings.contextual_embedding:
         st = _Status("  adding context…")
         t0 = time.perf_counter()
-        contexts = contextualize(markdown, chunks, lambda done, total: st.set(f"{done}/{total} chunks"))
+        contexts = contextualize(markdown, chunks, mode, lambda done, total: st.set(f"{done}/{total} chunks"))
         ingested.context_times.append(time.perf_counter() - t0)
         st.done(f"  context: {len(chunks)} chunks in {_fmt_secs(ingested.context_times[-1])} "
                 f"(e.g. \"{_short(contexts[len(contexts) // 2], 80)}\")")
@@ -226,33 +227,35 @@ def _ingest_paper(doc_id: str, markdown: str, ingested: _Ingested) -> None:
 
     st = _Status("  embedding…")
     t0 = time.perf_counter()
-    vectors = embed_passages(contents)
+    vectors = mode.embed_passages(contents)
     ingested.embedding_times.append(time.perf_counter() - t0)
     st.done(f"  embedding: {len(chunks)} chunks in {_fmt_secs(ingested.embedding_times[-1])}")
-    store_chunks(doc_id, chunks, contexts, contents, vectors)
+    store_chunks(doc_id, chunks, contexts, contents, vectors, mode)
 
     st = _Status("  waiting for the vector index…")
-    db.wait_until_searchable(doc_id, len(chunks))  # index sync is excluded from the timings
+    db.wait_until_searchable(doc_id, len(chunks), mode)  # index sync is excluded from the timings
     st.done(f"  vector index ready in {_fmt_secs(st.elapsed)}")
 
 
 # ------------------------------------------------------------------ phase 2: retrieve + pre-judge
-def _retrieve_all(questions: list[tuple[str, dict]], doc_ids: dict[str, str], failed: dict[str, str]) -> dict:
-    """Question id -> retrieval + pre-judge result. The answering model does the pre-judge, so it is loaded once
-    here, straight after the context model is unloaded, and stays loaded for phase 3."""
+def _retrieve_all(questions: list[tuple[str, dict]], doc_ids: dict[str, str], failed: dict[str, str],
+                  mode: Mode) -> dict:
+    """Question id -> retrieval + pre-judge result. The answering model does the pre-judge; in private mode it is
+    loaded once here, straight after the context model is unloaded, and stays loaded for phase 3."""
     _say("\n--- Phase 2/4: retrieval + pre-judge "
-         f"({'with ' + settings.llm_model if settings.prejudge_enabled else 'pre-judge off'}) ---")
-    if settings.contextual_embedding:
-        st = _Status(f"Unloading {settings.context_model}…")
-        st.done(f"After contextualizing: {hand_over() or 'nothing to hand over'}")
-    _load_model(settings.llm_model, settings.llm_num_ctx)
+         f"({'with ' + mode.llm_model if settings.prejudge_enabled else 'pre-judge off'}) ---")
+    if mode.local:
+        if settings.contextual_embedding:
+            st = _Status(f"Unloading {settings.context_model}…")
+            st.done(f"After contextualizing: {hand_over() or 'nothing to hand over'}")
+        _load_model(settings.llm_model, settings.llm_num_ctx)
     steps: dict[str, dict] = {}
     for n, (pid, qa) in enumerate(questions, start=1):
         if pid in failed:
             continue
         _say(f"  [Q {n}/{len(questions)}] {_short(qa['question'])}")
         try:
-            steps[qa["question_id"]] = _retrieve_and_prejudge(doc_ids[pid], qa, indent="      ")
+            steps[qa["question_id"]] = _retrieve_and_prejudge(doc_ids[pid], qa, mode, indent="      ")
         except Exception as e:  # noqa: BLE001
             log.exception("Question %s failed", qa["question_id"])
             _say(f"      FAILED: {e}")
@@ -260,13 +263,13 @@ def _retrieve_all(questions: list[tuple[str, dict]], doc_ids: dict[str, str], fa
     return steps
 
 
-def _retrieve_and_prejudge(doc_id: str, qa: dict, indent: str) -> dict:
+def _retrieve_and_prejudge(doc_id: str, qa: dict, mode: Mode, indent: str) -> dict:
     question = qa["question"].strip()
     t0 = time.perf_counter()
     if settings.reranker_enabled:
-        candidates = retrieval.hybrid_search(doc_id, question, settings.rerank_candidates)
+        candidates = retrieval.hybrid_search(doc_id, question, mode, settings.rerank_candidates)
     else:
-        candidates = passages = retrieval.hybrid_search(doc_id, question)
+        candidates = passages = retrieval.hybrid_search(doc_id, question, mode)
     retrieval_s = time.perf_counter() - t0
     _say(f"{indent}retrieval: {len(candidates)} chunks in {retrieval_s:.2f}s")
 
@@ -282,7 +285,7 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, indent: str) -> dict:
     if settings.prejudge_enabled:
         st = _Status(f"{indent}pre-judge…")
         t0 = time.perf_counter()
-        can_answer = prejudge.can_answer(question, passages)
+        can_answer = prejudge.can_answer(question, passages, mode)
         prejudge_s = time.perf_counter() - t0
         st.done(f"{indent}pre-judge: {'YES, will answer' if can_answer else 'NO, not enough content'} "
                 f"({_fmt_secs(prejudge_s)})")
@@ -291,10 +294,10 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, indent: str) -> dict:
 
 
 # ------------------------------------------------------------------ phase 3: answer + score
-def _answer_all(questions: list[tuple[str, dict]], steps: dict, ingested: _Ingested) -> list[dict]:
+def _answer_all(questions: list[tuple[str, dict]], steps: dict, ingested: _Ingested, mode: Mode) -> list[dict]:
     """One result row per question: the answer and its scores, or the error that stopped it."""
     to_answer = sum(1 for s in steps.values() if s.get("can_answer"))
-    _say(f"\n--- Phase 3/4: answering {to_answer} of {len(questions)} questions with {settings.llm_model} ---")
+    _say(f"\n--- Phase 3/4: answering {to_answer} of {len(questions)} questions with {mode.llm_model} ---")
     rows: list[dict] = []
     answer_times: list[float] = []  # for the time-left estimate
     for n, (pid, qa) in enumerate(questions, start=1):
@@ -313,7 +316,7 @@ def _answer_all(questions: list[tuple[str, dict]], steps: dict, ingested: _Inges
         _say(f"  [Q {n}/{len(questions)}{eta}] {_short(qa['question'])}")
         t0 = time.perf_counter()
         try:
-            row = _answer_and_score(step, qa, ingested.paragraphs[pid], indent="      ")
+            row = _answer_and_score(step, qa, ingested.paragraphs[pid], mode, indent="      ")
         except Exception as e:  # noqa: BLE001
             log.exception("Question %s failed", qa["question_id"])
             _say(f"      FAILED: {e}")
@@ -324,7 +327,7 @@ def _answer_all(questions: list[tuple[str, dict]], steps: dict, ingested: _Inges
     return rows
 
 
-def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) -> dict:
+def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], mode: Mode, indent: str) -> dict:
     question, passages, can_answer = step["question"], step["passages"], step["can_answer"]
     retrieval_s, prejudge_s = step["retrieval_s"], step["prejudge_s"]
     refs = references(qa)
@@ -335,7 +338,7 @@ def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) 
         st.set("waiting for first token")
         pieces: list[str] = []
         t0 = time.perf_counter()
-        for piece in llm.stream_chat(llm.build_messages(question, passages, [])):
+        for piece in mode.stream_answer(llm.build_messages(question, passages, [])):
             pieces.append(piece)
             st.set(f"{len(pieces)} tokens")
         generation_s = time.perf_counter() - t0
@@ -393,10 +396,10 @@ def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) 
 
 
 # ------------------------------------------------------------------ phase 4: judge
-def _judge_all(rows: list[dict]) -> None:
+def _judge_all(rows: list[dict], mode: Mode) -> None:
     """Adds the judge's verdict (judge_correct, judge_output, judging_s) to every answered row."""
     _say(f"\n--- Phase 4/4: judging answers with {settings.judge_model} ---")
-    if settings.judge_model != settings.llm_model:
+    if not mode.local or settings.judge_model != settings.llm_model:  # else it is loaded since phase 2
         _load_model(settings.judge_model, settings.llm_num_ctx)
     for n, row in enumerate(rows, start=1):
         if "error" in row:
@@ -447,12 +450,14 @@ def _environment() -> dict[str, str]:
         value = str(getattr(settings, f.name))
         if f.name == "mongo_uri":
             value = re.sub(r"//([^:/@]+):[^@]*@", r"//\1:***@", value)
+        if f.name.endswith("_api_key"):
+            value = "***" if value else ""
         env[f.name.upper()] = value
     return env
 
 
 def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], ingested: _Ingested,
-             total_min: float) -> dict:
+             total_min: float, mode: Mode) -> dict:
     ok = [r for r in rows if "error" not in r]
     return {
         "run_id": run_id,
@@ -461,17 +466,19 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "seed": seed,
         "papers": papers,
         "questions": len(rows),
-        "llm_model": settings.llm_model,
+        "mode": mode.name,
+        "embed_model": mode.embed_model,
+        "llm_model": mode.llm_model,
         "judge_model": settings.judge_model,
         "top_k": settings.top_k,
         "bm25_candidates": settings.bm25_candidates,
-        "vector_min_score": settings.vector_min_score,
+        "vector_min_score": mode.vector_min_score,
         "chunk_size": settings.chunk_size,
         "chunk_overlap": settings.chunk_overlap,
         "contextual_embedding": settings.contextual_embedding,
-        "context_model": settings.context_model if settings.contextual_embedding else None,
+        "context_model": mode.context_model if settings.contextual_embedding else None,
         "prejudge_enabled": settings.prejudge_enabled,
-        "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,  # the answering model
+        "prejudge_model": mode.llm_model if settings.prejudge_enabled else None,  # the answering model
         "reranker_enabled": settings.reranker_enabled,
         "reranker_model": settings.reranker_model if settings.reranker_enabled else None,
         "rerank_candidates": settings.rerank_candidates if settings.reranker_enabled else None,
@@ -509,14 +516,16 @@ def _prejudge_rejected(s: dict) -> str:
 def _results_row(s: dict) -> str:
     """The run's row in results.md (columns as in RESULTS_HEADER)."""
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
+    local = s["mode"] == PRIVATE
+    cloud = "" if local else f"cloud · emb {s['embed_model']} · "
     ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
-    pj = f"prejudge {s['prejudge_model']}/gpu" if s["prejudge_enabled"] else "no prejudge"
+    pj = f"prejudge {s['prejudge_model']}{'/gpu' if local else ''}" if s["prejudge_enabled"] else "no prejudge"
     rr = (f"rerank {s['reranker_model'].split('/')[-1]} top {s['rerank_candidates']}"
           if s["reranker_enabled"] else "no rerank")
     return (
         f"| {s['run_id']} | {s['date_utc']} | {s['split']} · {s['papers']} · {s['questions']} (seed {s['seed']}) "
         f"| {s['llm_model']} / {s['judge_model']} "
-        f"| top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
+        f"| {cloud}top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
         f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} · {pj} · {rr} "
         f"| {_secs(s['contextualization_s_per_paper'])} "
         f"| {_secs(s['embedding_s_per_paper'])} | {_secs(s['retrieval_s_per_question'])} "
@@ -555,7 +564,10 @@ def _print_summary(s: dict, results_md: Path, details_json: Path) -> None:
 
 
 # ------------------------------------------------------------------ run
-def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
+def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PRIVATE) -> None:
+    mode = MODES[mode_name]
+    if mode.missing_keys():
+        raise SystemExit(f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
     results_md = settings.eval_dir / "results.md"
     details_json = settings.eval_dir / f"{run_id}.json"
     if run_id in _existing_run_ids(results_md) or details_json.exists():
@@ -566,9 +578,9 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     questions = [(pid, qa) for pid in paper_ids for qa in data[pid]["qas"]]
     doc_ids = {pid: f"eval-{run_id}-{pid}" for pid in paper_ids}
     _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {len(questions)} questions (QASPER {split}, seed {seed}) ===")
-    _say(f"LLM {settings.llm_model} · judge {settings.judge_model} · top {settings.top_k} · "
-         f"BM25 {settings.bm25_candidates} · vec ≥ {settings.vector_min_score} · "
-         f"{'context ' + settings.context_model if settings.contextual_embedding else 'no context'} · "
+    _say(f"{mode.label}: LLM {mode.llm_model} · embeddings {mode.embed_model} · judge {settings.judge_model} · "
+         f"top {settings.top_k} · BM25 {settings.bm25_candidates} · vec ≥ {mode.vector_min_score} · "
+         f"{'context ' + mode.context_model if settings.contextual_embedding else 'no context'} · "
          f"{'rerank top ' + str(settings.rerank_candidates) + ' with ' + settings.reranker_model if settings.reranker_enabled else 'no rerank'}")
 
     st = _Status("Connecting to MongoDB and loading the embedding model…")
@@ -582,15 +594,16 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     # doesn't swap models in and out of GPU memory for every paper.
     started = time.perf_counter()
     try:
-        ingested = _ingest_papers(data, paper_ids, doc_ids)
-        steps = _retrieve_all(questions, doc_ids, ingested.errors)
-        rows = _answer_all(questions, steps, ingested)
+        ingested = _ingest_papers(data, paper_ids, doc_ids, mode)
+        steps = _retrieve_all(questions, doc_ids, ingested.errors, mode)
+        rows = _answer_all(questions, steps, ingested, mode)
     finally:
         for doc_id in doc_ids.values():
             _cleanup(doc_id)
-    _judge_all(rows)
+    _judge_all(rows, mode)
 
-    summary = _summary(run_id, split, seed, len(paper_ids), rows, ingested, (time.perf_counter() - started) / 60)
+    summary = _summary(run_id, split, seed, len(paper_ids), rows, ingested, (time.perf_counter() - started) / 60,
+                       mode)
     _save(summary, rows, results_md, details_json)
     _print_summary(summary, results_md, details_json)
 
@@ -602,12 +615,14 @@ def main():
     p.add_argument("--papers", type=int, default=5, help="number of papers to sample (~3.5 questions each)")
     p.add_argument("--seed", type=int, default=0, help="sampling seed; keep it fixed to compare runs")
     p.add_argument("--split", choices=sorted(SPLITS), default="test")
+    p.add_argument("--mode", choices=sorted(MODES), default=PRIVATE,
+                   help="private: local models (default); cloud: Gemini + DeepSeek via OpenRouter (sends the papers)")
     args = p.parse_args()
     if not RUN_ID_RE.match(args.run_id):
         p.error("--run-id may only contain letters, digits, '.', '_' and '-' (max 64 chars)")
     if args.papers < 1:
         p.error("--papers must be at least 1")
-    run(args.run_id, args.papers, args.seed, args.split)
+    run(args.run_id, args.papers, args.seed, args.split, args.mode)
 
 
 if __name__ == "__main__":

@@ -78,6 +78,13 @@ services:
       RERANKER_MODEL: ${RERANKER_MODEL:-BAAI/bge-reranker-base}
       RERANK_CANDIDATES: ${RERANK_CANDIDATES:-20}
       HISTORY_TURNS: ${HISTORY_TURNS:-6}
+      # Cloud mode (OpenRouter): the key comes from the environment of the shell that starts compose (not from .env)
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      CLOUD_EMBED_MODEL: ${CLOUD_EMBED_MODEL:-google/gemini-embedding-2}
+      CLOUD_EMBED_DIM: ${CLOUD_EMBED_DIM:-768}
+      CLOUD_VECTOR_MIN_SCORE: ${CLOUD_VECTOR_MIN_SCORE:-0}
+      CLOUD_CONTEXT_MODEL: ${CLOUD_CONTEXT_MODEL:-google/gemini-3.5-flash-lite}
+      CLOUD_LLM_MODEL: ${CLOUD_LLM_MODEL:-deepseek/deepseek-v4.1-flash}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
       JUDGE_MODEL: ${JUDGE_MODEL:-qwen3:8b}
       EVAL_DIR: /evaluation_metrics

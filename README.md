@@ -67,6 +67,42 @@ First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama
 | Health | http://localhost:8000/health |
 | MongoDB (Compass) | `mongodb://admin:admin@localhost:27017/?directConnection=true` |
 
+## Private and cloud mode
+
+Before each upload you pick where the document is processed:
+
+| | Private mode (default) | Cloud mode |
+|---|---|---|
+| Embeddings | `BAAI/bge-small-en-v1.5` (CPU) | Gemini Embedding 2 (`google/gemini-embedding-2`, cut to 768-d) |
+| Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`) |
+| Answers + pre-judge | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) |
+| BM25, reranker, MongoDB | this machine | this machine (same MongoDB) |
+| Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek |
+
+All cloud models run through [OpenRouter](https://openrouter.ai), with one API key and one bill. OpenRouter
+returns Gemini Embedding 2's full 3072 values; the model is trained so that the first values form an embedding on
+their own, so the backend keeps the first `CLOUD_EMBED_DIM` and renormalises them.
+
+The mode belongs to the document: vectors from different embedding models can't be compared, so each mode keeps
+its vectors in its own chunk field (`embedding` / `embedding_cloud`) with its own vector index, and a document is
+always answered in the mode it was uploaded in. The UI shows the mode in the top bar and the chat header.
+
+**API key.** Cloud mode needs `OPENROUTER_API_KEY` ([OpenRouter keys](https://openrouter.ai/settings/keys), with
+credits on the account). Don't put it in `.env`: it is committed to git. Set it as an environment variable of your
+user, then start the app from a new terminal:
+
+```powershell
+setx OPENROUTER_API_KEY "sk-or-..."      # Windows; then open a new terminal
+.\start.ps1
+```
+```bash
+export OPENROUTER_API_KEY=sk-or-...      # Linux / macOS (e.g. in ~/.bashrc)
+./start.sh
+```
+
+Without the key the cloud option is shown but disabled. Rate-limited or overloaded requests (429 / 5xx) are
+retried up to 5 times, 2-32 s apart.
+
 ## Configuration (`.env`)
 
 | Variable | Default | Notes |
@@ -92,6 +128,11 @@ First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama
 | `CONTEXT_NUM_CTX` | `16384` | Tokens of the document the context model reads at once. Longer documents are split into windows |
 | `PREJUDGE_ENABLED` | `true` | `true` / `false`: check whether the retrieved passages can answer before calling the answering LLM |
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
+| `CLOUD_EMBED_MODEL` / `CLOUD_EMBED_DIM` | `google/gemini-embedding-2` / `768` | Cloud embeddings. Changing the dimension needs the `chunk_vector_index_cloud` index to be dropped so it is recreated |
+| `CLOUD_VECTOR_MIN_SCORE` | `0` | Minimum cosine similarity for cloud embedding hits; `0` = no cutoff. Not tuned yet: measure it with `--mode cloud` |
+| `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode |
+| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers and pre-judges in cloud mode (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too) |
+| `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud mode](#private-and-cloud-mode)). Cloud model IDs are OpenRouter's |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
 Changing chunking settings only affects newly uploaded documents.
@@ -100,7 +141,8 @@ Changing chunking settings only affects newly uploaded documents.
 
 | Method | Path | |
 |---|---|---|
-| `POST` | `/documents` | multipart `file` → `{doc_id, status}` (202) |
+| `GET` | `/modes` | private and cloud mode with their models, and the API keys cloud mode still needs |
+| `POST` | `/documents` | multipart `file` + `mode` (`private` / `cloud`) → `{doc_id, status}` (202) |
 | `GET` | `/documents/{id}` | status: `queued → converting → chunking → contextualizing → embedding → storing → indexing → ready` (or `failed` + `error`) |
 | `GET` | `/documents/{id}/markdown` | the converted Markdown |
 | `DELETE` | `/documents/{id}` | removes doc, chunks and files |
@@ -122,12 +164,15 @@ backend/app/
   reranker.py    cross-encoder reranking of the fused candidates
   prejudge.py    YES/NO check: can the retrieved passages answer the question?
   llm.py         Ollama client (load/unload, completions, streaming) + answering prompt
+  modes.py       private / cloud mode: which models, embedding field and vector index a document uses
+  cloud.py       OpenRouter client for cloud mode (Gemini embeddings and contexts, DeepSeek answers)
   evaluate.py    QASPER evaluation (CLI)
   qasper.py      QASPER dataset download, papers as Markdown, official scoring
 frontend/
   app/page.tsx                     upload → chat flow
   app/api/[...path]/route.ts       proxy to the backend (single exposed origin)
   components/Uploader.tsx          file picker + upload
+  components/ModePicker.tsx        private / cloud mode choice for the upload
   components/IngestProgress.tsx    indexing progress, shown in the chat
   components/ChatWindow.tsx        chat state: question queue, streaming, composer
   components/AssistantMessage.tsx  answer with Markdown, KaTeX math, code highlighting, citation chips and sources
@@ -152,6 +197,7 @@ docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 
 | `--papers` | How many papers to sample (default 5). Every question on a sampled paper is asked, about 3.5 per paper. |
 | `--seed` | Which papers get sampled (default 0). Same seed = same papers, so runs are comparable. |
 | `--split` | `test` (default, 416 papers / 1,451 questions) or `validation`. |
+| `--mode` | `private` (default) or `cloud`: ingest, retrieve and answer with the cloud models (sends the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so both modes are graded the same way. Cloud rows start with `cloud · emb <model>` in the Retrieval config column. |
 
 On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
 

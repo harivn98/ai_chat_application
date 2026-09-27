@@ -11,9 +11,25 @@ export type DocStatus =
   | "ready"
   | "failed";
 
+/** private: everything runs on this machine; cloud: Gemini + DeepSeek (the document leaves this machine) */
+export type ModeId = "private" | "cloud";
+
+export interface ModeInfo {
+  id: ModeId;
+  label: string;
+  description: string;
+  embed_model: string;
+  context_model: string | null; // null when contextual embedding is off
+  llm_model: string;
+  missing_keys: string[]; // API keys the backend still needs for this mode
+}
+
 export interface DocInfo {
   doc_id: string;
   filename: string;
+  mode: ModeId; // chosen at upload; the document is answered in this mode
+  embed_model: string;
+  llm_model: string;
   status: DocStatus;
   progress: number;
   num_chunks: number | null;
@@ -56,9 +72,16 @@ async function errorText(res: Response): Promise<string> {
   }
 }
 
-export async function uploadDocument(file: File): Promise<DocInfo> {
+export async function getModes(): Promise<ModeInfo[]> {
+  const res = await fetch("/api/modes", { cache: "no-store" });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
+export async function uploadDocument(file: File, mode: ModeId): Promise<DocInfo> {
   const form = new FormData();
   form.append("file", file);
+  form.append("mode", mode);
   const res = await fetch("/api/documents", { method: "POST", body: form });
   if (!res.ok) throw new Error(await errorText(res));
   return res.json();

@@ -11,7 +11,7 @@ from .chunker import Chunk, chunk_markdown
 from .config import settings
 from .contextual import ContextError, contextualize, indexed_content
 from .converter import ConversionError, to_markdown
-from .embeddings import embed_passages
+from .modes import Mode
 
 log = logging.getLogger("ingest")
 
@@ -19,9 +19,11 @@ EMBED_BATCH = 64  # chunks embedded between two progress updates
 
 
 def store_chunks(
-    doc_id: str, chunks: list[Chunk], contexts: list[str], contents: list[str], vectors: Iterable[np.ndarray]
+    doc_id: str, chunks: list[Chunk], contexts: list[str], contents: list[str], vectors: Iterable[np.ndarray],
+    mode: Mode,
 ) -> None:
-    """Replace the document's chunks in MongoDB (the evaluation stores its papers the same way)."""
+    """Replace the document's chunks in MongoDB, with the vectors in the mode's embedding field
+    (the evaluation stores its papers the same way)."""
     db.chunks().delete_many({"doc_id": doc_id})
     db.chunks().insert_many(
         [
@@ -34,7 +36,7 @@ def store_chunks(
                 "end": c.end,
                 "context": ctx,
                 "content": content,
-                "embedding": v.tolist(),
+                mode.embedding_field: v.tolist(),
             }
             for c, ctx, content, v in zip(chunks, contexts, contents, vectors)
         ]
@@ -56,8 +58,8 @@ def _switch_to_answering_model() -> None:
         llm.load_in_background(settings.llm_model, settings.llm_num_ctx, "after contextualizing")
 
 
-def ingest(doc_id: str, path: Path, original_name: str) -> None:
-    if settings.contextual_embedding:
+def ingest(doc_id: str, path: Path, original_name: str, mode: Mode) -> None:
+    if settings.contextual_embedding and mode.local:
         # contextualizing is the next model step: load the context model while converting and chunking
         llm.load_in_background(settings.context_model, settings.context_num_ctx, "for a new upload")
     stage = "converting"
@@ -78,28 +80,29 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
             _status(doc_id, stage, 25, num_chunks=len(chunks), context_done=0)
             try:
                 contexts = contextualize(
-                    markdown, chunks,
+                    markdown, chunks, mode,
                     lambda done, total: _status(doc_id, "contextualizing", 25 + int(35 * done / total),
                                                 context_done=done),
                 )
             finally:
-                _switch_to_answering_model()
+                if mode.local:
+                    _switch_to_answering_model()
         contents = [indexed_content(c, ctx) for c, ctx in zip(chunks, contexts)]
 
         stage = "embedding"
         _status(doc_id, stage, 60, num_chunks=len(chunks))
         vectors = []
         for i in range(0, len(chunks), EMBED_BATCH):
-            vectors.extend(embed_passages(contents[i:i + EMBED_BATCH]))
+            vectors.extend(mode.embed_passages(contents[i:i + EMBED_BATCH]))
             _status(doc_id, stage, 60 + int(20 * min(i + EMBED_BATCH, len(chunks)) / len(chunks)))
 
         stage = "storing"
         _status(doc_id, stage, 85)
-        store_chunks(doc_id, chunks, contexts, contents, vectors)
+        store_chunks(doc_id, chunks, contexts, contents, vectors, mode)
 
         stage = "indexing"
         _status(doc_id, stage, 92)
-        if not db.wait_until_searchable(doc_id, len(chunks)):
+        if not db.wait_until_searchable(doc_id, len(chunks), mode):
             log.warning("vector index did not catch up for %s; local fallback will cover it", doc_id)
         retrieval.bm25_cache.drop(doc_id)
         retrieval.bm25_cache.get(doc_id)  # warm the BM25 index

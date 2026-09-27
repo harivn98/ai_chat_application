@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { DocInfo, uploadDocument } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import ModePicker from "@/components/ModePicker";
+import { DocInfo, getModes, ModeId, ModeInfo, uploadDocument } from "@/lib/api";
 
 const EXTENSIONS = [".pdf", ".txt", ".md", ".markdown"];
+const MODE_KEY = "AI_chat_application.mode"; // the last mode picked, remembered in this browser
 
 function fmtSize(b: number) {
   if (b < 1024) return `${b} B`;
@@ -16,7 +18,30 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [modes, setModes] = useState<ModeInfo[]>([]);
+  const [mode, setMode] = useState<ModeId>("private");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getModes()
+      .then((ms) => {
+        setModes(ms);
+        let saved: string | null = null;
+        try {
+          saved = localStorage.getItem(MODE_KEY);
+        } catch {}
+        const usable = ms.find((m) => m.id === saved && m.missing_keys.length === 0);
+        if (usable) setMode(usable.id);
+      })
+      .catch(() => {}); // without the list, uploads use private mode
+  }, []);
+
+  function chooseMode(m: ModeId) {
+    setMode(m);
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {}
+  }
 
   function pick(f: File | undefined | null) {
     setError(null);
@@ -34,7 +59,7 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
     setUploading(true);
     setError(null);
     try {
-      onUploaded(await uploadDocument(file)); // the chat opens right away; indexing continues in the background
+      onUploaded(await uploadDocument(file, mode)); // the chat opens right away; indexing continues in the background
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -50,6 +75,14 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
         PDF, TXT and Markdown are converted to Markdown, chunked, embedded and indexed. The chat opens right away:
         you can type questions while the document is indexed, and they are answered as soon as it is searchable.
       </p>
+
+      {modes.length > 0 && <ModePicker modes={modes} value={mode} onChange={chooseMode} />}
+      {mode === "cloud" && (
+        <p className="cloud-warning">
+          Cloud mode sends the document text and your questions to OpenRouter, which passes them to Google and
+          DeepSeek. Use private mode for confidential documents.
+        </p>
+      )}
 
       <div
         className={`dropzone ${dragging ? "dragging" : ""} ${file ? "has-file" : ""}`}

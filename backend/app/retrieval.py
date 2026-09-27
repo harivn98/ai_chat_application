@@ -11,7 +11,7 @@ from rank_bm25 import BM25Plus
 
 from . import db, reranker
 from .config import settings
-from .embeddings import embed_query
+from .modes import Mode
 
 log = logging.getLogger("retrieval")
 
@@ -48,7 +48,7 @@ class _BM25Cache:
                 self._data.move_to_end(doc_id)
                 return self._data[doc_id]
         rows = list(
-            db.chunks().find({"doc_id": doc_id}, {"embedding": 0}).sort("index", 1)
+            db.chunks().find({"doc_id": doc_id}, {"embedding": 0, "embedding_cloud": 0}).sort("index", 1)
         )
         if not rows:
             return None, []
@@ -84,12 +84,12 @@ def bm25_search(doc_id: str, query: str, k: int) -> list[tuple[int, float]]:
     return hits[:k]
 
 
-def _vector_search_mongo(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[int, float]]:
+def _vector_search_mongo(doc_id: str, qvec: np.ndarray, k: int, mode: Mode) -> list[tuple[int, float]]:
     pipeline = [
         {
             "$vectorSearch": {
-                "index": settings.vector_index,
-                "path": "embedding",
+                "index": mode.vector_index,
+                "path": mode.embedding_field,
                 "queryVector": qvec.tolist(),
                 "numCandidates": max(k * 10, 100),
                 "limit": k,
@@ -102,27 +102,28 @@ def _vector_search_mongo(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[in
     return [(r["index"], 2.0 * float(r["score"]) - 1.0) for r in db.chunks().aggregate(pipeline)]
 
 
-def _vector_search_local(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[int, float]]:
-    rows = list(db.chunks().find({"doc_id": doc_id}, {"index": 1, "embedding": 1}))
+def _vector_search_local(doc_id: str, qvec: np.ndarray, k: int, mode: Mode) -> list[tuple[int, float]]:
+    rows = list(db.chunks().find({"doc_id": doc_id, mode.embedding_field: {"$exists": True}},
+                                 {"index": 1, mode.embedding_field: 1}))
     if not rows:
         return []
-    mat = np.asarray([r["embedding"] for r in rows], dtype=np.float32)
+    mat = np.asarray([r[mode.embedding_field] for r in rows], dtype=np.float32)
     sims = mat @ qvec
     order = np.argsort(sims)[::-1][:k]
     return [(rows[i]["index"], float(sims[i])) for i in order]
 
 
-def vector_search(doc_id: str, query: str, k: int, min_score: float) -> list[tuple[int, float]]:
-    qvec = embed_query(query)
+def vector_search(doc_id: str, query: str, k: int, mode: Mode) -> list[tuple[int, float]]:
+    qvec = mode.embed_query(query)
     hits: list[tuple[int, float]] = []
     if db.vector_index_ready:
         try:
-            hits = _vector_search_mongo(doc_id, qvec, k)
+            hits = _vector_search_mongo(doc_id, qvec, k, mode)
         except OperationFailure as e:
             log.warning("$vectorSearch failed, using local fallback: %s", e)
     if not hits:
-        hits = _vector_search_local(doc_id, qvec, k)
-    return [(idx, score) for idx, score in hits if score >= min_score]
+        hits = _vector_search_local(doc_id, qvec, k, mode)
+    return [(idx, score) for idx, score in hits if score >= mode.vector_min_score]
 
 
 def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -> list[dict]:
@@ -136,11 +137,11 @@ def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -
     return sorted(fused.values(), key=lambda e: e["rrf"], reverse=True)[:k]
 
 
-def hybrid_search(doc_id: str, query: str, k: int | None = None) -> list[dict]:
+def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None) -> list[dict]:
     """BM25 + vector search fused with RRF; the top k (default TOP_K) chunks."""
     rankings = {
         "bm25": bm25_search(doc_id, query, settings.bm25_candidates),
-        "vector": vector_search(doc_id, query, settings.vector_candidates, settings.vector_min_score),
+        "vector": vector_search(doc_id, query, settings.vector_candidates, mode),
     }
     fused = rrf_fuse(rankings, k or settings.top_k, settings.rrf_k)
     _, rows = bm25_cache.get(doc_id)
@@ -161,10 +162,10 @@ def hybrid_search(doc_id: str, query: str, k: int | None = None) -> list[dict]:
     return results
 
 
-def search(doc_id: str, query: str) -> list[dict]:
+def search(doc_id: str, query: str, mode: Mode) -> list[dict]:
     """The passages sent to the LLM: hybrid search, then (if RERANKER_ENABLED) cross-encoder reranking
     of the top RERANK_CANDIDATES fused chunks down to TOP_K."""
     if not settings.reranker_enabled:
-        return hybrid_search(doc_id, query)
-    candidates = hybrid_search(doc_id, query, settings.rerank_candidates)
+        return hybrid_search(doc_id, query, mode)
+    candidates = hybrid_search(doc_id, query, mode, settings.rerank_candidates)
     return reranker.rerank(query, candidates, settings.top_k)
