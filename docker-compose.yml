@@ -1,4 +1,4 @@
-name: rag-docchat
+name: rag-AI_chat_application
 
 services:
   # MongoDB with mongot (Atlas Vector Search) running locally

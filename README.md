@@ -1,4 +1,4 @@
-# DocChat — local RAG over your documents
+# AI_chat_application — local RAG over your documents
 
 Upload a PDF, TXT or Markdown file, wait for it to be indexed, then chat with it.
 Everything (UI, API, vector DB, LLM) runs in Docker on your machine.

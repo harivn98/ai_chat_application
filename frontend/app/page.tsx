@@ -5,7 +5,7 @@ import ChatWindow from "@/components/ChatWindow";
 import Uploader from "@/components/Uploader";
 import { DocInfo, deleteDocument, getDocument } from "@/lib/api";
 
-const STORAGE_KEY = "docchat.doc_id";
+const STORAGE_KEY = "AI_chat_application.doc_id";
 
 export default function Home() {
   const [doc, setDoc] = useState<DocInfo | null>(null);
@@ -54,7 +54,7 @@ export default function Home() {
       <header className="topbar">
         <div className="brand">
           <span className="logo" aria-hidden />
-          DocChat
+          AI_chat_application
         </div>
         <div className="pipeline">
           <span>bge-small-en-v1.5</span>

@@ -29,7 +29,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="RAG DocChat API", lifespan=lifespan)
+app = FastAPI(title="RAG AI_chat_application API", lifespan=lifespan)
 
 
 # ------------------------------------------------------------------ schemas
