@@ -70,6 +70,7 @@ On Windows this needs Docker Desktop with the WSL 2 backend and a current NVIDIA
 | `BM25_CANDIDATES` | `10` | Chunks taken from BM25 before fusion |
 | `VECTOR_MIN_SCORE` | `0.85` | Minimum cosine similarity for embedding hits |
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
+| `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
 Changing chunking settings only affects newly uploaded documents.
 
@@ -108,22 +109,48 @@ frontend/
 The RAG pipeline can be scored on [QASPER](https://huggingface.co/datasets/allenai/qasper): NLP research papers with questions, gold answers and the evidence paragraphs for each answer. It only runs when you trigger it:
 
 ```bash
+docker compose up -d --build     # the code is baked into the image: rebuild after changing it
 docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 5 --seed 0
 ```
 
-Each sampled paper is converted to Markdown and ingested like an upload (chunk, embed, store). Every question on it then goes through hybrid retrieval and Qwen3, and each stage is timed. Scores:
+| Option | Meaning |
+|---|---|
+| `--run-id` | Unique name for the run (letters, digits, `.`, `_`, `-`). Reusing one is refused. |
+| `--papers` | How many papers to sample (default 5). Every question on a sampled paper is asked, about 3.5 per paper. |
+| `--seed` | Which papers get sampled (default 0). Same seed = same papers, so runs are comparable. |
+| `--split` | `test` (default, 416 papers / 1,451 questions) or `validation`. |
 
-- **Answer F1**: official QASPER token F1 against the closest annotator answer, also broken down by answer type. It penalizes long answers, even correct ones.
-- **Evidence F1**: official QASPER paragraph F1, using the paper paragraphs inside the passages the answer cites.
+On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
+
+**What happens.** Each sampled paper is converted to Markdown and ingested like an upload (chunk, embed, store). Every question on it then goes through hybrid retrieval and Qwen3, as in the chat. The paper's chunks are deleted afterwards, so nothing shows up in the app.
+
+**Timings** (averages): embedding (chunk + embed one paper), retrieval (query embedding + BM25 + vector search + RRF), generation (full answer), and judging (one judge call). Time spent waiting for the vector index to sync isn't counted.
+
+**Scores** (0–100):
+
 - **Retrieval recall@k**: share of gold evidence paragraphs that are in the top-k retrieved chunks. This measures retrieval on its own.
+- **Evidence F1**: official QASPER paragraph F1, using the paper paragraphs inside the passages the answer cites.
+- **Answer F1**: official QASPER token F1 against the closest annotator answer, also broken down by answer type (extractive / abstractive / yes-no / unanswerable). It penalizes long answers, even correct ones, so compare it between your own runs rather than with published results.
 - **Judge correct**: `JUDGE_MODEL` decides whether the answer matches a reference answer.
 
-Notes:
+Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATES`, `VECTOR_MIN_SCORE` or the chunk size. High recall with a low judge score points to the prompt or the model instead.
 
-- Each run creates `evaluation_metrics/<run-id>.json` with the complete details: metrics, timings, all the environment variables it ran with (MongoDB password masked), and every question's answer, references, scores and judge output. Run IDs must be unique.
-- `evaluation_metrics/results.md` gets one row per run, for comparing runs side by side.
-- Keep `--seed` fixed to compare runs on the same papers. `--split validation` uses the dev set instead of test.
+**Output**, in `evaluation_metrics/`:
+
+- `<run-id>.json`: the complete details. It holds the metrics, timings, all the environment variables the run used (MongoDB password masked), and every question's answer, references, retrieved and cited chunks, scores and judge output.
+- `results.md`: one row per run, for comparing runs side by side.
+
+**Comparing settings.** Change one value in `.env`, apply it with `docker compose up -d`, then rerun with a new run ID and the same seed:
+
+```bash
+docker compose exec backend python -m app.evaluate --run-id minscore-075 --papers 5 --seed 0
+```
+
+**Caveats**
+
+- The papers are NLP research papers, not your documents, so the scores describe the pipeline in general.
 - `JUDGE_MODEL` defaults to the answering model. A model judging its own answers is lenient, so use a different one when possible (`docker compose exec ollama ollama pull <model>`).
+- About 4% of gold evidence is a section heading rather than a paragraph, which caps recall slightly for every run.
 
 ## Troubleshooting
 
