@@ -16,6 +16,9 @@ services:
       - mongo_mongot:/data/mongot
     # the image ships its own HEALTHCHECK
     restart: unless-stopped
+    # mongod + mongot can need more than Docker's default 10 s to shut down; being force-killed (exit 137)
+    # makes `docker compose up` fail and risks the data
+    stop_grace_period: 60s
 
   # Local LLM server
   ollama:
@@ -42,8 +45,8 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    # pulls the answering, Contextual Retrieval and pre-judge models (pulling one twice is a no-op)
-    entrypoint: ["/bin/sh", "-c", "ollama pull ${LLM_MODEL:-qwen3:8b} && ollama pull ${CONTEXT_MODEL:-qwen3:4b-instruct} && ollama pull ${PREJUDGE_MODEL:-qwen3:4b-instruct}"]
+    # pulls the answering model (also used for the pre-judge) and the Contextual Retrieval model
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${LLM_MODEL:-qwen3:8b} && ollama pull ${CONTEXT_MODEL:-qwen3:4b-instruct}"]
     restart: "no"
 
   backend:
@@ -64,9 +67,6 @@ services:
       CONTEXT_MODEL: ${CONTEXT_MODEL:-qwen3:4b-instruct}
       CONTEXT_NUM_CTX: ${CONTEXT_NUM_CTX:-16384}
       PREJUDGE_ENABLED: ${PREJUDGE_ENABLED:-true}
-      PREJUDGE_MODEL: ${PREJUDGE_MODEL:-qwen3:4b-instruct}
-      PREJUDGE_ON_CPU: ${PREJUDGE_ON_CPU:-true}
-      PREJUDGE_NUM_CTX: ${PREJUDGE_NUM_CTX:-4096}
       CHUNK_SIZE: ${CHUNK_SIZE:-1000}
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-150}
       TOP_K: ${TOP_K:-5}

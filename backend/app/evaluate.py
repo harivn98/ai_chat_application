@@ -3,9 +3,10 @@
 Runs only when triggered:
     python -m app.evaluate --run-id <id> [--papers 5] [--seed 0] [--split test]
 
-Runs in three phases, one Ollama model at a time: (1) each sampled paper is converted to Markdown and
+Runs in four phases, one Ollama model at a time: (1) each sampled paper is converted to Markdown and
 ingested like an upload (chunk + optional Contextual Retrieval contexts + embed + store), (2) every
-question goes through hybrid retrieval + generation, (3) the judge grades the answers. Each stage is timed.
+question goes through hybrid retrieval + the pre-judge, (3) the questions the pre-judge let through are
+answered, (4) the judge grades the answers. Each stage is timed; model switches are not.
 
 Metrics:
   - Answer F1     official QASPER token F1 against the best-matching annotator answer
@@ -317,11 +318,11 @@ class _Status:
                 _say(text)
 
 
-# ------------------------------------------------------------------ one question
-def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str) -> dict:
+# ------------------------------------------------------------------ one question, in two steps
+# The steps run as separate passes over all questions (all pre-judges, then all answers). Both use the
+# answering model, which is loaded once, right after the context model is unloaded.
+def _retrieve_and_prejudge(doc_id: str, qa: dict, indent: str) -> dict:
     question = qa["question"].strip()
-    refs = _references(qa)
-
     t0 = time.perf_counter()
     passages = retrieval.hybrid_search(doc_id, question)
     retrieval_s = time.perf_counter() - t0
@@ -333,8 +334,16 @@ def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str) -> dict:
         t0 = time.perf_counter()
         can_answer = prejudge.can_answer(question, passages)
         prejudge_s = time.perf_counter() - t0
-        st.done(f"{indent}pre-judge: {'YES, answering' if can_answer else 'NO, not enough content'} "
+        st.done(f"{indent}pre-judge: {'YES, will answer' if can_answer else 'NO, not enough content'} "
                 f"({_fmt_secs(prejudge_s)})")
+    return {"question": question, "passages": passages, "retrieval_s": retrieval_s,
+            "can_answer": can_answer, "prejudge_s": prejudge_s}
+
+
+def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) -> dict:
+    question, passages, can_answer = step["question"], step["passages"], step["can_answer"]
+    retrieval_s, prejudge_s = step["retrieval_s"], step["prejudge_s"]
+    refs = _references(qa)
 
     generation_s = None
     if can_answer:
@@ -351,6 +360,7 @@ def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str) -> dict:
         _say(f"{indent}answer: {_short(response, 90)}")
     else:
         response = prejudge.NOT_ENOUGH_CONTENT
+        _say(f"{indent}skipped: pre-judge said not enough content")
 
     cited = sorted({int(n) for n in CITE_RE.findall(response) if 1 <= int(n) <= len(passages)})
     if not can_answer or (NOT_FOUND_RE.search(response) and not cited):
@@ -453,7 +463,7 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     # doesn't swap models in and out of GPU memory for every paper.
     try:
         # Phase 1: ingest every paper (optional contexts, embeddings, vector index)
-        _say(f"\n--- Phase 1/3: ingesting papers "
+        _say(f"\n--- Phase 1/4: ingesting papers "
              f"({'with contexts from ' + settings.context_model if settings.contextual_embedding else 'no contexts'}) ---")
         if settings.contextual_embedding:
             _load_model(settings.context_model)
@@ -497,44 +507,61 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
                 _say(f"  FAILED to ingest paper: {e}")
                 ingest_errors[pid] = str(e)
 
-        # Phase 2: ask every question with the answering model
-        _say("\n--- Phase 2/3: answering questions ---")
+        questions = [(pid, qa) for pid in paper_ids for qa in data[pid]["qas"]]
+        steps: dict[str, dict] = {}  # question id -> retrieval + pre-judge result
+
+        # Phase 2: retrieve and pre-judge every question. The answering model does the pre-judge, so it is
+        # loaded once here, straight after the context model is unloaded, and stays for phase 3.
+        _say("\n--- Phase 2/4: retrieval + pre-judge "
+             f"({'with ' + settings.llm_model if settings.prejudge_enabled else 'pre-judge off'}) ---")
         if settings.contextual_embedding:
-            st = _Status(f"Handing {settings.context_model} over…")
+            st = _Status(f"Unloading {settings.context_model}…")
             st.done(f"After contextualizing: {hand_over() or 'nothing to hand over'}")
-        if settings.prejudge_enabled:
-            where = "CPU" if settings.prejudge_on_cpu else "GPU"
-            st = _Status(f"Loading pre-judge {settings.prejudge_model} on the {where}…")
-            prejudge.warm_up()
-            st.done(f"Pre-judge {settings.prejudge_model} ready on the {where} in {_fmt_secs(st.elapsed)}")
         _load_model(settings.llm_model)
-        for pid in paper_ids:
-            paper, doc_id = data[pid], f"eval-{run_id}-{pid}"
-            for qa in paper["qas"]:
-                if pid in ingest_errors:
-                    rows.append({"paper_id": pid, "question_id": qa["question_id"], "question": qa["question"],
-                                 "error": f"ingest: {ingest_errors[pid]}"})
-                    continue
-                done_q = len(rows)
-                eta = ""
-                if rag_times:
-                    eta = f" · ~{_fmt_secs(sum(rag_times) / len(rag_times) * (total_q - done_q))} left in phase 2"
-                _say(f"  [Q {done_q + 1}/{total_q}{eta}] {_short(qa['question'])}")
-                t0 = time.perf_counter()
-                try:
-                    row = _ask(doc_id, qa, ingested[pid], indent="      ")
-                except Exception as e:  # noqa: BLE001
-                    log.exception("Question %s failed", qa["question_id"])
-                    _say(f"      FAILED: {e}")
-                    row = {"question_id": qa["question_id"], "question": qa["question"], "error": f"rag: {e}"}
+        for n, (pid, qa) in enumerate(questions, start=1):
+            if pid in ingest_errors:
+                continue
+            _say(f"  [Q {n}/{total_q}] {_short(qa['question'])}")
+            try:
+                steps[qa["question_id"]] = _retrieve_and_prejudge(f"eval-{run_id}-{pid}", qa, indent="      ")
+            except Exception as e:  # noqa: BLE001
+                log.exception("Question %s failed", qa["question_id"])
+                _say(f"      FAILED: {e}")
+                steps[qa["question_id"]] = {"error": f"rag: {e}"}
+
+        # Phase 3: answer the questions the pre-judge let through (same model, already loaded)
+        to_answer = sum(1 for s in steps.values() if s.get("can_answer"))
+        _say(f"\n--- Phase 3/4: answering {to_answer} of {total_q} questions with {settings.llm_model} ---")
+        for n, (pid, qa) in enumerate(questions, start=1):
+            base = {"paper_id": pid, "question_id": qa["question_id"], "question": qa["question"]}
+            if pid in ingest_errors:
+                rows.append({**base, "error": f"ingest: {ingest_errors[pid]}"})
+                continue
+            step = steps[qa["question_id"]]
+            if "error" in step:
+                rows.append({**base, "error": step["error"]})
+                continue
+            eta = ""
+            if rag_times and step["can_answer"]:
+                left = sum(1 for p, q in questions[n - 1:] if steps.get(q["question_id"], {}).get("can_answer"))
+                eta = f" · ~{_fmt_secs(sum(rag_times) / len(rag_times) * left)} left in phase 3"
+            _say(f"  [Q {n}/{total_q}{eta}] {_short(qa['question'])}")
+            t0 = time.perf_counter()
+            try:
+                row = _answer_and_score(step, qa, ingested[pid], indent="      ")
+            except Exception as e:  # noqa: BLE001
+                log.exception("Question %s failed", qa["question_id"])
+                _say(f"      FAILED: {e}")
+                row = {"question_id": qa["question_id"], "question": qa["question"], "error": f"rag: {e}"}
+            if step.get("can_answer"):
                 rag_times.append(time.perf_counter() - t0)
-                rows.append({"paper_id": pid, **row})
+            rows.append({"paper_id": pid, **row})
     finally:
         for pid in paper_ids:
             _cleanup(f"eval-{run_id}-{pid}")
 
-    # Phase 3: LLM judge
-    _say(f"\n--- Phase 3/3: judging answers with {settings.judge_model} ---")
+    # Phase 4: LLM judge
+    _say(f"\n--- Phase 4/4: judging answers with {settings.judge_model} ---")
     if settings.judge_model != settings.llm_model:
         _load_model(settings.judge_model)
     for n, row in enumerate(rows, start=1):
@@ -577,8 +604,7 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
         "contextual_embedding": settings.contextual_embedding,
         "context_model": settings.context_model if settings.contextual_embedding else None,
         "prejudge_enabled": settings.prejudge_enabled,
-        "prejudge_model": settings.prejudge_model if settings.prejudge_enabled else None,
-        "prejudge_on_cpu": settings.prejudge_on_cpu if settings.prejudge_enabled else None,
+        "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,  # the answering model
         "contextualization_s_per_paper": _mean(context_times),
         "embedding_s_per_paper": _mean(embedding_times),
         "retrieval_s_per_question": _mean([r["retrieval_s"] for r in ok]),
@@ -604,8 +630,7 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     s = summary
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
-    pj = (f"prejudge {s['prejudge_model']}/{'cpu' if s['prejudge_on_cpu'] else 'gpu'}"
-          if s["prejudge_enabled"] else "no prejudge")
+    pj = f"prejudge {s['prejudge_model']}/gpu" if s["prejudge_enabled"] else "no prejudge"
     rejected = (f"{s['prejudge_rejected']}/{len(ok)} ({s['prejudge_rejected_unanswerable']} gold unanswerable)"
                 if s["prejudge_enabled"] else "–")
     line = (

@@ -29,10 +29,10 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 10.
 2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20, keeping only chunks with cosine similarity ≥ 0.85.
 3. **Reciprocal Rank Fusion** (k=60) → top 5 passages.
-4. **Pre-judge** (`PREJUDGE_ENABLED=true`) — `qwen3:4b-instruct`, running on the **CPU**, reads the 5 passages and the question and answers YES or NO: can these passages answer it? On **NO**, Qwen3 8B is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown. Running it on the CPU keeps it loaded in RAM next to Qwen3 8B on the GPU, so neither is ever swapped out.
+4. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 5 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
 5. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank; clicking a citation jumps to it.
 
-**GPU and CPU:** Qwen3 8B stays on the GPU. `qwen3:4b-instruct` uses the GPU only while writing chunk contexts during an upload. After that it moves to the CPU, where it stays loaded for the pre-judge (the 8 GB GPU can't hold both models).
+**GPU use:** all models run on the GPU, one at a time. `qwen3:4b-instruct` is used only to write chunk contexts during an upload. As soon as contextualizing finishes, it is unloaded and Qwen3 8B starts loading in the background, while the upload is still embedding and indexing, so it is usually ready before the first question. Qwen3 8B then does both the pre-judge and the answer, so chatting never swaps models. Loading takes about 45 s for Qwen3 8B and 25 s for `qwen3:4b-instruct` on an RTX 4070 laptop GPU; unloading is instant.
 
 ## Run it
 
@@ -87,9 +87,6 @@ First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama
 | `CONTEXT_MODEL` | `qwen3:4b-instruct` | Ollama model that writes the contexts. Use a non-thinking model: plain `qwen3:4b` is thinking-only and writes its reasoning instead |
 | `CONTEXT_NUM_CTX` | `16384` | Tokens of the document the context model reads at once. Longer documents are split into windows |
 | `PREJUDGE_ENABLED` | `true` | `true` / `false`: check whether the retrieved passages can answer before calling the answering LLM |
-| `PREJUDGE_MODEL` | `qwen3:4b-instruct` | Model that makes the YES/NO call |
-| `PREJUDGE_ON_CPU` | `true` | Run the pre-judge on the CPU so it stays loaded next to the answering model on the GPU. Its speed depends on the CPU cores Docker gets (`processors` in `%UserProfile%\.wslconfig`) |
-| `PREJUDGE_NUM_CTX` | `4096` | Context window for the pre-judge (the passages + question) |
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
@@ -145,11 +142,14 @@ docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 
 
 On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
 
-**What happens.** It runs in three phases, one model at a time, so Ollama doesn't swap models on the GPU for every paper:
+**What happens.** It runs in four phases, loading each model once per run:
 
-1. **Ingest:** each sampled paper is converted to Markdown and ingested like an upload (chunk, add context if `CONTEXTUAL_EMBEDDING=true`, embed, store).
-2. **Answer:** every question goes through hybrid retrieval, the pre-judge and Qwen3, as in the chat. Questions the pre-judge rejects get the "not enough content" reply and count as answered "Unanswerable".
-3. **Judge:** the judge model grades each answer.
+1. **Ingest** (`qwen3:4b-instruct`): each sampled paper is converted to Markdown and ingested like an upload (chunk, add context if `CONTEXTUAL_EMBEDDING=true`, embed, store).
+2. **Retrieve + pre-judge** (`qwen3:8b`, loaded right after the context model is unloaded): every question goes through hybrid retrieval and the pre-judge.
+3. **Answer** (`qwen3:8b`, still loaded): questions the pre-judge let through are answered as in the chat. Rejected ones get the "not enough content" reply and count as answered "Unanswerable".
+4. **Judge** (`JUDGE_MODEL`): the judge model grades each answer.
+
+The timings exclude model loading. The chat behaves the same way: the pre-judge and the answer use the same loaded model, so a question never waits for a model swap.
 
 The papers' chunks are deleted afterwards, so nothing shows up in the app.
 

@@ -14,7 +14,7 @@ from collections.abc import Callable
 
 import httpx
 
-from . import llm, prejudge
+from . import llm
 from .chunker import Chunk
 from .config import settings
 
@@ -115,28 +115,23 @@ def contextualize(
 
 
 def hand_over() -> str | None:
-    """After contextualizing, give the GPU back to the answering model (unless another upload is still running).
+    """After contextualizing, unload the context model so the GPU is free for the answering model.
 
-    - Context model is also the pre-judge on CPU: move it to the CPU, where it stays loaded for the pre-judge.
-    - Context model is also the pre-judge on GPU: leave it loaded.
-    - Otherwise nothing else needs it: unload it.
-    Returns what was done, or None if another upload is still contextualizing.
+    Nothing else uses the context model (the answering model also does the pre-judge). The caller then
+    loads the answering model right away, so it is ready before the first question arrives.
+    Returns what was done, or None if another upload is still contextualizing (it hands over when it ends).
     """
     with _active_lock:
         if _active:
             return None
+        if settings.context_model == settings.llm_model:
+            return f"kept {settings.context_model} (it is also the answering model)"
         try:
-            if settings.prejudge_enabled and settings.prejudge_model == settings.context_model:
-                if not settings.prejudge_on_cpu:
-                    return f"kept {settings.context_model} on the GPU for the pre-judge"
-                prejudge.warm_up()  # same model, CPU options: Ollama moves it off the GPU
-                action = f"moved {settings.context_model} to the CPU for the pre-judge"
-            else:
-                llm.unload(settings.context_model)
-                action = f"unloaded {settings.context_model}"
+            llm.unload(settings.context_model)
         except Exception as e:  # noqa: BLE001
-            log.warning("Could not hand over %s: %s", settings.context_model, e)
+            log.warning("Could not unload %s: %s", settings.context_model, e)
             return None
+    action = f"unloaded {settings.context_model}"
     log.info("After contextualizing: %s", action)
     return action
 

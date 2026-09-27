@@ -34,20 +34,13 @@ async def lifespan(_: FastAPI):
 
 
 def _warm_up_llm():
+    # The answering model also does the pre-judge, so it is the only model chat needs
     try:
         started = time.perf_counter()
         llm.warm_up()
         log.info("LLM %s loaded in %.0fs", settings.llm_model, time.perf_counter() - started)
     except Exception as e:  # noqa: BLE001
         log.warning("Could not preload %s: %s", settings.llm_model, e)
-    if settings.prejudge_enabled:
-        try:
-            started = time.perf_counter()
-            prejudge.warm_up()
-            log.info("Pre-judge %s loaded (%s) in %.0fs", settings.prejudge_model,
-                     "CPU" if settings.prejudge_on_cpu else "GPU", time.perf_counter() - started)
-        except Exception as e:  # noqa: BLE001
-            log.warning("Could not preload pre-judge %s: %s", settings.prejudge_model, e)
 
 
 app = FastAPI(title="RAG AI_chat_application API", lifespan=lifespan)
@@ -90,7 +83,7 @@ def health():
         "llm_available": llm.model_available(),
         "embed_model": settings.embed_model,
         "context_model": settings.context_model if settings.contextual_embedding else None,
-        "prejudge_model": settings.prejudge_model if settings.prejudge_enabled else None,
+        "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,
     }
 
 

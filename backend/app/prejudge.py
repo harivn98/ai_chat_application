@@ -1,13 +1,12 @@
-"""Pre-judge: decide whether the retrieved passages can answer the question before calling the answering LLM.
+"""Pre-judge: decide whether the retrieved passages can answer the question before generating an answer.
 
-A small model (PREJUDGE_MODEL) reads the top-k passages and the question and replies YES or NO.
-On NO the answering LLM is skipped and the user gets NOT_ENOUGH_CONTENT instead of a guess.
+The answering model (LLM_MODEL) reads the top-k passages and the question and replies YES or NO.
+On NO, answer generation is skipped and the user gets NOT_ENOUGH_CONTENT instead of a guess.
 
-With PREJUDGE_ON_CPU it runs entirely on the CPU (num_gpu=0), so it stays loaded in RAM next to the
-answering model on the GPU and neither of them is ever swapped out.
+It uses the same model and the same num_ctx as answer generation, so the model that is already on the
+GPU does both steps and Ollama never has to swap or reload a model between them.
 """
 import logging
-import os
 import re
 
 import httpx
@@ -18,36 +17,19 @@ log = logging.getLogger("prejudge")
 
 NOT_ENOUGH_CONTENT = "There isn't enough content in the document to answer this question."
 
-PROMPT = """You check whether retrieved passages from a document contain the information needed to answer a question.
+# Strict: the passages must contain the specific information asked for, not just be on the same topic,
+# so on-topic questions the document doesn't actually answer are caught. Yes/no questions and answers that
+# follow directly from stated facts still count, so answerable questions aren't blocked for their wording.
+PROMPT = """You check whether passages retrieved from a document contain the answer to a question.
 
 Passages:
 {passages}
 
 Question: {question}
 
-Do the passages contain enough information to answer the question (fully or mostly)?
+Reply YES if the passages contain the specific information the question asks for, either stated directly or following clearly from what they state (for a yes/no question, facts that settle the yes or no count).
+Reply NO if the passages are only about the same topic but do not contain that specific information, or if answering would require guessing or knowledge from outside the passages.
 Reply with exactly one word: YES or NO."""
-
-
-def _options() -> dict:
-    """Model options; warm_up() must send the same ones, or Ollama reloads the model."""
-    opts = {"num_ctx": settings.prejudge_num_ctx}
-    if settings.prejudge_on_cpu:
-        opts.update(num_gpu=0, num_thread=os.cpu_count() or 4)
-    return opts
-
-
-def warm_up() -> None:
-    """Load the pre-judge model (on CPU if configured) and keep it loaded.
-
-    If the same model is loaded on the GPU (e.g. it just wrote chunk contexts), Ollama moves it,
-    which also frees that GPU memory for the answering model.
-    """
-    payload = {"model": settings.prejudge_model, "keep_alive": settings.llm_keep_alive, "options": _options()}
-    timeout = httpx.Timeout(connect=10, read=settings.llm_load_timeout, write=30, pool=10)
-    r = httpx.post(f"{settings.ollama_url}/api/generate", json=payload, timeout=timeout)
-    if r.status_code != 200:
-        raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
 
 
 def can_answer(question: str, passages: list[dict]) -> bool:
@@ -56,12 +38,13 @@ def can_answer(question: str, passages: list[dict]) -> bool:
         return False
     text = "\n\n".join(f"[{i}] {p['text']}" for i, p in enumerate(passages, start=1))
     payload = {
-        "model": settings.prejudge_model,
+        "model": settings.llm_model,
         "messages": [{"role": "user", "content": PROMPT.format(passages=text, question=question)}],
         "stream": False,
         "think": False,
         "keep_alive": settings.llm_keep_alive,
-        "options": {**_options(), "temperature": 0, "num_predict": 3},
+        # num_ctx must match answer generation (llm.stream_chat), or Ollama reloads the model
+        "options": {"num_ctx": settings.llm_num_ctx, "temperature": 0, "num_predict": 3},
     }
     timeout = httpx.Timeout(connect=10, read=settings.llm_timeout, write=30, pool=10)
     r = httpx.post(f"{settings.ollama_url}/api/chat", json=payload, timeout=timeout)

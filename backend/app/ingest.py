@@ -56,7 +56,8 @@ def _wait_until_searchable(doc_id: str, expected: int, timeout_s: int = 120) -> 
 
 
 def _free_gpu_for_chat() -> None:
-    """In the background: move the context model off the GPU (to CPU for the pre-judge) and reload the chat model."""
+    """As soon as contextualizing ends: unload the context model and start loading the answering model
+    (which also does the pre-judge) in the background, so it is ready before the first question."""
     threading.Thread(target=_prepare_for_chat, daemon=True).start()
 
 
@@ -64,9 +65,11 @@ def _prepare_for_chat() -> None:
     if contextual.hand_over() is None:
         return  # another upload is still contextualizing; it hands over when it finishes
     try:
+        started = time.perf_counter()
         llm.warm_up()
+        log.info("LLM %s loaded after contextualizing in %.0fs", settings.llm_model, time.perf_counter() - started)
     except Exception as e:  # noqa: BLE001
-        log.warning("Could not reload %s: %s", settings.llm_model, e)
+        log.warning("Could not preload %s: %s", settings.llm_model, e)
 
 
 def ingest(doc_id: str, path: Path, original_name: str) -> None:
