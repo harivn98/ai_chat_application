@@ -45,6 +45,11 @@ class Settings:
     vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "20"))  # upper bound before the score cutoff
     vector_min_score: float = float(os.getenv("VECTOR_MIN_SCORE", "0.85"))  # raw cosine similarity
     rrf_k: int = int(os.getenv("RRF_K", "60"))
+
+    # Reranker: a cross-encoder re-scores the top RERANK_CANDIDATES fused chunks and keeps the best TOP_K
+    reranker_enabled: bool = _bool("RERANKER_ENABLED", True)
+    reranker_model: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
+    rerank_candidates: int = int(os.getenv("RERANK_CANDIDATES", "20"))
     history_turns: int = int(os.getenv("HISTORY_TURNS", "6"))
 
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))

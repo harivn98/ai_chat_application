@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from . import db, llm, prejudge, retrieval
+from . import db, llm, prejudge, reranker, retrieval
 from .chunker import chunk_markdown
 from .config import settings
 from .contextual import contextualize, hand_over, indexed_content
@@ -64,7 +64,7 @@ RESULTS_HEADER = (
     "Dataset: [allenai/qasper](https://huggingface.co/datasets/allenai/qasper). "
     "Contextualization = the context model writing a context for every chunk of one paper, "
     "embedding = embedding one paper (seconds per paper); retrieval = query embedding + BM25 + "
-    "vector search + RRF, pre-judge = the YES/NO check whether the passages can answer, "
+    "vector search + RRF, rerank = cross-encoder re-scoring of the fused candidates, pre-judge = the YES/NO check whether the passages can answer, "
     "generation = full LLM answer (answered questions only), judging = one judge call (seconds per question). "
     "Pre-judge rejected = questions answered with 'not enough content' instead of calling the LLM, and how many "
     "of those an annotator also marked unanswerable. "
@@ -73,10 +73,10 @@ RESULTS_HEADER = (
     "Judge correct = the judge model says the answer matches a reference answer. All scores are 0-100.\n\n"
     "| Run ID | Date (UTC) | Split · papers · questions | LLM / judge | Retrieval config "
     "| Contextualization (s/paper) | Embedding (s/paper) "
-    "| Retrieval (s/q) | Pre-judge (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
+    "| Retrieval (s/q) | Rerank (s/q) | Pre-judge (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
     "| F1 extractive / abstractive / yes-no / unanswerable | Evidence F1 | Retrieval recall@k "
     "| Judge correct | Pre-judge rejected | Errors |\n"
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
 )
 
 
@@ -104,6 +104,8 @@ def _upgrade_results_table(path) -> None:
                 old["Retrieval config"] += " · no ctx"  # runs before contextual embedding existed
             if "Retrieval config" in old and "prejudge" not in old["Retrieval config"]:
                 old["Retrieval config"] += " · no prejudge"  # runs before the pre-judge existed
+            if "Retrieval config" in old and "rerank" not in old["Retrieval config"]:
+                old["Retrieval config"] += " · no rerank"  # runs before the reranker existed
             rows.append("| " + " | ".join(old.get(c, "–") for c in new_cols) + " |")
     path.write_text(RESULTS_HEADER + "\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
 
@@ -324,9 +326,20 @@ class _Status:
 def _retrieve_and_prejudge(doc_id: str, qa: dict, indent: str) -> dict:
     question = qa["question"].strip()
     t0 = time.perf_counter()
-    passages = retrieval.hybrid_search(doc_id, question)
+    if settings.reranker_enabled:
+        candidates = retrieval.hybrid_search(doc_id, question, settings.rerank_candidates)
+    else:
+        candidates = passages = retrieval.hybrid_search(doc_id, question)
     retrieval_s = time.perf_counter() - t0
-    _say(f"{indent}retrieval: {len(passages)} chunks in {retrieval_s:.2f}s")
+    _say(f"{indent}retrieval: {len(candidates)} chunks in {retrieval_s:.2f}s")
+
+    rerank_s = None
+    if settings.reranker_enabled:
+        t0 = time.perf_counter()
+        passages = reranker.rerank(question, candidates, settings.top_k)
+        rerank_s = time.perf_counter() - t0
+        moved = [p["fused_rank"] for p in passages]
+        _say(f"{indent}rerank: kept fused #{', #'.join(map(str, moved))} in {rerank_s:.2f}s")
 
     can_answer, prejudge_s = True, None
     if settings.prejudge_enabled:
@@ -336,8 +349,8 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, indent: str) -> dict:
         prejudge_s = time.perf_counter() - t0
         st.done(f"{indent}pre-judge: {'YES, will answer' if can_answer else 'NO, not enough content'} "
                 f"({_fmt_secs(prejudge_s)})")
-    return {"question": question, "passages": passages, "retrieval_s": retrieval_s,
-            "can_answer": can_answer, "prejudge_s": prejudge_s}
+    return {"question": question, "passages": passages, "candidates": candidates, "retrieval_s": retrieval_s,
+            "rerank_s": rerank_s, "can_answer": can_answer, "prejudge_s": prejudge_s}
 
 
 def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) -> dict:
@@ -376,6 +389,13 @@ def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) 
     retrieved_paras = set(_paragraphs_in([p["text"] for p in passages], paragraphs))
     recalls = [len(retrieved_paras & set(r["evidence"])) / len(r["evidence"]) for r in refs if r["evidence"]]
     recall = f"{100 * max(recalls):.0f}%" if recalls else "n/a"
+    pool_recall = None
+    if settings.reranker_enabled:
+        pool = set(_paragraphs_in([c["text"] for c in step["candidates"]], paragraphs))
+        pool_recalls = [len(pool & set(r["evidence"])) / len(r["evidence"]) for r in refs if r["evidence"]]
+        pool_recall = max(pool_recalls) if pool_recalls else None
+        if pool_recall is not None:
+            recall += f" (in the {len(step['candidates'])} candidates: {100 * pool_recall:.0f}%)"
     _say(f"{indent}scores: retrieval recall {recall} · answer F1 {100 * f1:.0f} · evidence F1 {100 * evidence_f1:.0f}")
 
     return {
@@ -385,14 +405,17 @@ def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], indent: str) 
         "response": response,
         "predicted_answer": predicted_answer,
         "retrieved_chunks": [p["index"] for p in passages],
+        "fused_ranks": [p.get("fused_rank") for p in passages],  # where the kept chunks were before reranking
         "cited_passages": cited,
         "answer_f1": f1,
         "answer_type": answer_type,
         "evidence_f1": evidence_f1,
         "retrieval_recall": max(recalls) if recalls else None,  # None: no text evidence (e.g. unanswerable)
+        "candidate_recall": pool_recall,  # same, over the RERANK_CANDIDATES chunks the reranker chose from
         "prejudge_can_answer": can_answer if settings.prejudge_enabled else None,
         "gold_unanswerable": any(r["type"] == "none" for r in refs),  # some annotator says the paper can't answer
         "retrieval_s": retrieval_s,
+        "rerank_s": step["rerank_s"],
         "prejudge_s": prejudge_s,
         "generation_s": generation_s,  # None when the pre-judge skipped generation
     }
@@ -445,11 +468,14 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {total_q} questions (QASPER {split}, seed {seed}) ===")
     _say(f"LLM {settings.llm_model} · judge {settings.judge_model} · top {settings.top_k} · "
          f"BM25 {settings.bm25_candidates} · vec ≥ {settings.vector_min_score} · "
-         f"{'context ' + settings.context_model if settings.contextual_embedding else 'no context'}")
+         f"{'context ' + settings.context_model if settings.contextual_embedding else 'no context'} · "
+         f"{'rerank top ' + str(settings.rerank_candidates) + ' with ' + settings.reranker_model if settings.reranker_enabled else 'no rerank'}")
 
     st = _Status("Connecting to MongoDB and loading the embedding model…")
     retrieval.vector_index_ready = db.ensure_vector_index()
     get_model()
+    if settings.reranker_enabled:
+        reranker.get_model()  # load it now so the first question's rerank time is not a model load
     st.done(f"Ready (vector index: {'yes' if retrieval.vector_index_ready else 'no, using local fallback'})")
     started = time.perf_counter()
     rows: list[dict] = []
@@ -605,9 +631,15 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
         "context_model": settings.context_model if settings.contextual_embedding else None,
         "prejudge_enabled": settings.prejudge_enabled,
         "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,  # the answering model
+        "reranker_enabled": settings.reranker_enabled,
+        "reranker_model": settings.reranker_model if settings.reranker_enabled else None,
+        "rerank_candidates": settings.rerank_candidates if settings.reranker_enabled else None,
         "contextualization_s_per_paper": _mean(context_times),
         "embedding_s_per_paper": _mean(embedding_times),
         "retrieval_s_per_question": _mean([r["retrieval_s"] for r in ok]),
+        "rerank_s_per_question": _mean([r.get("rerank_s") for r in ok]),
+        # recall over the chunks the reranker chose from: the most reranking can put into the top k
+        "candidate_recall": _mean([r.get("candidate_recall") for r in ok]),
         "prejudge_s_per_question": _mean([r.get("prejudge_s") for r in ok]),
         "generation_s_per_question": _mean([r["generation_s"] for r in ok]),  # answered questions only
         # rejected by the pre-judge, and how many of those some annotator also marked unanswerable
@@ -631,15 +663,18 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
     pj = f"prejudge {s['prejudge_model']}/gpu" if s["prejudge_enabled"] else "no prejudge"
+    rr = (f"rerank {s['reranker_model'].split('/')[-1]} top {s['rerank_candidates']}"
+          if s["reranker_enabled"] else "no rerank")
     rejected = (f"{s['prejudge_rejected']}/{len(ok)} ({s['prejudge_rejected_unanswerable']} gold unanswerable)"
                 if s["prejudge_enabled"] else "–")
     line = (
         f"| {run_id} | {s['date_utc']} | {split} · {s['papers']} · {s['questions']} (seed {seed}) "
         f"| {s['llm_model']} / {s['judge_model']} "
         f"| top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
-        f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} · {pj} "
+        f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} · {pj} · {rr} "
         f"| {_secs(s['contextualization_s_per_paper'])} "
         f"| {_secs(s['embedding_s_per_paper'])} | {_secs(s['retrieval_s_per_question'])} "
+        f"| {_secs(s['rerank_s_per_question'])} "
         f"| {_secs(s['prejudge_s_per_question'])} "
         f"| {_secs(s['generation_s_per_question'])} | {_secs(s['judging_s_per_question'])} | {total_min:.1f} "
         f"| **{_pct(s['answer_f1'])}** | {by_type} | {_pct(s['evidence_f1'])} | {_pct(s['retrieval_recall'])} "
@@ -662,6 +697,9 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     for name, key in [(f"retrieval recall@{settings.top_k}", "retrieval_recall"), ("evidence F1", "evidence_f1"),
                       ("answer F1", "answer_f1"), ("judge correct", "judge_correct")]:
         _say(f"  {name:<21}{_pct(summary[key])}")
+    if settings.reranker_enabled:
+        _say(f"  {'candidate recall@' + str(settings.rerank_candidates):<21}{_pct(summary['candidate_recall'])}"
+             f"  (evidence among the chunks the reranker chose from)")
     if settings.prejudge_enabled:
         _say(f"  {'pre-judge rejected':<21}{rejected}")
     _say(f"\nSaved {details} (complete details)\n      {results_md} (side-by-side comparison)")

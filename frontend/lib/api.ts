@@ -29,6 +29,7 @@ export interface Source {
   bm25_rank: number | null;
   vector_rank: number | null;
   rrf: number;
+  fused_rank?: number | null; // position after BM25 + vector fusion, before reranking
 }
 
 export interface Message {

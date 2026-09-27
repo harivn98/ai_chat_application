@@ -9,10 +9,9 @@ const STORAGE_KEY = "AI_chat_application.doc_id";
 
 export default function Home() {
   const [doc, setDoc] = useState<DocInfo | null>(null);
-  const [resume, setResume] = useState<DocInfo | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Re-open the last document after a page refresh
+  // Re-open the last document after a page refresh (also while it is still being indexed)
   useEffect(() => {
     let id: string | null = null;
     try {
@@ -24,14 +23,33 @@ export default function Home() {
     }
     getDocument(id)
       .then((d) => {
-        if (d.status === "ready") setDoc(d);
-        else if (d.status !== "failed") setResume(d);
+        if (d.status !== "failed") setDoc(d);
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, []);
 
-  const handleReady = useCallback((d: DocInfo) => {
+  // Poll ingestion status until the document is indexed (or failed); the chat is usable meanwhile
+  const indexing = !!doc && doc.status !== "ready" && doc.status !== "failed";
+  const docId = doc?.doc_id;
+  useEffect(() => {
+    if (!indexing || !docId) return;
+    let alive = true;
+    const t = setInterval(async () => {
+      try {
+        const d = await getDocument(docId);
+        if (alive) setDoc(d);
+      } catch {
+        // transient network error: keep polling
+      }
+    }, 800);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [indexing, docId]);
+
+  const handleUploaded = useCallback((d: DocInfo) => {
     try {
       sessionStorage.setItem(STORAGE_KEY, d.doc_id);
     } catch {}
@@ -39,14 +57,17 @@ export default function Home() {
   }, []);
 
   function newDocument() {
-    if (doc && confirm("Start over with a new document? The current document will be removed from the index.")) {
-      deleteDocument(doc.doc_id);
-      try {
-        sessionStorage.removeItem(STORAGE_KEY);
-      } catch {}
-      setResume(null);
-      setDoc(null);
-    }
+    if (!doc) return;
+    // a failed document has nothing worth keeping, so no confirmation
+    const ok =
+      doc.status === "failed" ||
+      confirm("Start over with a new document? The current document will be removed from the index.");
+    if (!ok) return;
+    deleteDocument(doc.doc_id);
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    setDoc(null);
   }
 
   return (
@@ -66,7 +87,7 @@ export default function Home() {
       {!loaded ? null : doc ? (
         <ChatWindow key={doc.doc_id} doc={doc} onNewDocument={newDocument} />
       ) : (
-        <Uploader resumeDoc={resume} onReady={handleReady} />
+        <Uploader onUploaded={handleUploaded} />
       )}
     </main>
   );

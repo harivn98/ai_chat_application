@@ -28,9 +28,10 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 10.
 2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20, keeping only chunks with cosine similarity ≥ 0.85.
-3. **Reciprocal Rank Fusion** (k=60) → top 5 passages.
-4. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 5 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
-5. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank; clicking a citation jumps to it.
+3. **Reciprocal Rank Fusion** (k=60) → top 20 candidates (top 5 when the reranker is off).
+4. **Rerank** (`RERANKER_ENABLED=true`) — the cross-encoder `BAAI/bge-reranker-base` (278M parameters, on the CPU so the GPU stays free for Qwen3 8B) reads the question together with each candidate (`RERANK_CANDIDATES`, default 20) and keeps the 5 best. It replaced `cross-encoder/ms-marco-MiniLM-L6-v2`, which ranked well among BM25's ~10 candidates but not among 30 mixed ones. Expect roughly a few seconds per question on 4 CPU cores. BM25 and the embeddings score the question and a chunk separately; a cross-encoder reads them together, so it ranks far more precisely. It can only choose among the candidates, so it can't recover a chunk neither retriever found. The UI shows each kept passage's pre-rerank position as *Fused #n*.
+5. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 5 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
+6. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank; clicking a citation jumps to it.
 
 **GPU use:** all models run on the GPU, one at a time. `qwen3:4b-instruct` is used only to write chunk contexts during an upload. As soon as contextualizing finishes, it is unloaded and Qwen3 8B starts loading in the background, while the upload is still embedding and indexing, so it is usually ready before the first question. Qwen3 8B then does both the pre-judge and the answer, so chatting never swaps models. Loading takes about 45 s for Qwen3 8B and 25 s for `qwen3:4b-instruct` on an RTX 4070 laptop GPU; unloading is instant.
 
@@ -82,6 +83,9 @@ First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama
 | `VECTOR_MIN_SCORE` | `0.85` | Minimum cosine similarity for embedding hits |
 | `VECTOR_CANDIDATES` | `20` | Max chunks from vector search before the score cutoff |
 | `RRF_K` | `60` | Reciprocal Rank Fusion constant (higher = flatter blend of the two rankings) |
+| `RERANKER_ENABLED` | `true` | `true` / `false`: rerank the fused candidates with the cross-encoder before taking the top `TOP_K` |
+| `RERANKER_MODEL` | `BAAI/bge-reranker-base` | Which reranker runs: `BAAI/bge-reranker-base` (more accurate, ~6–9 s for 30 chunks on 4 CPU cores) or `cross-encoder/ms-marco-MiniLM-L6-v2` (~1 s, weaker on large candidate pools). Both are baked into the image |
+| `RERANK_CANDIDATES` | `20` | How many fused chunks the reranker chooses from |
 | `HISTORY_TURNS` | `6` | Previous chat messages sent with each question |
 | `CONTEXTUAL_EMBEDDING` | `true` | `true` / `false`: add an LLM-written context to every chunk before embedding + BM25. Affects newly uploaded documents |
 | `CONTEXT_MODEL` | `qwen3:4b-instruct` | Ollama model that writes the contexts. Use a non-thinking model: plain `qwen3:4b` is thinking-only and writes its reasoning instead |
@@ -112,6 +116,7 @@ backend/app/
   db.py          MongoDB + vector index creation
   ingest.py      ingestion pipeline + status updates
   retrieval.py   BM25 + $vectorSearch + RRF
+  reranker.py    cross-encoder reranking of the fused candidates
   llm.py         prompt + Ollama streaming
   main.py        FastAPI routes
   contextual.py  Contextual Retrieval (per-chunk context from a small LLM)
@@ -153,7 +158,7 @@ The timings exclude model loading. The chat behaves the same way: the pre-judge 
 
 The papers' chunks are deleted afterwards, so nothing shows up in the app.
 
-**Timings** (averages): contextualization (the context model writing contexts for one paper; `–` when off), embedding (embed one paper), retrieval (query embedding + BM25 + vector search + RRF), pre-judge (the YES/NO check), generation (full answer, for questions the pre-judge let through), and judging (one judge call). **Pre-judge rejected** shows how many questions got "not enough content", and how many of those an annotator also marked unanswerable (those rejections were right). Time spent waiting for the vector index to sync isn't counted.
+**Timings** (averages): contextualization (the context model writing contexts for one paper; `–` when off), embedding (embed one paper), retrieval (query embedding + BM25 + vector search + RRF), rerank (cross-encoder scoring of the candidates; `–` when off), pre-judge (the YES/NO check), generation (full answer, for questions the pre-judge let through), and judging (one judge call). **Pre-judge rejected** shows how many questions got "not enough content", and how many of those an annotator also marked unanswerable (those rejections were right). With the reranker on, the console and `<run-id>.json` also report **candidate recall**: how often the gold evidence was among the chunks the reranker chose from. That is the most reranking can reach; the gap between it and retrieval recall@k is what the reranker missed. Time spent waiting for the vector index to sync isn't counted.
 
 **Scores** (0–100):
 

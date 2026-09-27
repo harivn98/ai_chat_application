@@ -137,17 +137,30 @@ def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -
     return sorted(fused.values(), key=lambda e: e["rrf"], reverse=True)[:k]
 
 
-def hybrid_search(doc_id: str, query: str) -> list[dict]:
+def hybrid_search(doc_id: str, query: str, k: int | None = None) -> list[dict]:
+    """BM25 + vector search fused with RRF; the top k (default TOP_K) chunks."""
     rankings = {
         "bm25": bm25_search(doc_id, query, settings.bm25_candidates),
         "vector": vector_search(doc_id, query, settings.vector_candidates, settings.vector_min_score),
     }
-    fused = rrf_fuse(rankings, settings.top_k, settings.rrf_k)
+    fused = rrf_fuse(rankings, k or settings.top_k, settings.rrf_k)
     _, rows = bm25_cache.get(doc_id)
     by_index = {r["index"]: r for r in rows}
     results = []
-    for f in fused:
+    for rank, f in enumerate(fused, start=1):
         row = by_index.get(f["index"])
         if row:
-            results.append({**f, "section": row.get("section", ""), "text": row["text"]})
+            results.append({**f, "fused_rank": rank, "section": row.get("section", ""), "text": row["text"],
+                            "content": row["content"]})
     return results
+
+
+def search(doc_id: str, query: str) -> list[dict]:
+    """The passages sent to the LLM: hybrid search, then (if RERANKER_ENABLED) cross-encoder reranking
+    of the top RERANK_CANDIDATES fused chunks down to TOP_K."""
+    if not settings.reranker_enabled:
+        return hybrid_search(doc_id, query)
+    from . import reranker
+
+    candidates = hybrid_search(doc_id, query, settings.rerank_candidates)
+    return reranker.rerank(query, candidates, settings.top_k)

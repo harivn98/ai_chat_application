@@ -27,6 +27,10 @@ async def lifespan(_: FastAPI):
     db.client().admin.command("ping")
     retrieval.vector_index_ready = db.ensure_vector_index()
     get_model()  # load the embedding model before accepting traffic
+    if settings.reranker_enabled:
+        from . import reranker
+
+        reranker.get_model()  # and the reranker (small, CPU)
     # Load the LLM in the background so the first chat doesn't time out while Ollama loads it (slow on CPU)
     threading.Thread(target=_warm_up_llm, daemon=True).start()
     log.info("Backend ready (vector index: %s, llm: %s)", retrieval.vector_index_ready, settings.llm_model)
@@ -154,7 +158,7 @@ def chat(req: ChatRequest):
     if doc["status"] != "ready":
         raise HTTPException(409, "Document is not indexed yet.")
 
-    passages = retrieval.hybrid_search(req.doc_id, req.question)
+    passages = retrieval.search(req.doc_id, req.question)
     messages = llm.build_messages(req.question, passages, [h.model_dump() for h in req.history])
 
     def events():
@@ -167,6 +171,7 @@ def chat(req: ChatRequest):
                 "bm25_rank": p.get("bm25_rank"),
                 "vector_rank": p.get("vector_rank"),
                 "rrf": round(p["rrf"], 5),
+                "fused_rank": p.get("fused_rank") if "rerank_rank" in p else None,  # position before reranking
             }
             for i, p in enumerate(passages, start=1)
         ]
