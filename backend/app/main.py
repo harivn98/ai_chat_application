@@ -172,6 +172,8 @@ def chat(req: ChatRequest):
                 "id": i,
                 "section": p["section"],
                 "text": p["text"],
+                "start": p.get("start"),  # position in the document's Markdown (null for older uploads)
+                "end": p.get("end"),
                 "bm25_rank": p.get("bm25_rank"),
                 "vector_rank": p.get("vector_rank"),
                 "rrf": round(p["rrf"], 5),

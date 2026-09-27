@@ -4,9 +4,11 @@ The document is split along its heading structure first, then each section is
 packed into chunks of ~chunk_size characters on paragraph / sentence boundaries,
 with a character overlap between consecutive chunks of the same section.
 Every chunk keeps its heading path ("Intro > Setup > Docker"), which is
-prepended to the text that gets embedded and BM25-indexed.
+prepended to the text that gets embedded and BM25-indexed, and its position
+in the Markdown, so the UI can highlight a cited chunk inside the document.
 """
 import re
+from bisect import bisect_left
 from dataclasses import dataclass
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
@@ -19,6 +21,8 @@ class Chunk:
     index: int
     section: str       # heading path
     text: str          # chunk body (markdown)
+    start: int | None = None  # position in the Markdown, in UTF-16 code units (see _locate)
+    end: int | None = None
 
     @property
     def content(self) -> str:
@@ -134,4 +138,25 @@ def chunk_markdown(markdown: str, chunk_size: int = 1000, overlap: int = 150) ->
             cur = f"{prefix}\n\n{u}" if prefix and len(prefix) + len(u) + 2 <= chunk_size else u
         if cur.strip():
             chunks.append(Chunk(len(chunks), section, cur.strip()))
+    _locate(markdown, chunks)
     return chunks
+
+
+def _locate(markdown: str, chunks: list[Chunk]) -> None:
+    """Set each chunk's start/end in the Markdown.
+
+    Chunk text differs from the source only in whitespace (blocks and sentences are re-joined), so it is
+    matched with any run of whitespace between its words. Chunks come in document order, so each search
+    starts at the previous chunk's start (they overlap). Positions are UTF-16 code units, the way the
+    browser indexes strings; characters outside the BMP (e.g. math letters like 𝑥) count twice there.
+    """
+    astral = [i for i, ch in enumerate(markdown) if ord(ch) > 0xFFFF]
+    pos = 0
+    for c in chunks:
+        pattern = r"\s+".join(map(re.escape, c.text.split()))
+        m = re.compile(pattern).search(markdown, pos)
+        if not m:
+            continue
+        c.start = m.start() + bisect_left(astral, m.start())
+        c.end = m.end() + bisect_left(astral, m.end())
+        pos = m.start()

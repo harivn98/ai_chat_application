@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import DocumentViewer, { Highlight } from "@/components/DocumentViewer";
 import IngestProgress from "@/components/IngestProgress";
 import { DocInfo, Message, Source, streamChat } from "@/lib/api";
 
@@ -42,7 +43,19 @@ function prepareMarkdown(md: string) {
     .join("");
 }
 
-function SourceList({ sources, active, id }: { sources: Source[]; active: number | null; id: string }) {
+type ShowSource = (s: Source) => void;
+
+function SourceList({
+  sources,
+  active,
+  id,
+  onShow,
+}: {
+  sources: Source[];
+  active: number | null;
+  id: string;
+  onShow: ShowSource;
+}) {
   return (
     <ol className="sources">
       {sources.map((s) => (
@@ -59,6 +72,11 @@ function SourceList({ sources, active, id }: { sources: Source[]; active: number
                 </span>
               ) : null}
             </span>
+            {s.start != null && (
+              <button className="source-show" onClick={() => onShow(s)}>
+                Show in document
+              </button>
+            )}
           </div>
           <p className="source-text">{s.text}</p>
         </li>
@@ -67,11 +85,15 @@ function SourceList({ sources, active, id }: { sources: Source[]; active: number
   );
 }
 
-function AssistantMessage({ msg }: { msg: ChatMessage }) {
+function AssistantMessage({ msg, onShowSource }: { msg: ChatMessage; onShowSource: ShowSource }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<number | null>(null);
 
+  // A citation opens the document at the cited passage; uploads indexed before positions were stored
+  // fall back to the passage list
   function cite(n: number) {
+    const source = msg.sources?.find((s) => s.id === n);
+    if (source?.start != null) return onShowSource(source);
     setOpen(true);
     setActive(n);
     requestAnimationFrame(() =>
@@ -127,7 +149,7 @@ function AssistantMessage({ msg }: { msg: ChatMessage }) {
             <button className="sources-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
               {open ? "Hide" : "Show"} {msg.sources.length} retrieved passages
             </button>
-            {open && <SourceList sources={msg.sources} active={active} id={msg.id} />}
+            {open && <SourceList sources={msg.sources} active={active} id={msg.id} onShow={onShowSource} />}
           </div>
         )}
       </div>
@@ -145,6 +167,16 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sendingRef = useRef(false); // guards against sending the same queued question twice
+  // Source document panel: null = closed; highlight null = whole document without a highlight
+  const [viewer, setViewer] = useState<{ highlight: Highlight | null } | null>(null);
+  const closeViewer = useCallback(() => setViewer(null), []);
+  const showSource = useCallback(
+    (s: Source) => {
+      const label = `passage ${s.id} · ${s.section || "Untitled section"}`;
+      setViewer({ highlight: { start: s.start!, end: s.end!, label } });
+    },
+    [],
+  );
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -245,9 +277,9 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
         </div>
         <div className="head-actions">
           {ready && (
-            <a className="btn btn-ghost" href={`/api/documents/${doc.doc_id}/markdown`} target="_blank" rel="noreferrer">
-              View Markdown
-            </a>
+            <button className="btn btn-ghost" onClick={() => setViewer({ highlight: null })}>
+              View document
+            </button>
           )}
           <button className="btn btn-ghost" onClick={onNewDocument} disabled={busy}>
             New document
@@ -274,7 +306,7 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
               <div className="bubble">{m.content}</div>
             </div>
           ) : (
-            <AssistantMessage key={m.id} msg={m} />
+            <AssistantMessage key={m.id} msg={m} onShowSource={showSource} />
           ),
         )}
         <div ref={endRef} />
@@ -315,6 +347,10 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
           </button>
         )}
       </form>
+
+      {viewer && (
+        <DocumentViewer docId={doc.doc_id} filename={doc.filename} highlight={viewer.highlight} onClose={closeViewer} />
+      )}
     </section>
   );
 }

@@ -151,7 +151,7 @@ def hybrid_search(doc_id: str, query: str, k: int | None = None) -> list[dict]:
         row = by_index.get(f["index"])
         if row:
             results.append({**f, "fused_rank": rank, "section": row.get("section", ""), "text": row["text"],
-                            "content": row["content"]})
+                            "content": row["content"], "start": row.get("start"), "end": row.get("end")})
     return results
 
 

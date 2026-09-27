@@ -122,6 +122,8 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
                     "index": c.index,
                     "section": c.section,
                     "text": c.text,
+                    "start": c.start,
+                    "end": c.end,
                     "context": ctx,
                     "content": content,
                     "embedding": v.tolist(),

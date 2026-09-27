@@ -151,6 +151,21 @@ h2 { font-size: 22px; }
 .ranks { margin-left: auto; display: flex; gap: 6px; }
 .rank { font: 11px var(--mono); color: var(--ink-3); }
 .source-text { margin: 6px 0 0; font-size: 13px; color: var(--ink-2); white-space: pre-wrap; max-height: 9.5em; overflow-y: auto; }
+.source-show { border: none; background: none; padding: 0; color: var(--accent); font-size: 12px; font-weight: 550; cursor: pointer; }
+.source-show:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- source document panel (citation highlighting) */
+.viewer-backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(15, 31, 58, 0.28); display: flex; justify-content: flex-end; }
+.viewer { width: min(760px, 100vw); height: 100dvh; border-radius: 0; display: flex; flex-direction: column; animation: slide-in 0.18s ease-out; }
+.viewer-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.viewer-head > div { min-width: 0; }
+.viewer-body { flex: 1; overflow-y: auto; padding: 20px 24px 40vh; }
+.viewer-body h1, .viewer-body h2, .viewer-body h3 { margin: 22px 0 8px; }
+.viewer-body img { max-width: 100%; }
+.markdown mark.hl { background: #fff1a8; color: inherit; border-radius: 2px; box-shadow: 0 0 0 2px #fff1a8; }
+.markdown .hl-block { background: #fff1a8; border-radius: 4px; box-shadow: 0 0 0 4px #fff1a8; }
+@keyframes slide-in { from { transform: translateX(24px); opacity: 0; } }
+@media (max-width: 640px) { .viewer-body { padding: 16px 16px 40vh; } }
 
 .composer { display: flex; gap: 10px; align-items: flex-end; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--surface); }
 .composer textarea { flex: 1; resize: none; border: 1px solid var(--border); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; line-height: 1.45; max-height: 180px; outline: none; }

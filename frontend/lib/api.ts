@@ -26,6 +26,8 @@ export interface Source {
   id: number;
   section: string;
   text: string;
+  start?: number | null; // position in the document's Markdown (UTF-16 units); null for older uploads
+  end?: number | null;
   bm25_rank: number | null;
   vector_rank: number | null;
   rrf: number;
@@ -62,6 +64,12 @@ export async function getDocument(docId: string): Promise<DocInfo> {
   const res = await fetch(`/api/documents/${docId}`, { cache: "no-store" });
   if (!res.ok) throw new Error(await errorText(res));
   return res.json();
+}
+
+export async function getMarkdown(docId: string): Promise<string> {
+  const res = await fetch(`/api/documents/${docId}/markdown`);
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.text();
 }
 
 export async function deleteDocument(docId: string): Promise<void> {
