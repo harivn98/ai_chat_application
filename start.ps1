@@ -29,10 +29,17 @@ if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
 if ($useGpu) {
     Write-Host "NVIDIA GPU found - starting with GPU support..." -ForegroundColor Green
     $env:COMPOSE_FILE = $gpuFiles
-    docker compose up -d @args
+    $ErrorActionPreference = "Continue"
+    docker compose up -d @args 2>&1 | ForEach-Object { "$_" } | Tee-Object -Variable log
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Docker could not start with the GPU - falling back to CPU." -ForegroundColor Yellow
-        $useGpu = $false
+        # Fall back only when the failure is about the GPU; other failures are reported as they are
+        if (($log | Out-String) -match '(?i)nvidia|gpu|device driver|could not select device') {
+            Write-Host "Docker could not start with the GPU - falling back to CPU." -ForegroundColor Yellow
+            $useGpu = $false
+        } else {
+            Write-Host "Startup failed (not a GPU problem) - see the output above." -ForegroundColor Red
+            exit $LASTEXITCODE
+        }
     }
 } else {
     Write-Host "No NVIDIA GPU found - starting on CPU (answers will be slow)." -ForegroundColor Yellow

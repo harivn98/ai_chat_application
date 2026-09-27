@@ -32,7 +32,7 @@ class Settings:
 
     # Contextual Retrieval: a small LLM writes a context for each chunk before embedding/BM25
     contextual_embedding: bool = _bool("CONTEXTUAL_EMBEDDING", True)
-    context_model: str = os.getenv("CONTEXT_MODEL", "qwen3:4b")
+    context_model: str = os.getenv("CONTEXT_MODEL", "qwen3:4b-instruct")  # non-thinking; plain qwen3:4b is thinking-only
     context_num_ctx: int = int(os.getenv("CONTEXT_NUM_CTX", "16384"))  # tokens of document the model reads
 
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))        # characters

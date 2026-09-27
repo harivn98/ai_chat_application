@@ -19,9 +19,10 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 1. **Convert to Markdown** — PDF via `pymupdf4llm` (keeps headings, lists, tables), TXT wrapped as Markdown (encoding-safe), MD cleaned (front matter removed). The Markdown is stored in MongoDB and in `/data/markdown/<id>.md`.
 2. **Chunk** — heading-aware: split by `#` structure first, then packed into ~1000-char chunks on paragraph/sentence boundaries with 150-char overlap. Code fences and tables stay intact. Each chunk carries its heading path (`Manual > Braking > Pads`).
-3. **Embed** — `BAAI/bge-small-en-v1.5` (384-d, normalised). The model is baked into the backend image, so it runs offline.
-4. **Store** — chunks + vectors go into MongoDB `ragdb.chunks`, with an Atlas Vector Search index (`cosine`, filtered by `doc_id`).
-5. **Wait for the index** — mongot syncs asynchronously, so the document only flips to `ready` once `$vectorSearch` can see every chunk. **The chat window appears only after this point.**
+3. **Add context** (Contextual Retrieval, `CONTEXTUAL_EMBEDDING=true`) — `qwen3:4b-instruct` reads the document and writes one sentence per chunk saying where it fits (e.g. *"This chunk describes the similarity measure used in the sentence-based approach…"*). The context is prepended to the text that gets embedded and BM25-indexed. The answering LLM and the UI still see the original chunk. The document goes first in every prompt, so Ollama reuses its cache and each chunk takes about 1 s on a GPU. Documents longer than `CONTEXT_NUM_CTX` are read in windows that each start with the document's opening.
+4. **Embed** — `BAAI/bge-small-en-v1.5` (384-d, normalised). The model is baked into the backend image, so it runs offline.
+5. **Store** — chunks, contexts and vectors go into MongoDB `ragdb.chunks`, with an Atlas Vector Search index (`cosine`, filtered by `doc_id`).
+6. **Wait for the index** — mongot syncs asynchronously, so the document only flips to `ready` once `$vectorSearch` can see every chunk. **The chat window appears only after this point.**
 
 **Query** (`POST /chat`, streamed as NDJSON)
 
@@ -75,6 +76,9 @@ First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama
 | `TOP_K` | `5` | Passages sent to the LLM after fusion |
 | `BM25_CANDIDATES` | `10` | Chunks taken from BM25 before fusion |
 | `VECTOR_MIN_SCORE` | `0.85` | Minimum cosine similarity for embedding hits |
+| `CONTEXTUAL_EMBEDDING` | `true` | `true` / `false`: add an LLM-written context to every chunk before embedding + BM25. Affects newly uploaded documents |
+| `CONTEXT_MODEL` | `qwen3:4b-instruct` | Ollama model that writes the contexts. Use a non-thinking model: plain `qwen3:4b` is thinking-only and writes its reasoning instead |
+| `CONTEXT_NUM_CTX` | `16384` | Tokens of the document the context model reads at once. Longer documents are split into windows |
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
@@ -102,6 +106,7 @@ backend/app/
   retrieval.py   BM25 + $vectorSearch + RRF
   llm.py         prompt + Ollama streaming
   main.py        FastAPI routes
+  contextual.py  Contextual Retrieval (per-chunk context from a small LLM)
   evaluate.py    QASPER evaluation (CLI)
 frontend/
   app/page.tsx                 upload → chat flow
@@ -128,9 +133,15 @@ docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 
 
 On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
 
-**What happens.** Each sampled paper is converted to Markdown and ingested like an upload (chunk, embed, store). Every question on it then goes through hybrid retrieval and Qwen3, as in the chat. The paper's chunks are deleted afterwards, so nothing shows up in the app.
+**What happens.** It runs in three phases, one model at a time, so Ollama doesn't swap models on the GPU for every paper:
 
-**Timings** (averages): embedding (chunk + embed one paper), retrieval (query embedding + BM25 + vector search + RRF), generation (full answer), and judging (one judge call). Time spent waiting for the vector index to sync isn't counted.
+1. **Ingest:** each sampled paper is converted to Markdown and ingested like an upload (chunk, add context if `CONTEXTUAL_EMBEDDING=true`, embed, store).
+2. **Answer:** every question goes through hybrid retrieval and Qwen3, as in the chat.
+3. **Judge:** the judge model grades each answer.
+
+The papers' chunks are deleted afterwards, so nothing shows up in the app.
+
+**Timings** (averages): contextualization (the context model writing contexts for one paper; `–` when off), embedding (embed one paper), retrieval (query embedding + BM25 + vector search + RRF), generation (full answer), and judging (one judge call). Time spent waiting for the vector index to sync isn't counted.
 
 **Scores** (0–100):
 
@@ -151,6 +162,8 @@ Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATE
 ```bash
 docker compose exec backend python -m app.evaluate --run-id minscore-075 --papers 5 --seed 0
 ```
+
+**A/B test contextual embedding.** Run once with `CONTEXTUAL_EMBEDDING=false` and once with `true`, using the same seed. The Retrieval config column shows `no ctx` or `ctx <model>` for each run.
 
 **Caveats**
 

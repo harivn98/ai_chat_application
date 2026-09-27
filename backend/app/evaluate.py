@@ -3,8 +3,9 @@
 Runs only when triggered:
     python -m app.evaluate --run-id <id> [--papers 5] [--seed 0] [--split test]
 
-Each sampled paper is converted to Markdown and ingested once (chunk + embed + store, like an upload);
-every question on it then goes through hybrid retrieval + generation. Each stage is timed.
+Runs in three phases, one Ollama model at a time: (1) each sampled paper is converted to Markdown and
+ingested like an upload (chunk + optional Contextual Retrieval contexts + embed + store), (2) every
+question goes through hybrid retrieval + generation, (3) the judge grades the answers. Each stage is timed.
 
 Metrics:
   - Answer F1     official QASPER token F1 against the best-matching annotator answer
@@ -37,7 +38,7 @@ import httpx
 from . import db, llm, retrieval
 from .chunker import chunk_markdown
 from .config import settings
-from .contextual import contextualize, indexed_content
+from .contextual import contextualize, indexed_content, release_model
 from .embeddings import embed_passages, get_model
 from .ingest import _wait_until_searchable
 
@@ -477,6 +478,8 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
 
         # Phase 2: ask every question with the answering model
         _say("\n--- Phase 2/3: answering questions ---")
+        if settings.contextual_embedding and release_model():
+            _say(f"Unloaded {settings.context_model} from the GPU")
         _load_model(settings.llm_model)
         for pid in paper_ids:
             paper, doc_id = data[pid], f"eval-{run_id}-{pid}"

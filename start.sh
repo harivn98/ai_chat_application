@@ -25,10 +25,21 @@ fi
 
 if [ "$use_gpu" = yes ]; then
     echo "NVIDIA GPU found - starting with GPU support..."
-    if ! COMPOSE_FILE="$GPU_FILES" docker compose up -d "$@"; then
-        echo "Docker could not start with the GPU - falling back to CPU."
-        use_gpu=no
+    log=$(mktemp)
+    { COMPOSE_FILE="$GPU_FILES" docker compose up -d "$@"; echo $? > "$log.rc"; } 2>&1 | tee "$log"
+    rc=$(cat "$log.rc")
+    if [ "$rc" -ne 0 ]; then
+        # Fall back only when the failure is about the GPU; other failures are reported as they are
+        if grep -qiE 'nvidia|gpu|device driver|could not select device' "$log"; then
+            echo "Docker could not start with the GPU - falling back to CPU."
+            use_gpu=no
+        else
+            echo "Startup failed (not a GPU problem) - see the output above."
+            rm -f "$log" "$log.rc"
+            exit "$rc"
+        fi
     fi
+    rm -f "$log" "$log.rc"
 else
     echo "No NVIDIA GPU found - starting on CPU (answers will be slow)."
 fi

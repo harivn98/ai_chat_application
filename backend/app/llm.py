@@ -88,6 +88,13 @@ def warm_up(model: str | None = None) -> None:
         raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
 
 
+def unload(model: str) -> None:
+    """Free a model's GPU/RAM memory right away (keep_alive=0) instead of waiting for LLM_KEEP_ALIVE."""
+    r = httpx.post(f"{settings.ollama_url}/api/generate", json={"model": model, "keep_alive": 0}, timeout=60)
+    if r.status_code != 200:
+        raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
+
+
 def stream_chat(messages: list[dict]) -> Iterator[str]:
     payload = {
         "model": settings.llm_model,

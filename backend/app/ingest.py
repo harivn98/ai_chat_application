@@ -1,12 +1,13 @@
 """Ingestion pipeline: file -> Markdown -> chunks -> (contexts) -> embeddings -> MongoDB -> vector index sync."""
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from pymongo.errors import OperationFailure
 
-from . import db, retrieval
+from . import contextual, db, llm, retrieval
 from .chunker import chunk_markdown
 from .config import MARKDOWN_DIR, settings
 from .contextual import ContextError, contextualize, indexed_content
@@ -54,6 +55,19 @@ def _wait_until_searchable(doc_id: str, expected: int, timeout_s: int = 120) -> 
     return False
 
 
+def _free_gpu_for_chat() -> None:
+    """Unload the context model (only needed during upload) and bring the answering model back."""
+    if contextual.release_model():
+        threading.Thread(target=_warm_chat_model, daemon=True).start()
+
+
+def _warm_chat_model() -> None:
+    try:
+        llm.warm_up()
+    except Exception as e:  # noqa: BLE001
+        log.warning("Could not reload %s: %s", settings.llm_model, e)
+
+
 def ingest(doc_id: str, path: Path, original_name: str) -> None:
     stage = "converting"
     try:
@@ -73,10 +87,14 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
         if settings.contextual_embedding:
             stage = "contextualizing"
             _status(doc_id, stage, 25, num_chunks=len(chunks), context_done=0)
-            contexts = contextualize(
-                markdown, chunks,
-                lambda done, total: _status(doc_id, "contextualizing", 25 + int(35 * done / total), context_done=done),
-            )
+            try:
+                contexts = contextualize(
+                    markdown, chunks,
+                    lambda done, total: _status(doc_id, "contextualizing", 25 + int(35 * done / total),
+                                                context_done=done),
+                )
+            finally:
+                _free_gpu_for_chat()
         contents = [indexed_content(c, ctx) for c, ctx in zip(chunks, contexts)]
 
         stage = "embedding"

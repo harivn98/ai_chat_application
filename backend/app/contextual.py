@@ -9,10 +9,12 @@ The document is always sent first and the chunk last, so consecutive requests sh
 prompt prefix and Ollama can reuse its KV cache instead of re-reading the document every time.
 """
 import logging
+import threading
 from collections.abc import Callable
 
 import httpx
 
+from . import llm
 from .chunker import Chunk
 from .config import settings
 
@@ -86,19 +88,48 @@ def _generate(document: str, chunk: str) -> str:
     return " ".join(r.json()["message"]["content"].split())
 
 
+_active = 0                  # contextualize() calls in progress (uploads run in parallel threads)
+_active_lock = threading.Lock()
+
+
 def contextualize(
     full_text: str, chunks: list[Chunk], on_progress: Callable[[int, int], None] | None = None
 ) -> list[str]:
     """Return one context sentence per chunk (same order as `chunks`)."""
-    contexts: dict[int, str] = {}
-    done = 0
-    for document, group in _windows(chunks, full_text):
-        for c in group:
-            contexts[c.index] = _generate(document, c.content)
-            done += 1
-            if on_progress:
-                on_progress(done, len(chunks))
-    return [contexts[c.index] for c in chunks]
+    global _active
+    with _active_lock:
+        _active += 1
+    try:
+        contexts: dict[int, str] = {}
+        done = 0
+        for document, group in _windows(chunks, full_text):
+            for c in group:
+                contexts[c.index] = _generate(document, c.content)
+                done += 1
+                if on_progress:
+                    on_progress(done, len(chunks))
+        return [contexts[c.index] for c in chunks]
+    finally:
+        with _active_lock:
+            _active -= 1
+
+
+def release_model() -> bool:
+    """Unload the context model from the GPU, unless another upload is still contextualizing.
+
+    The context model is only needed while documents are ingested; unloading it leaves the GPU
+    to the answering model. Returns True if it was unloaded.
+    """
+    with _active_lock:
+        if _active:
+            return False
+        try:
+            llm.unload(settings.context_model)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Could not unload %s: %s", settings.context_model, e)
+            return False
+    log.info("Unloaded %s from Ollama", settings.context_model)
+    return True
 
 
 def indexed_content(chunk: Chunk, context: str) -> str:
