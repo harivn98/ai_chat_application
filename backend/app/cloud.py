@@ -17,6 +17,8 @@ log = logging.getLogger("cloud")
 EMBED_BATCH = 100      # texts per embeddings request
 RETRIES = 5            # on rate limits (429) and overload (5xx), waiting 2, 4, 8, 16, 32 s
 TIMEOUT = httpx.Timeout(connect=10, read=120, write=60, pool=10)
+# For models whose reasoning can't be switched off (Gemini 3.5 Flash-Lite): the lowest effort, left out of the reply
+MINIMAL_REASONING = {"effort": "minimal", "exclude": True}
 
 
 class CloudError(RuntimeError):
@@ -70,24 +72,24 @@ def embed(texts: list[str], kind: str) -> np.ndarray:
 
 
 def _chat_payload(model: str, messages: list[dict], stream: bool, temperature: float,
-                  max_tokens: int | None = None) -> dict:
+                  reasoning: dict | None = None, max_tokens: int | None = None) -> dict:
     payload = {
         "model": model,
         "messages": messages,
         "stream": stream,
         "temperature": temperature,
-        # the reasoning would never be shown anyway (like LLM_THINK locally)
-        "reasoning": {"enabled": settings.llm_think},
+        # by default reasoning follows LLM_THINK; it would never be shown anyway
+        "reasoning": reasoning or {"enabled": settings.llm_think},
     }
     if max_tokens:
         payload["max_tokens"] = max_tokens
     return payload
 
 
-def complete(model: str, prompt: str, max_tokens: int) -> str:
-    """One prompt, one deterministic (temperature 0) reply."""
+def complete(model: str, prompt: str, max_tokens: int, reasoning: dict | None = None) -> str:
+    """One prompt, one deterministic (temperature 0) reply. max_tokens includes any reasoning tokens."""
     reply = _post("/chat/completions", _chat_payload(model, [{"role": "user", "content": prompt}], stream=False,
-                                                    temperature=0, max_tokens=max_tokens))
+                                                    temperature=0, reasoning=reasoning, max_tokens=max_tokens))
     text = reply["choices"][0]["message"].get("content") or ""
     if not text:
         raise CloudError(f"{model} returned no text (finish reason: {reply['choices'][0].get('finish_reason')})")

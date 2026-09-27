@@ -74,7 +74,7 @@ Before each upload you pick where the document is processed:
 | | Private mode (default) | Cloud mode |
 |---|---|---|
 | Embeddings | `BAAI/bge-small-en-v1.5` (CPU) | Gemini Embedding 2 (`google/gemini-embedding-2`, cut to 768-d) |
-| Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`) |
+| Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`, minimal reasoning) |
 | Answers + pre-judge | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) |
 | BM25, reranker, MongoDB | this machine | this machine (same MongoDB) |
 | Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek |
@@ -100,8 +100,26 @@ export OPENROUTER_API_KEY=sk-or-...      # Linux / macOS (e.g. in ~/.bashrc)
 ./start.sh
 ```
 
+`setx` only reaches programs started afterwards. A terminal that was already open, and every terminal inside VS Code
+until VS Code itself is restarted, still lacks the key, and `docker compose` then starts the backend without it. In
+such a terminal, load the key first:
+
+```powershell
+$env:OPENROUTER_API_KEY = [Environment]::GetEnvironmentVariable('OPENROUTER_API_KEY', 'User')
+.\start.ps1
+```
+
+Check that the backend has it (prints `True` / `False`, never the key):
+`docker compose exec backend python -c "import os; print(bool(os.getenv('OPENROUTER_API_KEY')))"`.
+
 Without the key the cloud option is shown but disabled. Rate-limited or overloaded requests (429 / 5xx) are
 retried up to 5 times, 2-32 s apart.
+
+**Reasoning.** DeepSeek runs with reasoning off (`"reasoning": {"enabled": false}`, or on with `LLM_THINK=true`).
+Gemini 3.5 Flash-Lite doesn't allow that on OpenRouter ("Reasoning is mandatory for this endpoint"), so the context
+model is asked for the lowest effort instead (`{"effort": "minimal", "exclude": true}`, `MINIMAL_REASONING` in
+`cloud.py`); in practice it then uses no reasoning tokens. Its output limit is 400 tokens, since OpenRouter counts
+reasoning tokens against it.
 
 ## Configuration (`.env`)
 
@@ -130,8 +148,8 @@ retried up to 5 times, 2-32 s apart.
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
 | `CLOUD_EMBED_MODEL` / `CLOUD_EMBED_DIM` | `google/gemini-embedding-2` / `768` | Cloud embeddings. Changing the dimension needs the `chunk_vector_index_cloud` index to be dropped so it is recreated |
 | `CLOUD_VECTOR_MIN_SCORE` | `0` | Minimum cosine similarity for cloud embedding hits; `0` = no cutoff. Not tuned yet: measure it with `--mode cloud` |
-| `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode |
-| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers and pre-judges in cloud mode (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too) |
+| `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode, with minimal reasoning |
+| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers and pre-judges in cloud mode (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
 | `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud mode](#private-and-cloud-mode)). Cloud model IDs are OpenRouter's |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
@@ -247,4 +265,7 @@ docker compose exec backend python -m app.evaluate --run-id minscore-075 --paper
 - **Scanned PDFs** fail with "no extractable text" — OCR isn't included. Adding `tesseract-ocr` to the backend image enables pymupdf4llm's OCR path.
 - **Slow answers on CPU** — expected for an 8B model; use the GPU override or a smaller model (`LLM_MODEL=qwen3:4b`).
 - **Vector index not ready** — `docker compose logs backend` shows the index status. If mongot never becomes available, the backend falls back to in-process cosine search, so chat still works.
+- **"Cloud mode needs OPENROUTER_API_KEY"** — the backend was started without the key; see [the API key notes](#private-and-cloud-mode) and restart it with `.\start.ps1`.
+- **"Reasoning is mandatory for this endpoint and cannot be disabled"** (OpenRouter 400) — the cloud model in that message doesn't allow reasoning off. For the context model this is already handled; as `CLOUD_LLM_MODEL`, pick a model that allows it.
+- **"OpenRouter error 404" / "model not found"** — the model ID in `.env` doesn't exist on OpenRouter; check it at https://openrouter.ai/models.
 - **Reset everything** — `docker compose down -v` (deletes documents, vectors and the downloaded model).

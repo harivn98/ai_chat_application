@@ -60,7 +60,8 @@ class Mode:
         if self.local:
             return llm.complete(settings.context_model, prompt, settings.context_num_ctx,
                                 read_timeout=settings.llm_load_timeout, num_predict=120)
-        return cloud.complete(settings.cloud_context_model, prompt, max_tokens=200)
+        return cloud.complete(settings.cloud_context_model, prompt, max_tokens=400,
+                              reasoning=cloud.MINIMAL_REASONING)
 
     def judge_passages(self, prompt: str) -> str:
         """The answering model's short reply to the pre-judge prompt."""
