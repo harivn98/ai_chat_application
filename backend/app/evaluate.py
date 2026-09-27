@@ -25,7 +25,9 @@ import logging
 import random
 import re
 import string
+import sys
 import tarfile
+import threading
 import time
 from collections import Counter
 from datetime import datetime, timezone
@@ -35,7 +37,7 @@ import httpx
 from . import db, llm, retrieval
 from .chunker import chunk_markdown
 from .config import settings
-from .embeddings import embed_passages
+from .embeddings import embed_passages, get_model
 from .ingest import _wait_until_searchable
 
 log = logging.getLogger("evaluate")
@@ -153,7 +155,7 @@ def _load_split(split: str) -> dict:
     cache = settings.data_dir / "eval" / member
     if not cache.exists():
         cache.parent.mkdir(parents=True, exist_ok=True)
-        log.info("Downloading QASPER %s split", split)
+        _say(f"Downloading the QASPER {split} split (first run only)…")
         r = httpx.get(url, follow_redirects=True, timeout=300)
         r.raise_for_status()
         with tarfile.open(fileobj=io.BytesIO(r.content), mode="r:gz") as tar:
@@ -213,18 +215,87 @@ def _parse_verdict(text: str) -> bool | None:
     return m[-1] == "CORRECT" if m else None
 
 
+# ------------------------------------------------------------------ progress output
+_TTY = sys.stdout.isatty()
+
+
+def _say(text: str = "") -> None:
+    print(text, flush=True)
+
+
+def _short(text: str, n: int = 70) -> str:
+    text = _one_line(text)
+    return text if len(text) <= n else text[: n - 1] + "…"
+
+
+def _fmt_secs(s: float) -> str:
+    return f"{s:.1f}s" if s < 60 else f"{int(s // 60)}m{int(s % 60):02d}s"
+
+
+class _Status:
+    """A status line that keeps updating in place (with elapsed time) until done() is called."""
+
+    def __init__(self, label: str):
+        self.label, self.detail, self.t0 = label, "", time.perf_counter()
+        self._width, self._stopped, self._lock = 0, False, threading.Lock()
+        if _TTY:
+            threading.Thread(target=self._tick, daemon=True).start()
+        else:
+            _say(label)
+
+    def _tick(self):
+        while True:
+            time.sleep(0.5)
+            with self._lock:
+                if self._stopped:
+                    return
+                self._write(f"{self.label} {self.detail} [{_fmt_secs(self.elapsed)}]")
+
+    def _write(self, text: str):
+        sys.stdout.write("\r" + text.ljust(self._width))
+        sys.stdout.flush()
+        self._width = len(text)
+
+    @property
+    def elapsed(self) -> float:
+        return time.perf_counter() - self.t0
+
+    def set(self, detail: str):
+        self.detail = detail
+
+    def done(self, text: str):
+        with self._lock:
+            self._stopped = True
+            if _TTY:
+                self._write(text)
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+            else:
+                _say(text)
+
+
 # ------------------------------------------------------------------ one question
-def _ask(doc_id: str, qa: dict, paragraphs: list[str]) -> dict:
+def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str, first_call: bool) -> dict:
     question = qa["question"].strip()
     refs = _references(qa)
 
     t0 = time.perf_counter()
     passages = retrieval.hybrid_search(doc_id, question)
     retrieval_s = time.perf_counter() - t0
+    _say(f"{indent}retrieval: {len(passages)} chunks in {retrieval_s:.2f}s")
 
+    hint = f" (first call loads {settings.llm_model} into memory, can take minutes)" if first_call else ""
+    st = _Status(f"{indent}generating…")
+    st.set(f"waiting for first token{hint}")
+    pieces: list[str] = []
     t0 = time.perf_counter()
-    response = "".join(llm.stream_chat(llm.build_messages(question, passages, [])))
+    for piece in llm.stream_chat(llm.build_messages(question, passages, [])):
+        pieces.append(piece)
+        st.set(f"{len(pieces)} tokens")
     generation_s = time.perf_counter() - t0
+    response = "".join(pieces)
+    st.done(f"{indent}generation: {len(pieces)} tokens in {_fmt_secs(generation_s)}")
+    _say(f"{indent}answer: {_short(response, 90)}")
 
     cited = sorted({int(n) for n in CITE_RE.findall(response) if 1 <= int(n) <= len(passages)})
     if NOT_FOUND_RE.search(response) and not cited:
@@ -239,6 +310,8 @@ def _ask(doc_id: str, qa: dict, paragraphs: list[str]) -> dict:
 
     retrieved_paras = set(_paragraphs_in([p["text"] for p in passages], paragraphs))
     recalls = [len(retrieved_paras & set(r["evidence"])) / len(r["evidence"]) for r in refs if r["evidence"]]
+    recall = f"{100 * max(recalls):.0f}%" if recalls else "n/a"
+    _say(f"{indent}scores: retrieval recall {recall} · answer F1 {100 * f1:.0f} · evidence F1 {100 * evidence_f1:.0f}")
 
     return {
         "question_id": qa["question_id"],
@@ -300,25 +373,36 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
 
     data = _load_split(split)
     paper_ids = sorted(random.Random(seed).sample(sorted(data), min(num_papers, len(data))))
-    log.info("Run %s: %d %s papers (seed %d), %d questions", run_id, len(paper_ids), split, seed,
-             sum(len(data[p]["qas"]) for p in paper_ids))
+    total_q = sum(len(data[p]["qas"]) for p in paper_ids)
+    _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {total_q} questions (QASPER {split}, seed {seed}) ===")
+    _say(f"LLM {settings.llm_model} · judge {settings.judge_model} · top {settings.top_k} · "
+         f"BM25 {settings.bm25_candidates} · vec ≥ {settings.vector_min_score}")
 
+    st = _Status("Connecting to MongoDB and loading the embedding model…")
     retrieval.vector_index_ready = db.ensure_vector_index()
+    get_model()
+    st.done(f"Ready (vector index: {'yes' if retrieval.vector_index_ready else 'no, using local fallback'})")
     started = time.perf_counter()
     rows: list[dict] = []
     embedding_times: list[float] = []
+    rag_times: list[float] = []
 
     # Phase 1: ingest each paper once, then ask all of its questions
+    _say(f"\n--- Phase 1/2: answering questions ---")
     for n, pid in enumerate(paper_ids, start=1):
         paper = data[pid]
         doc_id = f"eval-{run_id}-{pid}"
         markdown, paragraphs = _paper_markdown(paper)
+        _say(f"\n[paper {n}/{len(paper_ids)}] {_short(paper['title'])} ({len(paper['qas'])} questions)")
         try:
             _cleanup(doc_id)
+            st = _Status("  chunking + embedding…")
             t0 = time.perf_counter()
             chunks = chunk_markdown(markdown, settings.chunk_size, settings.chunk_overlap)
+            st.set(f"{len(chunks)} chunks")
             vectors = embed_passages([c.content for c in chunks])
             embedding_times.append(time.perf_counter() - t0)
+            st.done(f"  embedding: {len(chunks)} chunks in {_fmt_secs(embedding_times[-1])}")
             db.chunks().insert_many(
                 [
                     {"doc_id": doc_id, "index": c.index, "section": c.section, "text": c.text,
@@ -326,41 +410,55 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
                     for c, v in zip(chunks, vectors)
                 ]
             )
+            st = _Status("  waiting for the vector index…")
             _wait_until_searchable(doc_id, len(chunks))  # index sync is excluded from the timings
+            st.done(f"  vector index ready in {_fmt_secs(st.elapsed)}")
 
             for qa in paper["qas"]:
+                done_q = len(rows)
+                eta = ""
+                if rag_times:
+                    eta = f" · ~{_fmt_secs(sum(rag_times) / len(rag_times) * (total_q - done_q))} left in phase 1"
+                _say(f"  [Q {done_q + 1}/{total_q}{eta}] {_short(qa['question'])}")
+                t0 = time.perf_counter()
                 try:
-                    row = _ask(doc_id, qa, paragraphs)
+                    row = _ask(doc_id, qa, paragraphs, indent="      ", first_call=not rows)
                 except Exception as e:  # noqa: BLE001
                     log.exception("Question %s failed", qa["question_id"])
+                    _say(f"      FAILED: {e}")
                     row = {"question_id": qa["question_id"], "question": qa["question"], "error": f"rag: {e}"}
+                rag_times.append(time.perf_counter() - t0)
                 rows.append({"paper_id": pid, **row})
         except Exception as e:  # noqa: BLE001
             log.exception("Ingesting paper %s failed", pid)
+            _say(f"  FAILED to ingest paper: {e}")
             rows += [{"paper_id": pid, "question_id": qa["question_id"], "question": qa["question"],
                       "error": f"ingest: {e}"} for qa in paper["qas"]]
         finally:
             _cleanup(doc_id)
-        log.info("[RAG %d/%d] paper %s: %d questions", n, len(paper_ids), pid, len(paper["qas"]))
 
     # Phase 2: LLM judge (kept separate so Ollama doesn't swap models between every question)
+    _say(f"\n--- Phase 2/2: judging answers with {settings.judge_model} ---")
     for n, row in enumerate(rows, start=1):
         if "error" in row:
+            _say(f"  [judge {n}/{len(rows)}] skipped (question failed)")
             continue
         refs = "\n".join(
             "- The paper does not answer this question." if r["type"] == "none" else f"- {r['answer']}"
             for r in row["references"]
         )
+        st = _Status(f"  [judge {n}/{len(rows)}] grading…")
         try:
             t0 = time.perf_counter()
             out = _judge(JUDGE_PROMPT.format(question=row["question"], references=refs, response=row["response"]))
             row["judging_s"] = time.perf_counter() - t0
             row["judge_correct"], row["judge_output"] = _parse_verdict(out), out
+            verdict = {True: "CORRECT", False: "INCORRECT", None: "no verdict"}[row["judge_correct"]]
+            st.done(f"  [judge {n}/{len(rows)}] {verdict:<9} ({_fmt_secs(row['judging_s'])}) {_short(row['question'], 60)}")
         except Exception as e:  # noqa: BLE001
             log.exception("Judging failed for %s", row["question_id"])
             row["judge_error"] = str(e)
-        log.info("[judge %d/%d] %s: F1=%.2f correct=%s", n, len(rows), row["question_id"],
-                 row["answer_f1"], row.get("judge_correct"))
+            st.done(f"  [judge {n}/{len(rows)}] FAILED: {e}")
 
     total_min = (time.perf_counter() - started) / 60
     ok = [r for r in rows if "error" not in r]
@@ -417,13 +515,15 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     details.write_text(json.dumps({"summary": summary, "questions": rows}, indent=2, ensure_ascii=False),
                        encoding="utf-8")
 
-    print(RESULTS_HEADER.splitlines()[-2])
-    print(line, end="")
-    print(f"\nSaved {details} (complete details)\n      {results_md} (side-by-side comparison)")
+    _say(f"\n=== Done in {total_min:.1f} min: {len(ok)}/{len(rows)} questions answered ===")
+    for name, key in [(f"retrieval recall@{settings.top_k}", "retrieval_recall"), ("evidence F1", "evidence_f1"),
+                      ("answer F1", "answer_f1"), ("judge correct", "judge_correct")]:
+        _say(f"  {name:<21}{_pct(summary[key])}")
+    _say(f"\nSaved {details} (complete details)\n      {results_md} (side-by-side comparison)")
 
 
 def main():
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(description="Evaluate the RAG pipeline on QASPER.")
     p.add_argument("--run-id", required=True, help="unique label for this run (letters, digits, . _ -)")
     p.add_argument("--papers", type=int, default=5, help="number of papers to sample (~3.5 questions each)")
