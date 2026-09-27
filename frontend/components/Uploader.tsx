@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { DocInfo, uploadDocument } from "@/lib/api";
 
-const ACCEPT = ".pdf,.txt,.md,.markdown";
+const EXTENSIONS = [".pdf", ".txt", ".md", ".markdown"];
 
 function fmtSize(b: number) {
   if (b < 1024) return `${b} B`;
@@ -22,7 +22,7 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
     setError(null);
     if (!f) return;
     const ext = f.name.slice(f.name.lastIndexOf(".")).toLowerCase();
-    if (![".pdf", ".txt", ".md", ".markdown"].includes(ext)) {
+    if (!EXTENSIONS.includes(ext)) {
       setError("Please choose a PDF, TXT or MD file.");
       return;
     }
@@ -71,7 +71,7 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
         <input
           ref={inputRef}
           type="file"
-          accept={ACCEPT}
+          accept={EXTENSIONS.join(",")}
           hidden
           onChange={(e) => pick(e.target.files?.[0])}
         />

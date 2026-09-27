@@ -9,8 +9,7 @@ GPU does both steps and Ollama never has to swap or reload a model between them.
 import logging
 import re
 
-import httpx
-
+from . import llm
 from .config import settings
 
 log = logging.getLogger("prejudge")
@@ -37,20 +36,9 @@ def can_answer(question: str, passages: list[dict]) -> bool:
     if not passages:
         return False
     text = "\n\n".join(f"[{i}] {p['text']}" for i, p in enumerate(passages, start=1))
-    payload = {
-        "model": settings.llm_model,
-        "messages": [{"role": "user", "content": PROMPT.format(passages=text, question=question)}],
-        "stream": False,
-        "think": False,
-        "keep_alive": settings.llm_keep_alive,
-        # num_ctx must match answer generation (llm.stream_chat), or Ollama reloads the model
-        "options": {"num_ctx": settings.llm_num_ctx, "temperature": 0, "num_predict": 3},
-    }
-    timeout = httpx.Timeout(connect=10, read=settings.llm_timeout, write=30, pool=10)
-    r = httpx.post(f"{settings.ollama_url}/api/chat", json=payload, timeout=timeout)
-    if r.status_code != 200:
-        raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
-    reply = r.json()["message"]["content"].strip().upper()
+    # num_ctx must match answer generation (llm.stream_chat), or Ollama reloads the model
+    reply = llm.complete(settings.llm_model, PROMPT.format(passages=text, question=question), settings.llm_num_ctx,
+                         read_timeout=settings.llm_timeout, num_predict=3).strip().upper()
     m = re.match(r"\W*(YES|NO)\b", reply)
     if not m:
         log.warning("Pre-judge gave no YES/NO verdict (%r); answering anyway", reply[:50])

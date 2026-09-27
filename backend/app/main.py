@@ -1,7 +1,6 @@
+"""FastAPI app: upload a document, follow its ingestion, read its Markdown, and chat with it."""
 import json
 import logging
-import threading
-import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -11,9 +10,8 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import contextual, db, llm, prejudge, retrieval
-from .config import ALLOWED_EXTENSIONS, MARKDOWN_DIR, UPLOAD_DIR, settings
-from .embeddings import get_model
+from . import db, embeddings, llm, prejudge, reranker, retrieval
+from .config import ALLOWED_EXTENSIONS, UPLOAD_DIR, settings
 from .ingest import ingest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -23,32 +21,19 @@ log = logging.getLogger("api")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
     db.client().admin.command("ping")
-    retrieval.vector_index_ready = db.ensure_vector_index()
-    get_model()  # load the embedding model before accepting traffic
+    db.ensure_vector_index()
+    embeddings.get_model()  # load the embedding model before accepting traffic
     if settings.reranker_enabled:
-        from . import reranker
-
         reranker.get_model()  # and the reranker (small, CPU)
-    # Preload in the background the model the next step needs. With contextual embedding that is the context
-    # model, since a new session starts with an upload; after contextualizing, ingest swaps in the answering model.
+    # Preload the model the next step needs. A new session starts with an upload, so with contextual embedding
+    # that is the context model; after contextualizing, ingest swaps in the answering model.
     if settings.contextual_embedding:
-        contextual.warm_up_in_background("at startup")
+        llm.load_in_background(settings.context_model, settings.context_num_ctx, "at startup")
     else:
-        threading.Thread(target=_warm_up_llm, daemon=True).start()
-    log.info("Backend ready (vector index: %s, llm: %s)", retrieval.vector_index_ready, settings.llm_model)
+        llm.load_in_background(settings.llm_model, settings.llm_num_ctx, "at startup")
+    log.info("Backend ready (vector index: %s, llm: %s)", db.vector_index_ready, settings.llm_model)
     yield
-
-
-def _warm_up_llm():
-    # The answering model also does the pre-judge, so it is the only model chat needs
-    try:
-        started = time.perf_counter()
-        llm.warm_up()
-        log.info("LLM %s loaded in %.0fs", settings.llm_model, time.perf_counter() - started)
-    except Exception as e:  # noqa: BLE001
-        log.warning("Could not preload %s: %s", settings.llm_model, e)
 
 
 app = FastAPI(title="RAG AI_chat_application API", lifespan=lifespan)
@@ -66,7 +51,8 @@ class ChatRequest(BaseModel):
     history: list[ChatTurn] = []
 
 
-def _public(doc: dict) -> dict:
+def _doc_info(doc: dict) -> dict:
+    """What the UI shows about a document (DocInfo in frontend/lib/api.ts)."""
     return {
         "doc_id": doc["_id"],
         "filename": doc["filename"],
@@ -81,12 +67,30 @@ def _public(doc: dict) -> dict:
     }
 
 
+def _source(number: int, passage: dict) -> dict:
+    """A retrieved passage as the UI shows it (Source in frontend/lib/api.ts); `number` is its citation [n]."""
+    return {
+        "id": number,
+        "section": passage["section"],
+        "text": passage["text"],
+        "start": passage["start"],
+        "end": passage["end"],
+        "bm25_rank": passage.get("bm25_rank"),
+        "vector_rank": passage.get("vector_rank"),
+        "fused_rank": passage["fused_rank"] if "rerank_rank" in passage else None,  # position before reranking
+    }
+
+
+def _ndjson(event: dict) -> str:
+    return json.dumps(event) + "\n"
+
+
 # ------------------------------------------------------------------ routes
 @app.get("/health")
 def health():
     return {
         "status": "ok",
-        "vector_index": retrieval.vector_index_ready,
+        "vector_index": db.vector_index_ready,
         "llm_model": settings.llm_model,
         "llm_available": llm.model_available(),
         "embed_model": settings.embed_model,
@@ -126,7 +130,7 @@ async def upload_document(background: BackgroundTasks, file: UploadFile = File(.
     }
     db.documents().insert_one(doc)
     background.add_task(ingest, doc_id, path, name)  # sync fn -> runs in threadpool
-    return _public(doc)
+    return _doc_info(doc)
 
 
 @app.get("/documents/{doc_id}")
@@ -134,7 +138,7 @@ def get_document(doc_id: str):
     doc = db.documents().find_one({"_id": doc_id}, {"markdown": 0})
     if not doc:
         raise HTTPException(404, "Document not found.")
-    return _public(doc)
+    return _doc_info(doc)
 
 
 @app.get("/documents/{doc_id}/markdown", response_class=PlainTextResponse)
@@ -150,8 +154,8 @@ def delete_document(doc_id: str):
     db.chunks().delete_many({"doc_id": doc_id})
     db.documents().delete_one({"_id": doc_id})
     retrieval.bm25_cache.drop(doc_id)
-    for p in list(UPLOAD_DIR.glob(f"{doc_id}.*")) + [MARKDOWN_DIR / f"{doc_id}.md"]:
-        p.unlink(missing_ok=True)
+    for upload in UPLOAD_DIR.glob(f"{doc_id}.*"):
+        upload.unlink(missing_ok=True)
 
 
 @app.post("/chat")
@@ -167,42 +171,27 @@ def chat(req: ChatRequest):
 
     def events():
         # NDJSON stream: one "sources" event, many "token" events, then "done" (or "error")
-        sources = [
-            {
-                "id": i,
-                "section": p["section"],
-                "text": p["text"],
-                "start": p.get("start"),  # position in the document's Markdown (null for older uploads)
-                "end": p.get("end"),
-                "bm25_rank": p.get("bm25_rank"),
-                "vector_rank": p.get("vector_rank"),
-                "rrf": round(p["rrf"], 5),
-                "fused_rank": p.get("fused_rank") if "rerank_rank" in p else None,  # position before reranking
-            }
-            for i, p in enumerate(passages, start=1)
-        ]
-        yield json.dumps({"type": "sources", "sources": sources}) + "\n"
+        yield _ndjson({"type": "sources", "sources": [_source(n, p) for n, p in enumerate(passages, start=1)]})
 
         # Pre-judge: skip the answering LLM when the passages can't answer the question
         if settings.prejudge_enabled:
             try:
-                ok = prejudge.can_answer(req.question, passages)
+                can_answer = prejudge.can_answer(req.question, passages)
             except Exception:  # noqa: BLE001
                 log.exception("pre-judge failed; answering anyway")
-                ok = True
-            yield json.dumps({"type": "prejudge", "can_answer": ok}) + "\n"
-            if not ok:
-                yield json.dumps({"type": "token", "content": prejudge.NOT_ENOUGH_CONTENT}) + "\n"
-                yield json.dumps({"type": "done"}) + "\n"
+                can_answer = True
+            if not can_answer:
+                yield _ndjson({"type": "token", "content": prejudge.NOT_ENOUGH_CONTENT})
+                yield _ndjson({"type": "done"})
                 return
 
         try:
             for token in llm.stream_chat(messages):
-                yield json.dumps({"type": "token", "content": token}) + "\n"
-            yield json.dumps({"type": "done"}) + "\n"
+                yield _ndjson({"type": "token", "content": token})
+            yield _ndjson({"type": "done"})
         except Exception as e:  # noqa: BLE001
             log.exception("generation failed")
-            yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+            yield _ndjson({"type": "error", "message": str(e)})
 
     return StreamingResponse(
         events(),

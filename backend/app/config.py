@@ -19,9 +19,10 @@ class Settings:
     llm_num_ctx: int = int(os.getenv("LLM_NUM_CTX", "8192"))
     llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.2"))
     llm_think: bool = _bool("LLM_THINK", False)
-    llm_keep_alive: str = os.getenv("LLM_KEEP_ALIVE", "30m")          # how long Ollama keeps the model loaded
+    llm_keep_alive: str = os.getenv("LLM_KEEP_ALIVE", "30m")            # how long Ollama keeps the model loaded
     llm_timeout: int = int(os.getenv("LLM_TIMEOUT", "600"))             # max seconds without output from Ollama
     llm_load_timeout: int = int(os.getenv("LLM_LOAD_TIMEOUT", "1800"))  # max seconds to load the model
+    history_turns: int = int(os.getenv("HISTORY_TURNS", "6"))           # previous chat messages sent with a question
 
     embed_model: str = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
     embed_dim: int = int(os.getenv("EMBED_DIM", "384"))
@@ -50,7 +51,6 @@ class Settings:
     reranker_enabled: bool = _bool("RERANKER_ENABLED", True)
     reranker_model: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
     rerank_candidates: int = int(os.getenv("RERANK_CANDIDATES", "20"))
-    history_turns: int = int(os.getenv("HISTORY_TURNS", "6"))
 
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
@@ -62,5 +62,4 @@ class Settings:
 
 settings = Settings()
 UPLOAD_DIR = settings.data_dir / "uploads"
-MARKDOWN_DIR = settings.data_dir / "markdown"
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md", ".markdown"}

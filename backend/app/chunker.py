@@ -36,7 +36,7 @@ def _clean_heading(h: str) -> str:
     return h.strip()
 
 
-def split_sections(markdown: str) -> list[tuple[str, str]]:
+def _split_sections(markdown: str) -> list[tuple[str, str]]:
     """Return [(heading_path, body)] keeping code fences intact."""
     sections: list[tuple[str, str]] = []
     stack: list[tuple[int, str]] = []
@@ -122,7 +122,7 @@ def _tail(text: str, n: int) -> str:
 
 def chunk_markdown(markdown: str, chunk_size: int = 1000, overlap: int = 150) -> list[Chunk]:
     chunks: list[Chunk] = []
-    for section, body in split_sections(markdown):
+    for section, body in _split_sections(markdown):
         units: list[str] = []
         for block in _split_blocks(body):
             units.extend([block] if len(block) <= chunk_size else _hard_split(block, chunk_size))

@@ -37,7 +37,7 @@ def rerank(query: str, candidates: list[dict], k: int) -> list[dict]:
     """
     if not candidates:
         return []
-    pairs = [(query, c.get("content") or c["text"]) for c in candidates]
+    pairs = [(query, c["content"]) for c in candidates]
     with _lock:  # the model is shared across request threads
         scores = get_model().predict(pairs, batch_size=32, show_progress_bar=False)
     ranked = sorted(zip(candidates, scores), key=lambda cs: float(cs[1]), reverse=True)[:k]

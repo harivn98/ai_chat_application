@@ -17,12 +17,12 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 **Ingestion** (`POST /documents`, runs in the background; UI polls status)
 
-1. **Convert to Markdown** — PDF via `pymupdf4llm` (keeps headings, lists, tables), TXT wrapped as Markdown (encoding-safe), MD cleaned (front matter removed). The Markdown is stored in MongoDB and in `/data/markdown/<id>.md`.
+1. **Convert to Markdown** — PDF via `pymupdf4llm` (keeps headings, lists, tables), TXT wrapped as Markdown (encoding-safe), MD cleaned (front matter removed). The Markdown is stored in MongoDB.
 2. **Chunk** — heading-aware: split by `#` structure first, then packed into ~1000-char chunks on paragraph/sentence boundaries with 150-char overlap. Code fences and tables stay intact. Each chunk carries its heading path (`Manual > Braking > Pads`) and its position in the Markdown, used to highlight it in the document.
 3. **Add context** (Contextual Retrieval, `CONTEXTUAL_EMBEDDING=true`) — `qwen3:4b-instruct` reads the document and writes one sentence per chunk saying where it fits (e.g. *"This chunk describes the similarity measure used in the sentence-based approach…"*). The context is prepended to the text that gets embedded and BM25-indexed. The answering LLM and the UI still see the original chunk. The document goes first in every prompt, so Ollama reuses its cache and each chunk takes about 1 s on a GPU. Documents longer than `CONTEXT_NUM_CTX` are read in windows that each start with the document's opening.
 4. **Embed** — `BAAI/bge-small-en-v1.5` (384-d, normalised). The model is baked into the backend image, so it runs offline.
 5. **Store** — chunks, contexts and vectors go into MongoDB `ragdb.chunks`, with an Atlas Vector Search index (`cosine`, filtered by `doc_id`).
-6. **Wait for the index** — mongot syncs asynchronously, so the document only flips to `ready` once `$vectorSearch` can see every chunk. **The chat window appears only after this point.**
+6. **Wait for the index** — mongot syncs asynchronously, so the document only flips to `ready` once `$vectorSearch` can see every chunk. The chat opens right after the upload; questions typed before this point wait and are sent once the document is ready.
 
 **Query** (`POST /chat`, streamed as NDJSON)
 
@@ -101,7 +101,7 @@ Changing chunking settings only affects newly uploaded documents.
 | Method | Path | |
 |---|---|---|
 | `POST` | `/documents` | multipart `file` → `{doc_id, status}` (202) |
-| `GET` | `/documents/{id}` | status: `queued → converting → chunking → embedding → storing → indexing → ready` (or `failed` + `error`) |
+| `GET` | `/documents/{id}` | status: `queued → converting → chunking → contextualizing → embedding → storing → indexing → ready` (or `failed` + `error`) |
 | `GET` | `/documents/{id}/markdown` | the converted Markdown |
 | `DELETE` | `/documents/{id}` | removes doc, chunks and files |
 | `POST` | `/chat` | `{doc_id, question, history}` → NDJSON: `sources`, `token`…, `done` / `error` |
@@ -110,24 +110,31 @@ Changing chunking settings only affects newly uploaded documents.
 
 ```
 backend/app/
-  converter.py   PDF/TXT/MD → Markdown
-  chunker.py     heading-aware chunking
-  embeddings.py  bge-small-en-v1.5
-  db.py          MongoDB + vector index creation
+  main.py        FastAPI routes
+  config.py      settings, read from environment variables
+  db.py          MongoDB, vector index creation and sync
   ingest.py      ingestion pipeline + status updates
+  converter.py   PDF/TXT/MD → Markdown
+  chunker.py     heading-aware chunking (each chunk keeps its position in the Markdown)
+  contextual.py  Contextual Retrieval (per-chunk context from a small LLM)
+  embeddings.py  bge-small-en-v1.5
   retrieval.py   BM25 + $vectorSearch + RRF
   reranker.py    cross-encoder reranking of the fused candidates
-  llm.py         prompt + Ollama streaming
-  main.py        FastAPI routes
-  contextual.py  Contextual Retrieval (per-chunk context from a small LLM)
   prejudge.py    YES/NO check: can the retrieved passages answer the question?
+  llm.py         Ollama client (load/unload, completions, streaming) + answering prompt
   evaluate.py    QASPER evaluation (CLI)
+  qasper.py      QASPER dataset download, papers as Markdown, official scoring
 frontend/
-  app/page.tsx                 upload → chat flow
-  app/api/[...path]/route.ts   proxy to the backend (single exposed origin)
-  components/Uploader.tsx      upload + ingestion progress
-  components/ChatWindow.tsx    streaming chat, Markdown with KaTeX math and code highlighting, citations, sources
-  components/DocumentViewer.tsx  source document panel with the cited passage highlighted (lib/markRange.ts)
+  app/page.tsx                     upload → chat flow
+  app/api/[...path]/route.ts       proxy to the backend (single exposed origin)
+  components/Uploader.tsx          file picker + upload
+  components/IngestProgress.tsx    indexing progress, shown in the chat
+  components/ChatWindow.tsx        chat state: question queue, streaming, composer
+  components/AssistantMessage.tsx  answer with Markdown, KaTeX math, code highlighting, citation chips and sources
+  components/DocumentViewer.tsx    source document panel with the cited passage highlighted
+  lib/api.ts                       backend API types and calls
+  lib/answerMarkdown.ts            prepares the answer's Markdown (math delimiters, citation links)
+  lib/markRange.ts                 rehype plugin that highlights a range of the Markdown source
 ```
 
 ## Evaluation (QASPER)

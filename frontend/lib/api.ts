@@ -1,3 +1,5 @@
+// Types and calls for the backend API (proxied under /api by app/api/[...path]/route.ts)
+
 export type DocStatus =
   | "queued"
   | "converting"
@@ -15,33 +17,35 @@ export interface DocInfo {
   status: DocStatus;
   progress: number;
   num_chunks: number | null;
-  contextual?: boolean;
-  context_model?: string | null;
-  context_done?: number | null;
+  contextual: boolean;
+  context_model: string | null;
+  context_done: number | null;
   error: string | null;
-  failed_stage?: DocStatus | null;
+  failed_stage: DocStatus | null;
 }
 
+/** A retrieved passage; `id` is the number the answer cites it with, e.g. [1]. */
 export interface Source {
   id: number;
   section: string;
   text: string;
-  start?: number | null; // position in the document's Markdown (UTF-16 units); null for older uploads
-  end?: number | null;
+  start: number | null; // position in the document's Markdown (UTF-16 units); null for older uploads
+  end: number | null;
   bm25_rank: number | null;
   vector_rank: number | null;
-  rrf: number;
-  fused_rank?: number | null; // position after BM25 + vector fusion, before reranking
+  fused_rank: number | null; // position after BM25 + vector fusion, before reranking
 }
 
-export interface Message {
-  id: string;
+export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
-  sources?: Source[];
-  streaming?: boolean;
-  error?: string;
 }
+
+type StreamEvent =
+  | { type: "sources"; sources: Source[] }
+  | { type: "token"; content: string }
+  | { type: "done" }
+  | { type: "error"; message: string };
 
 async function errorText(res: Response): Promise<string> {
   try {
@@ -76,14 +80,8 @@ export async function deleteDocument(docId: string): Promise<void> {
   await fetch(`/api/documents/${docId}`, { method: "DELETE" });
 }
 
-type StreamEvent =
-  | { type: "sources"; sources: Source[] }
-  | { type: "token"; content: string }
-  | { type: "done" }
-  | { type: "error"; message: string };
-
 export async function streamChat(
-  body: { doc_id: string; question: string; history: { role: string; content: string }[] },
+  body: { doc_id: string; question: string; history: ChatTurn[] },
   onEvent: (e: StreamEvent) => void,
   signal: AbortSignal,
 ): Promise<void> {

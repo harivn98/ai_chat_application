@@ -1,161 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
+import AssistantMessage from "@/components/AssistantMessage";
 import DocumentViewer, { Highlight } from "@/components/DocumentViewer";
 import IngestProgress from "@/components/IngestProgress";
-import { DocInfo, Message, Source, streamChat } from "@/lib/api";
+import { ChatTurn, DocInfo, Source, streamChat } from "@/lib/api";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-// A question asked while the document is still being indexed waits here and is sent once it is ready
-type ChatMessage = Message & { queued?: boolean; question?: string };
-
-const remarkPlugins = [remarkGfm, remarkMath];
-// Math is rendered with KaTeX; fenced code with a language (```python) is syntax highlighted
-const rehypePlugins = [rehypeKatex, rehypeHighlight];
-
-// Code (fenced blocks, also an unclosed one while streaming, and inline spans) is never rewritten
-const CODE = /(```[\s\S]*?(?:```|$)|`[^`\n]*`)/;
-const MATH = /(\$\$[\s\S]*?\$\$|(?<!\\)\$[^$\n]+?(?<!\\)\$)/;
-
-// Prepare the model's Markdown outside code: \( \) and \[ \] become $ and $$ (the only math delimiters
-// remark-math reads), "$5 and $10" stays money instead of math, and "[3]" citations outside math become
-// in-page links we render as clickable chips
-function prepareMarkdown(md: string) {
-  return md
-    .split(CODE)
-    .map((part, i) => {
-      if (i % 2) return part;
-      const text = part
-        .replace(/\\\[([\s\S]*?)\\\]/g, (_, m) => `\n$$\n${m.trim()}\n$$\n`)
-        .replace(/\\\(([\s\S]*?)\\\)/g, (_, m) => `$${m.trim()}$`)
-        .replace(/(?<![\\$])\$(?=\d[\d.,]*(?:[\s;:!?)\]]|$))/g, "\\$");
-      return text
-        .split(MATH)
-        .map((t, j) => (j % 2 ? t : t.replace(/\[(\d{1,2})\](?!\()/g, "[[$1]](#cite-$1)")))
-        .join("");
-    })
-    .join("");
-}
-
-type ShowSource = (s: Source) => void;
-
-function SourceList({
-  sources,
-  active,
-  id,
-  onShow,
-}: {
-  sources: Source[];
-  active: number | null;
+// A question asked while the document is still being indexed waits in a `queued` assistant message
+// (with the `question` it answers) and is sent once the document is ready
+type ChatMessage = ChatTurn & {
   id: string;
-  onShow: ShowSource;
-}) {
-  return (
-    <ol className="sources">
-      {sources.map((s) => (
-        <li key={s.id} id={`${id}-src-${s.id}`} className={active === s.id ? "source active" : "source"}>
-          <div className="source-head">
-            <span className="source-num">{s.id}</span>
-            <span className="source-section">{s.section || "Untitled section"}</span>
-            <span className="ranks">
-              {s.bm25_rank ? <span className="rank" title="BM25 rank">BM25 #{s.bm25_rank}</span> : null}
-              {s.vector_rank ? <span className="rank" title="Vector rank">Vector #{s.vector_rank}</span> : null}
-              {s.fused_rank ? (
-                <span className="rank" title="Rank after BM25 + vector fusion, before the reranker">
-                  Fused #{s.fused_rank}
-                </span>
-              ) : null}
-            </span>
-            {s.start != null && (
-              <button className="source-show" onClick={() => onShow(s)}>
-                Show in document
-              </button>
-            )}
-          </div>
-          <p className="source-text">{s.text}</p>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function AssistantMessage({ msg, onShowSource }: { msg: ChatMessage; onShowSource: ShowSource }) {
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<number | null>(null);
-
-  // A citation opens the document at the cited passage; uploads indexed before positions were stored
-  // fall back to the passage list
-  function cite(n: number) {
-    const source = msg.sources?.find((s) => s.id === n);
-    if (source?.start != null) return onShowSource(source);
-    setOpen(true);
-    setActive(n);
-    requestAnimationFrame(() =>
-      document.getElementById(`${msg.id}-src-${n}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
-    );
-  }
-
-  const thinking = msg.streaming && !msg.content;
-  return (
-    <div className="msg msg-assistant">
-      <div className="avatar" aria-hidden>
-        AI
-      </div>
-      <div className="msg-body">
-        {msg.queued ? (
-          <p className="queued muted">Waiting for the document to finish indexing. This question is sent automatically.</p>
-        ) : thinking ? (
-          <div className="typing" aria-label="Generating">
-            <span />
-            <span />
-            <span />
-          </div>
-        ) : (
-          <div className={`markdown ${msg.streaming ? "streaming" : ""}`}>
-            <ReactMarkdown
-              remarkPlugins={remarkPlugins}
-              rehypePlugins={rehypePlugins}
-              components={{
-                a: ({ href, children }) => {
-                  if (href?.startsWith("#cite-")) {
-                    const n = Number(href.slice(6));
-                    return (
-                      <button className="cite" onClick={() => cite(n)} title={`Show source ${n}`}>
-                        {n}
-                      </button>
-                    );
-                  }
-                  return (
-                    <a href={href} target="_blank" rel="noreferrer">
-                      {children}
-                    </a>
-                  );
-                },
-              }}
-            >
-              {prepareMarkdown(msg.content)}
-            </ReactMarkdown>
-          </div>
-        )}
-        {msg.error && <p className="error">{msg.error}</p>}
-        {msg.sources && msg.sources.length > 0 && (
-          <div className="sources-wrap">
-            <button className="sources-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-              {open ? "Hide" : "Show"} {msg.sources.length} retrieved passages
-            </button>
-            {open && <SourceList sources={msg.sources} active={active} id={msg.id} onShow={onShowSource} />}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+  sources?: Source[];
+  streaming?: boolean;
+  error?: string;
+  queued?: boolean;
+  question?: string;
+};
 
 export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNewDocument: () => void }) {
   const ready = doc.status === "ready";
@@ -170,13 +32,11 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
   // Source document panel: null = closed; highlight null = whole document without a highlight
   const [viewer, setViewer] = useState<{ highlight: Highlight | null } | null>(null);
   const closeViewer = useCallback(() => setViewer(null), []);
-  const showSource = useCallback(
-    (s: Source) => {
-      const label = `passage ${s.id} · ${s.section || "Untitled section"}`;
-      setViewer({ highlight: { start: s.start!, end: s.end!, label } });
-    },
-    [],
-  );
+
+  function showSource(s: Source) {
+    const label = `passage ${s.id} · ${s.section || "Untitled section"}`;
+    setViewer({ highlight: { start: s.start!, end: s.end!, label } });
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -229,7 +89,7 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
     );
   }, [failed]);
 
-  async function ask(botId: string, question: string, history: { role: string; content: string }[]) {
+  async function ask(botId: string, question: string, history: ChatTurn[]) {
     sendingRef.current = true;
     update(botId, () => ({ queued: false, streaming: true }));
     setBusy(true);

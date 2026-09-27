@@ -1,20 +1,44 @@
 """Ingestion pipeline: file -> Markdown -> chunks -> (contexts) -> embeddings -> MongoDB -> vector index sync."""
 import logging
-import threading
-import time
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pymongo.errors import OperationFailure
+import numpy as np
 
 from . import contextual, db, llm, retrieval
-from .chunker import chunk_markdown
-from .config import MARKDOWN_DIR, settings
+from .chunker import Chunk, chunk_markdown
+from .config import settings
 from .contextual import ContextError, contextualize, indexed_content
 from .converter import ConversionError, to_markdown
 from .embeddings import embed_passages
 
 log = logging.getLogger("ingest")
+
+EMBED_BATCH = 64  # chunks embedded between two progress updates
+
+
+def store_chunks(
+    doc_id: str, chunks: list[Chunk], contexts: list[str], contents: list[str], vectors: Iterable[np.ndarray]
+) -> None:
+    """Replace the document's chunks in MongoDB (the evaluation stores its papers the same way)."""
+    db.chunks().delete_many({"doc_id": doc_id})
+    db.chunks().insert_many(
+        [
+            {
+                "doc_id": doc_id,
+                "index": c.index,
+                "section": c.section,
+                "text": c.text,
+                "start": c.start,
+                "end": c.end,
+                "context": ctx,
+                "content": content,
+                "embedding": v.tolist(),
+            }
+            for c, ctx, content, v in zip(chunks, contexts, contents, vectors)
+        ]
+    )
 
 
 def _status(doc_id: str, status: str, progress: int, **extra):
@@ -24,64 +48,22 @@ def _status(doc_id: str, status: str, progress: int, **extra):
     )
 
 
-def _wait_until_searchable(doc_id: str, expected: int, timeout_s: int = 120) -> bool:
-    """mongot syncs asynchronously; only report 'ready' once the vector index sees every chunk."""
-    if not retrieval.vector_index_ready:
-        return True
-    probe = [0.0] * settings.embed_dim
-    probe[0] = 1.0
-    pipeline = [
-        {
-            "$vectorSearch": {
-                "index": settings.vector_index,
-                "path": "embedding",
-                "queryVector": probe,
-                "exact": True,
-                "limit": expected,
-                "filter": {"doc_id": doc_id},
-            }
-        },
-        {"$count": "n"},
-    ]
-    deadline = time.time() + timeout_s
-    while time.time() < deadline:
-        try:
-            res = list(db.chunks().aggregate(pipeline))
-            if res and res[0]["n"] >= expected:
-                return True
-        except OperationFailure as e:
-            log.warning("waiting for vector index: %s", e)
-        time.sleep(1)
-    return False
-
-
-def _free_gpu_for_chat() -> None:
-    """As soon as contextualizing ends: unload the context model and start loading the answering model
-    (which also does the pre-judge) in the background, so it is ready before the first question."""
-    threading.Thread(target=_prepare_for_chat, daemon=True).start()
-
-
-def _prepare_for_chat() -> None:
-    if contextual.hand_over() is None:
-        return  # another upload is still contextualizing; it hands over when it finishes
-    try:
-        started = time.perf_counter()
-        llm.warm_up()
-        log.info("LLM %s loaded after contextualizing in %.0fs", settings.llm_model, time.perf_counter() - started)
-    except Exception as e:  # noqa: BLE001
-        log.warning("Could not preload %s: %s", settings.llm_model, e)
+def _switch_to_answering_model() -> None:
+    """Right after contextualizing: unload the context model and start loading the answering model (which also
+    does the pre-judge), so it is ready before the first question. While another upload is still contextualizing,
+    nothing happens here; that upload switches when it finishes."""
+    if contextual.hand_over() is not None:
+        llm.load_in_background(settings.llm_model, settings.llm_num_ctx, "after contextualizing")
 
 
 def ingest(doc_id: str, path: Path, original_name: str) -> None:
     if settings.contextual_embedding:
         # contextualizing is the next model step: load the context model while converting and chunking
-        contextual.warm_up_in_background("for a new upload")
+        llm.load_in_background(settings.context_model, settings.context_num_ctx, "for a new upload")
     stage = "converting"
     try:
-        _status(doc_id, "converting", 10)
+        _status(doc_id, stage, 10)
         markdown = to_markdown(path, original_name)
-        MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
-        (MARKDOWN_DIR / f"{doc_id}.md").write_text(markdown, encoding="utf-8")
         db.documents().update_one({"_id": doc_id}, {"$set": {"markdown": markdown}})
 
         stage = "chunking"
@@ -101,40 +83,23 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
                                                 context_done=done),
                 )
             finally:
-                _free_gpu_for_chat()
+                _switch_to_answering_model()
         contents = [indexed_content(c, ctx) for c, ctx in zip(chunks, contexts)]
 
         stage = "embedding"
         _status(doc_id, stage, 60, num_chunks=len(chunks))
         vectors = []
-        batch = 64
-        for i in range(0, len(chunks), batch):
-            vectors.extend(embed_passages(contents[i:i + batch]))
-            _status(doc_id, "embedding", 60 + int(20 * min(i + batch, len(chunks)) / len(chunks)))
+        for i in range(0, len(chunks), EMBED_BATCH):
+            vectors.extend(embed_passages(contents[i:i + EMBED_BATCH]))
+            _status(doc_id, stage, 60 + int(20 * min(i + EMBED_BATCH, len(chunks)) / len(chunks)))
 
         stage = "storing"
         _status(doc_id, stage, 85)
-        db.chunks().delete_many({"doc_id": doc_id})
-        db.chunks().insert_many(
-            [
-                {
-                    "doc_id": doc_id,
-                    "index": c.index,
-                    "section": c.section,
-                    "text": c.text,
-                    "start": c.start,
-                    "end": c.end,
-                    "context": ctx,
-                    "content": content,
-                    "embedding": v.tolist(),
-                }
-                for c, ctx, content, v in zip(chunks, contexts, contents, vectors)
-            ]
-        )
+        store_chunks(doc_id, chunks, contexts, contents, vectors)
 
         stage = "indexing"
         _status(doc_id, stage, 92)
-        if not _wait_until_searchable(doc_id, len(chunks)):
+        if not db.wait_until_searchable(doc_id, len(chunks)):
             log.warning("vector index did not catch up for %s; local fallback will cover it", doc_id)
         retrieval.bm25_cache.drop(doc_id)
         retrieval.bm25_cache.get(doc_id)  # warm the BM25 index

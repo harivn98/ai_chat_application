@@ -10,16 +10,7 @@ const STEPS: { key: DocStatus; label: string }[] = [
   { key: "storing", label: "Storing in MongoDB" },
   { key: "indexing", label: "Syncing vector index" },
 ];
-const ORDER: DocStatus[] = [
-  "queued",
-  "converting",
-  "chunking",
-  "contextualizing",
-  "embedding",
-  "storing",
-  "indexing",
-  "ready",
-];
+const ORDER: DocStatus[] = ["queued", ...STEPS.map((s) => s.key), "ready"];
 
 /** Ingestion progress for a document that is still being indexed (or failed). */
 export default function IngestProgress({ doc, onRetry }: { doc: DocInfo; onRetry: () => void }) {

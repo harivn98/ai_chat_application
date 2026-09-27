@@ -32,7 +32,7 @@ def _normalise(md: str) -> str:
     return md.strip() + "\n"
 
 
-def pdf_to_markdown(path: Path) -> str:
+def _pdf_to_markdown(path: Path) -> str:
     import pymupdf4llm  # imported lazily: heavy import
 
     md = pymupdf4llm.to_markdown(str(path), show_progress=False)
@@ -43,7 +43,7 @@ def pdf_to_markdown(path: Path) -> str:
     return md
 
 
-def txt_to_markdown(raw: bytes, title: str) -> str:
+def _txt_to_markdown(raw: bytes, title: str) -> str:
     text = _decode(raw)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
@@ -55,7 +55,7 @@ def txt_to_markdown(raw: bytes, title: str) -> str:
     return f"# {title}\n\n" + "\n\n".join(body)
 
 
-def md_to_markdown(raw: bytes) -> str:
+def _md_to_markdown(raw: bytes) -> str:
     text = _decode(raw)
     # Drop YAML front matter; it is metadata, not content
     return re.sub(r"\A---\n.*?\n---\n", "", text, count=1, flags=re.S)
@@ -65,11 +65,11 @@ def to_markdown(path: Path, original_name: str) -> str:
     ext = path.suffix.lower()
     title = Path(original_name).stem.replace("_", " ").replace("-", " ").strip() or "Document"
     if ext == ".pdf":
-        md = pdf_to_markdown(path)
+        md = _pdf_to_markdown(path)
     elif ext == ".txt":
-        md = txt_to_markdown(path.read_bytes(), title)
+        md = _txt_to_markdown(path.read_bytes(), title)
     elif ext in {".md", ".markdown"}:
-        md = md_to_markdown(path.read_bytes())
+        md = _md_to_markdown(path.read_bytes())
     else:
         raise ConversionError(f"Unsupported file type: {ext}")
     md = _normalise(md)

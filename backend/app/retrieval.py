@@ -9,7 +9,7 @@ import snowballstemmer
 from pymongo.errors import OperationFailure
 from rank_bm25 import BM25Plus
 
-from . import db
+from . import db, reranker
 from .config import settings
 from .embeddings import embed_query
 
@@ -69,7 +69,6 @@ class _BM25Cache:
 
 
 bm25_cache = _BM25Cache()
-vector_index_ready = False  # set by main.py at startup
 
 
 def bm25_search(doc_id: str, query: str, k: int) -> list[tuple[int, float]]:
@@ -116,7 +115,7 @@ def _vector_search_local(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[in
 def vector_search(doc_id: str, query: str, k: int, min_score: float) -> list[tuple[int, float]]:
     qvec = embed_query(query)
     hits: list[tuple[int, float]] = []
-    if vector_index_ready:
+    if db.vector_index_ready:
         try:
             hits = _vector_search_mongo(doc_id, qvec, k)
         except OperationFailure as e:
@@ -147,11 +146,18 @@ def hybrid_search(doc_id: str, query: str, k: int | None = None) -> list[dict]:
     _, rows = bm25_cache.get(doc_id)
     by_index = {r["index"]: r for r in rows}
     results = []
-    for rank, f in enumerate(fused, start=1):
-        row = by_index.get(f["index"])
+    for rank, hit in enumerate(fused, start=1):
+        row = by_index.get(hit["index"])
         if row:
-            results.append({**f, "fused_rank": rank, "section": row.get("section", ""), "text": row["text"],
-                            "content": row["content"], "start": row.get("start"), "end": row.get("end")})
+            results.append({
+                **hit,
+                "fused_rank": rank,
+                "section": row.get("section", ""),
+                "text": row["text"],
+                "content": row["content"],  # the indexed text (context + heading path + chunk text)
+                "start": row.get("start"),  # position in the Markdown; None for uploads from before it was stored
+                "end": row.get("end"),
+            })
     return results
 
 
@@ -160,7 +166,5 @@ def search(doc_id: str, query: str) -> list[dict]:
     of the top RERANK_CANDIDATES fused chunks down to TOP_K."""
     if not settings.reranker_enabled:
         return hybrid_search(doc_id, query)
-    from . import reranker
-
     candidates = hybrid_search(doc_id, query, settings.rerank_candidates)
     return reranker.rerank(query, candidates, settings.top_k)

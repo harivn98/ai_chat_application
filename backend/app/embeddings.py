@@ -14,9 +14,7 @@ def get_model():
     from sentence_transformers import SentenceTransformer
 
     model = SentenceTransformer(settings.embed_model, device="cpu")
-    # sentence-transformers renamed this method; support both names
-    get_dim = getattr(model, "get_embedding_dimension", None) or model.get_sentence_embedding_dimension
-    dim = get_dim()
+    dim = model.get_embedding_dimension()
     if dim != settings.embed_dim:
         raise RuntimeError(f"Embedding dim mismatch: model={dim}, EMBED_DIM={settings.embed_dim}")
     return model

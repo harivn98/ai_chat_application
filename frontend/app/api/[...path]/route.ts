@@ -3,7 +3,6 @@ import { NextRequest } from "next/server";
 // Proxies /api/* to the FastAPI backend inside the Docker network, so the
 // browser only ever talks to the frontend origin (no CORS, one exposed port).
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 const PASS_HEADERS = ["content-type", "cache-control", "content-disposition"];
