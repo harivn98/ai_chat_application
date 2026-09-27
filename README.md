@@ -65,6 +65,8 @@ On Windows this needs Docker Desktop with the WSL 2 backend and a current NVIDIA
 | `LLM_MODEL` | `qwen3:8b` | Any Ollama chat model |
 | `LLM_THINK` | `false` | `true` enables Qwen3 reasoning (slower; reasoning is not shown) |
 | `LLM_NUM_CTX` | `8192` | Ollama context window |
+| `LLM_KEEP_ALIVE` | `30m` | How long Ollama keeps the model loaded after the last request |
+| `LLM_TIMEOUT` / `LLM_LOAD_TIMEOUT` | `600` / `1800` | Seconds to wait for Ollama output / for the model to load (it is preloaded when the backend starts) |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1000` / `150` | Characters |
 | `TOP_K` | `5` | Passages sent to the LLM after fusion |
 | `BM25_CANDIDATES` | `10` | Chunks taken from BM25 before fusion |

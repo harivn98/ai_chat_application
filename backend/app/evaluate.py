@@ -201,6 +201,7 @@ def _judge(prompt: str) -> str:
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
         "think": False,
+        "keep_alive": settings.llm_keep_alive,
         "options": {"temperature": 0, "num_ctx": settings.llm_num_ctx},
     }
     timeout = httpx.Timeout(connect=10, read=600, write=60, pool=10)
@@ -208,6 +209,13 @@ def _judge(prompt: str) -> str:
     if r.status_code != 200:
         raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
     return r.json()["message"]["content"]
+
+
+def _load_model(model: str) -> None:
+    """Load a model into Ollama before timing anything; on CPU this alone can take several minutes."""
+    st = _Status(f"Loading {model} into Ollama memory (CPU-only can take several minutes)…")
+    llm.warm_up(model)
+    st.done(f"{model} loaded in {_fmt_secs(st.elapsed)}")
 
 
 def _parse_verdict(text: str) -> bool | None:
@@ -275,7 +283,7 @@ class _Status:
 
 
 # ------------------------------------------------------------------ one question
-def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str, first_call: bool) -> dict:
+def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str) -> dict:
     question = qa["question"].strip()
     refs = _references(qa)
 
@@ -284,9 +292,8 @@ def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str, first_call: 
     retrieval_s = time.perf_counter() - t0
     _say(f"{indent}retrieval: {len(passages)} chunks in {retrieval_s:.2f}s")
 
-    hint = f" (first call loads {settings.llm_model} into memory, can take minutes)" if first_call else ""
     st = _Status(f"{indent}generating…")
-    st.set(f"waiting for first token{hint}")
+    st.set("waiting for first token")
     pieces: list[str] = []
     t0 = time.perf_counter()
     for piece in llm.stream_chat(llm.build_messages(question, passages, [])):
@@ -387,8 +394,10 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     embedding_times: list[float] = []
     rag_times: list[float] = []
 
+    _load_model(settings.llm_model)
+
     # Phase 1: ingest each paper once, then ask all of its questions
-    _say(f"\n--- Phase 1/2: answering questions ---")
+    _say("\n--- Phase 1/2: answering questions ---")
     for n, pid in enumerate(paper_ids, start=1):
         paper = data[pid]
         doc_id = f"eval-{run_id}-{pid}"
@@ -422,7 +431,7 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
                 _say(f"  [Q {done_q + 1}/{total_q}{eta}] {_short(qa['question'])}")
                 t0 = time.perf_counter()
                 try:
-                    row = _ask(doc_id, qa, paragraphs, indent="      ", first_call=not rows)
+                    row = _ask(doc_id, qa, paragraphs, indent="      ")
                 except Exception as e:  # noqa: BLE001
                     log.exception("Question %s failed", qa["question_id"])
                     _say(f"      FAILED: {e}")
@@ -439,6 +448,8 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
 
     # Phase 2: LLM judge (kept separate so Ollama doesn't swap models between every question)
     _say(f"\n--- Phase 2/2: judging answers with {settings.judge_model} ---")
+    if settings.judge_model != settings.llm_model:
+        _load_model(settings.judge_model)
     for n, row in enumerate(rows, start=1):
         if "error" in row:
             _say(f"  [judge {n}/{len(rows)}] skipped (question failed)")

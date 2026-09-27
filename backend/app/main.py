@@ -1,5 +1,7 @@
 import json
 import logging
+import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -25,8 +27,19 @@ async def lifespan(_: FastAPI):
     db.client().admin.command("ping")
     retrieval.vector_index_ready = db.ensure_vector_index()
     get_model()  # load the embedding model before accepting traffic
+    # Load the LLM in the background so the first chat doesn't time out while Ollama loads it (slow on CPU)
+    threading.Thread(target=_warm_up_llm, daemon=True).start()
     log.info("Backend ready (vector index: %s, llm: %s)", retrieval.vector_index_ready, settings.llm_model)
     yield
+
+
+def _warm_up_llm():
+    try:
+        started = time.perf_counter()
+        llm.warm_up()
+        log.info("LLM %s loaded in %.0fs", settings.llm_model, time.perf_counter() - started)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Could not preload %s: %s", settings.llm_model, e)
 
 
 app = FastAPI(title="RAG AI_chat_application API", lifespan=lifespan)

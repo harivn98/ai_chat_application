@@ -70,17 +70,36 @@ class _ThinkFilter:
         return rest
 
 
+def warm_up(model: str | None = None) -> None:
+    """Load a model into Ollama's memory without generating anything.
+
+    On CPU, loading an 8B model can take longer than a request timeout; if the client gives up,
+    Ollama aborts the half-finished load and the next request starts over. Loading it once up front
+    (with a generous timeout) avoids that loop. num_ctx must match the real requests or Ollama reloads.
+    """
+    payload = {
+        "model": model or settings.llm_model,
+        "keep_alive": settings.llm_keep_alive,
+        "options": {"num_ctx": settings.llm_num_ctx},
+    }
+    timeout = httpx.Timeout(connect=10, read=settings.llm_load_timeout, write=30, pool=10)
+    r = httpx.post(f"{settings.ollama_url}/api/generate", json=payload, timeout=timeout)
+    if r.status_code != 200:
+        raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
+
+
 def stream_chat(messages: list[dict]) -> Iterator[str]:
     payload = {
         "model": settings.llm_model,
         "messages": messages,
         "stream": True,
         "think": settings.llm_think,
+        "keep_alive": settings.llm_keep_alive,
         "options": {"temperature": settings.llm_temperature, "num_ctx": settings.llm_num_ctx},
     }
     filt = _ThinkFilter()
     started = False
-    timeout = httpx.Timeout(connect=10, read=300, write=30, pool=10)
+    timeout = httpx.Timeout(connect=10, read=settings.llm_timeout, write=30, pool=10)
     with httpx.stream("POST", f"{settings.ollama_url}/api/chat", json=payload, timeout=timeout) as r:
         if r.status_code != 200:
             raise RuntimeError(f"Ollama error {r.status_code}: {r.read().decode(errors='ignore')[:300]}")

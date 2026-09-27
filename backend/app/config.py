@@ -19,6 +19,9 @@ class Settings:
     llm_num_ctx: int = int(os.getenv("LLM_NUM_CTX", "8192"))
     llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.2"))
     llm_think: bool = _bool("LLM_THINK", False)
+    llm_keep_alive: str = os.getenv("LLM_KEEP_ALIVE", "30m")          # how long Ollama keeps the model loaded
+    llm_timeout: int = int(os.getenv("LLM_TIMEOUT", "600"))             # max seconds without output from Ollama
+    llm_load_timeout: int = int(os.getenv("LLM_LOAD_TIMEOUT", "1800"))  # max seconds to load the model
 
     embed_model: str = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
     embed_dim: int = int(os.getenv("EMBED_DIM", "384"))
