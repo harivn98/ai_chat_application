@@ -29,8 +29,10 @@ class Settings:
 
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))        # characters
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))   # characters
-    top_k: int = int(os.getenv("TOP_K", "6"))                     # chunks sent to the LLM
-    candidates_per_retriever: int = int(os.getenv("CANDIDATES", "20"))
+    top_k: int = int(os.getenv("TOP_K", "5"))                     # chunks sent to the LLM
+    bm25_candidates: int = int(os.getenv("BM25_CANDIDATES", "10"))
+    vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "20"))  # upper bound before the score cutoff
+    vector_min_score: float = float(os.getenv("VECTOR_MIN_SCORE", "0.85"))  # raw cosine similarity
     rrf_k: int = int(os.getenv("RRF_K", "60"))
     history_turns: int = int(os.getenv("HISTORY_TURNS", "6"))
 

@@ -25,9 +25,9 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 **Query** (`POST /chat`, streamed as NDJSON)
 
-1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 20.
-2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20.
-3. **Reciprocal Rank Fusion** (k=60) → top 6 passages.
+1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 10.
+2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20, keeping only chunks with cosine similarity ≥ 0.85.
+3. **Reciprocal Rank Fusion** (k=60) → top 5 passages.
 4. **Qwen3 8B** (Ollama, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank; clicking a citation jumps to it.
 
 ## Run it
@@ -66,7 +66,9 @@ On Windows this needs Docker Desktop with the WSL 2 backend and a current NVIDIA
 | `LLM_THINK` | `false` | `true` enables Qwen3 reasoning (slower; reasoning is not shown) |
 | `LLM_NUM_CTX` | `8192` | Ollama context window |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1000` / `150` | Characters |
-| `TOP_K` | `6` | Passages sent to the LLM after fusion |
+| `TOP_K` | `5` | Passages sent to the LLM after fusion |
+| `BM25_CANDIDATES` | `10` | Chunks taken from BM25 before fusion |
+| `VECTOR_MIN_SCORE` | `0.85` | Minimum cosine similarity for embedding hits |
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
 
 Changing chunking settings only affects newly uploaded documents.

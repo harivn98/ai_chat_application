@@ -57,7 +57,9 @@ services:
       LLM_THINK: ${LLM_THINK:-false}
       CHUNK_SIZE: ${CHUNK_SIZE:-1000}
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-150}
-      TOP_K: ${TOP_K:-6}
+      TOP_K: ${TOP_K:-5}
+      BM25_CANDIDATES: ${BM25_CANDIDATES:-10}
+      VECTOR_MIN_SCORE: ${VECTOR_MIN_SCORE:-0.85}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
     volumes:
       - app_data:/data

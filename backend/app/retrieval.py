@@ -99,7 +99,8 @@ def _vector_search_mongo(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[in
         },
         {"$project": {"_id": 0, "index": 1, "score": {"$meta": "vectorSearchScore"}}},
     ]
-    return [(r["index"], float(r["score"])) for r in db.chunks().aggregate(pipeline)]
+    # Atlas reports cosine as (1 + cos) / 2; convert back so scores match the local fallback
+    return [(r["index"], 2.0 * float(r["score"]) - 1.0) for r in db.chunks().aggregate(pipeline)]
 
 
 def _vector_search_local(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[int, float]]:
@@ -112,16 +113,17 @@ def _vector_search_local(doc_id: str, qvec: np.ndarray, k: int) -> list[tuple[in
     return [(rows[i]["index"], float(sims[i])) for i in order]
 
 
-def vector_search(doc_id: str, query: str, k: int) -> list[tuple[int, float]]:
+def vector_search(doc_id: str, query: str, k: int, min_score: float) -> list[tuple[int, float]]:
     qvec = embed_query(query)
+    hits: list[tuple[int, float]] = []
     if vector_index_ready:
         try:
             hits = _vector_search_mongo(doc_id, qvec, k)
-            if hits:
-                return hits
         except OperationFailure as e:
             log.warning("$vectorSearch failed, using local fallback: %s", e)
-    return _vector_search_local(doc_id, qvec, k)
+    if not hits:
+        hits = _vector_search_local(doc_id, qvec, k)
+    return [(idx, score) for idx, score in hits if score >= min_score]
 
 
 def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -> list[dict]:
@@ -136,10 +138,9 @@ def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -
 
 
 def hybrid_search(doc_id: str, query: str) -> list[dict]:
-    n = settings.candidates_per_retriever
     rankings = {
-        "bm25": bm25_search(doc_id, query, n),
-        "vector": vector_search(doc_id, query, n),
+        "bm25": bm25_search(doc_id, query, settings.bm25_candidates),
+        "vector": vector_search(doc_id, query, settings.vector_candidates, settings.vector_min_score),
     }
     fused = rrf_fuse(rankings, settings.top_k, settings.rrf_k)
     _, rows = bm25_cache.get(doc_id)
