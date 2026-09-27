@@ -12,10 +12,13 @@ Metrics:
   - Retrieval recall@k  share of gold evidence paragraphs found anywhere in the top-k retrieved chunks
   - Judge correct LLM judge: does the answer convey the same information as a reference answer?
 
-One summary row per run is appended to <EVAL_DIR>/results.md; per-question details go to
-<EVAL_DIR>/runs/<run_id>.json.
+Each run writes to <EVAL_DIR> (evaluation_metrics/):
+  <run_id>.json  complete details: metrics, timings, environment variables, and every question's
+                 answer, references, scores and judge output
+  results.md     one row per run, for side-by-side comparison
 """
 import argparse
+import dataclasses
 import io
 import json
 import logging
@@ -279,10 +282,21 @@ def _pct(v: float | None) -> str:
     return "–" if v is None else f"{100 * v:.1f}"
 
 
+def _environment() -> dict[str, str]:
+    """Every backend setting under its environment variable name (credentials masked)."""
+    env = {}
+    for f in dataclasses.fields(settings):
+        value = str(getattr(settings, f.name))
+        if f.name == "mongo_uri":
+            value = re.sub(r"//([^:/@]+):[^@]*@", r"//\1:***@", value)
+        env[f.name.upper()] = value
+    return env
+
+
 def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     results_md = settings.eval_dir / "results.md"
-    if run_id in _existing_run_ids(results_md):
-        raise SystemExit(f"Run ID '{run_id}' already exists in {results_md}; choose another.")
+    if run_id in _existing_run_ids(results_md) or (settings.eval_dir / f"{run_id}.json").exists():
+        raise SystemExit(f"Run ID '{run_id}' already exists in {settings.eval_dir}; choose another.")
 
     data = _load_split(split)
     paper_ids = sorted(random.Random(seed).sample(sorted(data), min(num_papers, len(data))))
@@ -378,6 +392,8 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
         "judge_errors": sum(1 for r in ok if r.get("judge_correct") is None),
     }
 
+    env = _environment()
+    summary["environment"] = env
     s = summary
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     line = (
@@ -397,14 +413,13 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     with results_md.open("a", encoding="utf-8") as f:
         f.write(line)
 
-    details = settings.eval_dir / "runs" / f"{run_id}.json"
-    details.parent.mkdir(parents=True, exist_ok=True)
+    details = settings.eval_dir / f"{run_id}.json"
     details.write_text(json.dumps({"summary": summary, "questions": rows}, indent=2, ensure_ascii=False),
                        encoding="utf-8")
 
     print(RESULTS_HEADER.splitlines()[-2])
     print(line, end="")
-    print(f"\nSaved to {results_md} (details: {details})")
+    print(f"\nSaved {details} (complete details)\n      {results_md} (side-by-side comparison)")
 
 
 def main():

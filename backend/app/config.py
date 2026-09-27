@@ -41,7 +41,7 @@ class Settings:
 
     # QASPER evaluation (python -m app.evaluate)
     judge_model: str = os.getenv("JUDGE_MODEL", os.getenv("LLM_MODEL", "qwen3:8b"))
-    eval_dir: Path = Path(os.getenv("EVAL_DIR", str(Path(__file__).resolve().parents[2] / "evaluation")))
+    eval_dir: Path = Path(os.getenv("EVAL_DIR", str(Path(__file__).resolve().parents[2] / "evaluation_metrics")))
 
 
 settings = Settings()

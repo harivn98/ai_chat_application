@@ -120,8 +120,8 @@ Each sampled paper is converted to Markdown and ingested like an upload (chunk, 
 
 Notes:
 
-- One row per run is appended to `evaluation/results.md`. Run IDs must be unique.
-- Per-question answers, references and judge output go to `evaluation/runs/<run-id>.json`.
+- Each run creates `evaluation_metrics/<run-id>.json` with the complete details: metrics, timings, all the environment variables it ran with (MongoDB password masked), and every question's answer, references, scores and judge output. Run IDs must be unique.
+- `evaluation_metrics/results.md` gets one row per run, for comparing runs side by side.
 - Keep `--seed` fixed to compare runs on the same papers. `--split validation` uses the dev set instead of test.
 - `JUDGE_MODEL` defaults to the answering model. A model judging its own answers is lenient, so use a different one when possible (`docker compose exec ollama ollama pull <model>`).
 
