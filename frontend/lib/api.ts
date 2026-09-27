@@ -2,6 +2,7 @@ export type DocStatus =
   | "queued"
   | "converting"
   | "chunking"
+  | "contextualizing"
   | "embedding"
   | "storing"
   | "indexing"
@@ -14,6 +15,9 @@ export interface DocInfo {
   status: DocStatus;
   progress: number;
   num_chunks: number | null;
+  contextual?: boolean;
+  context_model?: string | null;
+  context_done?: number | null;
   error: string | null;
   failed_stage?: DocStatus | null;
 }

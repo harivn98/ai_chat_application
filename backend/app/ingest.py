@@ -1,4 +1,4 @@
-"""Ingestion pipeline: file -> Markdown -> chunks -> embeddings -> MongoDB -> vector index sync."""
+"""Ingestion pipeline: file -> Markdown -> chunks -> (contexts) -> embeddings -> MongoDB -> vector index sync."""
 import logging
 import time
 from datetime import datetime, timezone
@@ -9,6 +9,7 @@ from pymongo.errors import OperationFailure
 from . import db, retrieval
 from .chunker import chunk_markdown
 from .config import MARKDOWN_DIR, settings
+from .contextual import ContextError, contextualize, indexed_content
 from .converter import ConversionError, to_markdown
 from .embeddings import embed_passages
 
@@ -63,19 +64,28 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
         db.documents().update_one({"_id": doc_id}, {"$set": {"markdown": markdown}})
 
         stage = "chunking"
-        _status(doc_id, stage, 25)
+        _status(doc_id, stage, 20)
         chunks = chunk_markdown(markdown, settings.chunk_size, settings.chunk_overlap)
         if not chunks:
             raise ConversionError("No text chunks could be produced from this document.")
 
+        contexts = [""] * len(chunks)
+        if settings.contextual_embedding:
+            stage = "contextualizing"
+            _status(doc_id, stage, 25, num_chunks=len(chunks), context_done=0)
+            contexts = contextualize(
+                markdown, chunks,
+                lambda done, total: _status(doc_id, "contextualizing", 25 + int(35 * done / total), context_done=done),
+            )
+        contents = [indexed_content(c, ctx) for c, ctx in zip(chunks, contexts)]
+
         stage = "embedding"
-        _status(doc_id, stage, 40, num_chunks=len(chunks))
+        _status(doc_id, stage, 60, num_chunks=len(chunks))
         vectors = []
         batch = 64
         for i in range(0, len(chunks), batch):
-            part = chunks[i:i + batch]
-            vectors.extend(embed_passages([c.content for c in part]))
-            _status(doc_id, "embedding", 40 + int(40 * min(i + batch, len(chunks)) / len(chunks)))
+            vectors.extend(embed_passages(contents[i:i + batch]))
+            _status(doc_id, "embedding", 60 + int(20 * min(i + batch, len(chunks)) / len(chunks)))
 
         stage = "storing"
         _status(doc_id, stage, 85)
@@ -87,10 +97,11 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
                     "index": c.index,
                     "section": c.section,
                     "text": c.text,
-                    "content": c.content,
+                    "context": ctx,
+                    "content": content,
                     "embedding": v.tolist(),
                 }
-                for c, v in zip(chunks, vectors)
+                for c, ctx, content, v in zip(chunks, contexts, contents, vectors)
             ]
         )
 
@@ -103,7 +114,7 @@ def ingest(doc_id: str, path: Path, original_name: str) -> None:
 
         _status(doc_id, "ready", 100)
         log.info("Ingested %s (%d chunks)", original_name, len(chunks))
-    except ConversionError as e:
+    except (ConversionError, ContextError) as e:
         _status(doc_id, "failed", 100, error=str(e), failed_stage=stage)
     except Exception as e:  # noqa: BLE001
         log.exception("Ingestion failed for %s", doc_id)

@@ -64,6 +64,9 @@ def _public(doc: dict) -> dict:
         "status": doc["status"],
         "progress": doc.get("progress", 0),
         "num_chunks": doc.get("num_chunks"),
+        "contextual": doc.get("contextual", False),
+        "context_model": doc.get("context_model"),
+        "context_done": doc.get("context_done"),
         "error": doc.get("error"),
         "failed_stage": doc.get("failed_stage"),
     }
@@ -78,6 +81,7 @@ def health():
         "llm_model": settings.llm_model,
         "llm_available": llm.model_available(),
         "embed_model": settings.embed_model,
+        "context_model": settings.context_model if settings.contextual_embedding else None,
     }
 
 
@@ -105,6 +109,8 @@ async def upload_document(background: BackgroundTasks, file: UploadFile = File(.
         "size": len(data),
         "status": "queued",
         "progress": 0,
+        "contextual": settings.contextual_embedding,
+        "context_model": settings.context_model if settings.contextual_embedding else None,
         "created_at": now,
         "updated_at": now,
     }

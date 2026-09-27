@@ -7,11 +7,21 @@ const ACCEPT = ".pdf,.txt,.md,.markdown";
 const STEPS: { key: DocStatus; label: string }[] = [
   { key: "converting", label: "Converting to Markdown" },
   { key: "chunking", label: "Chunking by headings" },
+  { key: "contextualizing", label: "Adding context to each chunk" },
   { key: "embedding", label: "Embedding with bge-small-en-v1.5" },
   { key: "storing", label: "Storing in MongoDB" },
   { key: "indexing", label: "Syncing vector index" },
 ];
-const ORDER: DocStatus[] = ["queued", "converting", "chunking", "embedding", "storing", "indexing", "ready"];
+const ORDER: DocStatus[] = [
+  "queued",
+  "converting",
+  "chunking",
+  "contextualizing",
+  "embedding",
+  "storing",
+  "indexing",
+  "ready",
+];
 
 function fmtSize(b: number) {
   if (b < 1024) return `${b} B`;
@@ -95,7 +105,7 @@ export default function Uploader({
           <span style={{ width: `${Math.max(4, doc.progress)}%` }} />
         </div>
         <ol className="steps">
-          {STEPS.map((s) => {
+          {STEPS.filter((s) => s.key !== "contextualizing" || doc.contextual).map((s) => {
             const idx = ORDER.indexOf(s.key);
             const state =
               idx < current ? "done" : idx === current ? (failed ? "error" : "active") : "todo";
@@ -103,6 +113,13 @@ export default function Uploader({
               <li key={s.key} className={`step step-${state}`}>
                 <span className="dot" aria-hidden />
                 {s.label}
+                {s.key === "contextualizing" && doc.context_model ? (
+                  <span className="muted">
+                    {" "}
+                    · {doc.context_model}
+                    {doc.num_chunks ? ` · ${doc.context_done ?? 0}/${doc.num_chunks} chunks` : ""}
+                  </span>
+                ) : null}
                 {s.key === "embedding" && doc.num_chunks ? (
                   <span className="muted"> · {doc.num_chunks} chunks</span>
                 ) : null}

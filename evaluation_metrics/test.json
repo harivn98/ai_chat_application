@@ -1,0 +1,236 @@
+{
+  "summary": {
+    "run_id": "test",
+    "date_utc": "2026-09-27 09:05",
+    "split": "test",
+    "seed": 0,
+    "papers": 1,
+    "questions": 4,
+    "llm_model": "qwen3:8b",
+    "judge_model": "qwen3:8b",
+    "top_k": 5,
+    "bm25_candidates": 10,
+    "vector_min_score": 0.85,
+    "chunk_size": 1000,
+    "chunk_overlap": 150,
+    "embedding_s_per_paper": 5.409775156003889,
+    "retrieval_s_per_question": 0.08442312901024707,
+    "generation_s_per_question": 11.126466868750867,
+    "judging_s_per_question": 0.2606986642422271,
+    "total_minutes": 4.50454697223322,
+    "answer_f1": 0.040638297872340426,
+    "answer_f1_by_type": {
+      "extractive": 0.12,
+      "abstractive": null,
+      "boolean": 0.014184397163120565,
+      "none": null
+    },
+    "evidence_f1": 0.3666666666666667,
+    "retrieval_recall": 1.0,
+    "judge_correct": 0.25,
+    "errors": 0,
+    "judge_errors": 0,
+    "environment": {
+      "MONGO_URI": "mongodb://admin:***@mongodb:27017/?directConnection=true",
+      "MONGO_DB": "ragdb",
+      "VECTOR_INDEX": "chunk_vector_index",
+      "OLLAMA_URL": "http://ollama:11434",
+      "LLM_MODEL": "qwen3:8b",
+      "LLM_NUM_CTX": "8192",
+      "LLM_TEMPERATURE": "0.2",
+      "LLM_THINK": "False",
+      "LLM_KEEP_ALIVE": "30m",
+      "LLM_TIMEOUT": "600",
+      "LLM_LOAD_TIMEOUT": "1800",
+      "EMBED_MODEL": "BAAI/bge-small-en-v1.5",
+      "EMBED_DIM": "384",
+      "QUERY_INSTRUCTION": "Represent this sentence for searching relevant passages: ",
+      "CHUNK_SIZE": "1000",
+      "CHUNK_OVERLAP": "150",
+      "TOP_K": "5",
+      "BM25_CANDIDATES": "10",
+      "VECTOR_CANDIDATES": "20",
+      "VECTOR_MIN_SCORE": "0.85",
+      "RRF_K": "60",
+      "HISTORY_TURNS": "6",
+      "MAX_UPLOAD_MB": "25",
+      "DATA_DIR": "/data",
+      "JUDGE_MODEL": "qwen3:8b",
+      "EVAL_DIR": "/evaluation_metrics"
+    }
+  },
+  "questions": [
+    {
+      "paper_id": "1903.04329",
+      "question_id": "8b8adb1d5a1824c8995b3eba668745c44f61c9c6",
+      "question": "Is this analysis performed only on English data?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [
+            "From the first 5000 words according to word rank by occurrence, the most sublinearly and superlinearly scaling words can be seen in Table TABREF13 . Their exponent differs significantly from that of the total word count, and their meaning can usually be linked to the exponent range qualitatively. The sublinearly scaling words mostly correspond to weather services reporting (flood 0.54, thunderstorm 0.61, wind 0.85), some certain slang and swearword forms (shxt 0.81, dang 0.88, damnit 0.93), outdoor-related activities (fishing 0.82, deer 0.81, truck 0.90, hunting 0.87) and certain companies (walmart 0.83). There is a longer tail in the range of superlinearly scaling words than in the sublinear regime in Figure FIGREF11 . This tail corresponds to Spanish words (gracias 1.41, por 1.40, para 1.39 etc.), that could not be separated from the English text, since the shortness of tweets make automated language detection very noisy. Apart from the Spanish words, again some special slang or swearwords (deadass 1.52, thx 1.16, lmfao 1.17, omfg 1.16), flight-reporting (flight 1.25, delayed 1.24 etc.) and lifestyle-related words (fitness 1.15, fashion 1.15, restaurant 1.14, traffic 1.22) dominate this end of the distribution."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [
+            "We use data from the online social network Twitter, which freely provides approximately 1% of all sent messages via their streaming API. For mobile devices, users have an option to share their exact location along with the Twitter message. Therefore, some messages contain geolocation information in the form of GPS-coordinates. In this study, we analyze 456 millions of these geolocated tweets collected between February 2012 and August 2014 from the area of the United States. We construct a geographically indexed database of these tweets, permitting the efficient analysis of regional features BIBREF41 . Using the Hierarchical Triangular Mesh scheme for practical geographic indexing, we assigned a US county to each tweet BIBREF42 , BIBREF43 . County borders are obtained from the GAdm database BIBREF44 . Counties are then aggregated into Metropolitan and Micropolitan Areas using the county to metro area crosswalk file from BIBREF45 . Population data for the MSA areas is obtained from BIBREF46 .",
+            "From the first 5000 words according to word rank by occurrence, the most sublinearly and superlinearly scaling words can be seen in Table TABREF13 . Their exponent differs significantly from that of the total word count, and their meaning can usually be linked to the exponent range qualitatively. The sublinearly scaling words mostly correspond to weather services reporting (flood 0.54, thunderstorm 0.61, wind 0.85), some certain slang and swearword forms (shxt 0.81, dang 0.88, damnit 0.93), outdoor-related activities (fishing 0.82, deer 0.81, truck 0.90, hunting 0.87) and certain companies (walmart 0.83). There is a longer tail in the range of superlinearly scaling words than in the sublinear regime in Figure FIGREF11 . This tail corresponds to Spanish words (gracias 1.41, por 1.40, para 1.39 etc.), that could not be separated from the English text, since the shortness of tweets make automated language detection very noisy. Apart from the Spanish words, again some special slang or swearwords (deadass 1.52, thx 1.16, lmfao 1.17, omfg 1.16), flight-reporting (flight 1.25, delayed 1.24 etc.) and lifestyle-related words (fitness 1.15, fashion 1.15, restaurant 1.14, traffic 1.22) dominate this end of the distribution.",
+            "Thus, when compared to the slightly nonlinear scaling of total amount of words, not all words follow the growth homogeneously with this same exponent. Though a significant amount remains in the linear or inconclusive range according to the statistical model test, most words are sensitive to city size and exhibit a super- or sublinear scaling. Those that fit the linear model the best, correspond to a kind of 'core-Twitter' vocabulary, which has a lot in common with the most common words of the English language, but also shows some Twitter-specific elements. A visible group of words that are amongst the most super- or sublinearly scaling words are related to the abundance or lack of the elements of urban lifestyle (e.g. deer, fitness). Thus, the imprint of the physical environment appears in a quantifiable way in the growths of word occurrences as a function of urban populations. Swearwords and slang, that are quite prevalent in this type of corpus BIBREF7 , BIBREF6 , appear at both ends of the regime that suggests that some specific forms of swearing disappear with urbanization, but the share of overall swearing on Twitter grows with city size. The peak consisting of Spanish words at the superlinear end of the exponent distribution marks the stronger presence of the biggest non-English speaking ethnicity in bigger urban areas. This is confirmed by fitting the scaling relationship to the Hispanic or Latino population BIBREF53 of the MSA areas ( INLINEFORM0 , see SI), which despite the large error, is very superlinear."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We use data from the online social network Twitter, which freely provides approximately 1% of all sent messages via their streaming API. For mobile devices, users have an option to share their exact location along with the Twitter message. Therefore, some messages contain geolocation information in the form of GPS-coordinates. In this study, we analyze 456 millions of these geolocated tweets collected between February 2012 and August 2014 from the area of the United States. We construct a geographically indexed database of these tweets, permitting the efficient analysis of regional features BIBREF41 . Using the Hierarchical Triangular Mesh scheme for practical geographic indexing, we assigned a US county to each tweet BIBREF42 , BIBREF43 . County borders are obtained from the GAdm database BIBREF44 . Counties are then aggregated into Metropolitan and Micropolitan Areas using the county to metro area crosswalk file from BIBREF45 . Population data for the MSA areas is obtained from BIBREF46 .",
+            "We sorted the words falling into the \"linear\" scaling category according to their INLINEFORM0 values showing the goodness of fit for the fixed INLINEFORM1 model. The first 50 words in Table TABREF12 according to this ranking are some of the most common words of the English language, apart from some swearwords and abbreviations (e.g. lol) that are typical for Twitter language BIBREF10 . These are the words that are most homogeneously present in the text of all urban areas."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "No, the analysis is not performed only on English data. The context mentions that the study includes geolocated tweets from the United States and that some messages contain geolocation information. Additionally, it refers to the presence of Spanish words and other non-English terms in the data, indicating that the analysis includes multiple languages [1][5].",
+      "predicted_answer": "No, the analysis is not performed only on English data. The context mentions that the study includes geolocated tweets from the United States and that some messages contain geolocation information. Additionally, it refers to the presence of Spanish words and other non-English terms in the data, indicating that the analysis includes multiple languages .",
+      "retrieved_chunks": [
+        5,
+        6,
+        26,
+        1,
+        21
+      ],
+      "cited_passages": [
+        1,
+        5
+      ],
+      "answer_f1": 0.042553191489361694,
+      "answer_type": "boolean",
+      "evidence_f1": 0.8,
+      "retrieval_recall": 1.0,
+      "retrieval_s": 0.23923292802646756,
+      "generation_s": 36.19063439100864,
+      "judging_s": 0.4315217059920542,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "88d1bd21b53b8be4f9d3cb26ecc3cbcacffcd63e",
+      "question": "Do they authors offer any hypothesis for why the parameters of Zipf's law and Heaps' law differ on Twitter?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We use the following form for Zipf's law that is proposed in BIBREF48 , and that fits the probability distribution of the word frequencies apart from the very rare words: INLINEFORM0",
+            "We fit the probability distribution of the frequencies using the powerlaw package of Python BIBREF49 , that uses a Maximum Likelihood method based on the results of BIBREF50 , BIBREF51 , BIBREF52 . INLINEFORM0 is the frequency for which the power-law fit is the most probable with respect to the Kolmogorov-Smirnov distance BIBREF49 .",
+            "We use the previous form because the fitting method of BIBREF49 can only reliably tell the exponent for the tail of a distribution. In the rank-frequency case, the interesting part of the fit would be at the first few ranks, while the most common words are in the tail of the INLINEFORM0 distribution."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        }
+      ],
+      "response": "The authors suggest that the carrying medium, specifically Twitter, has a significant impact on the exact values of the parameters of linguistic laws. They mention that the 140 character limit of tweets may lead to similar effects as those observed in texting, which could explain the differences in the parameters of Zipf's law and Heaps' law on Twitter [4]. However, they do not offer a more detailed hypothesis beyond this observation.",
+      "predicted_answer": "The authors suggest that the carrying medium, specifically Twitter, has a significant impact on the exact values of the parameters of linguistic laws. They mention that the 140 character limit of tweets may lead to similar effects as those observed in texting, which could explain the differences in the parameters of Zipf's law and Heaps' law on Twitter . However, they do not offer a more detailed hypothesis beyond this observation.",
+      "retrieved_chunks": [
+        0,
+        4,
+        26,
+        25,
+        13
+      ],
+      "cited_passages": [
+        4
+      ],
+      "answer_f1": 0,
+      "answer_type": "boolean",
+      "evidence_f1": 0.0,
+      "retrieval_recall": 1.0,
+      "retrieval_s": 0.04285508199245669,
+      "generation_s": 2.848002159007592,
+      "judging_s": 0.2089927329798229,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "74cef0205e0f31d0ab28d0e4d96c1e8ef62d4cce",
+      "question": "What explanation do the authors offer for the super or sublinear urban scaling?",
+      "references": [
+        {
+          "answer": "abundance or lack of the elements of urban lifestyle",
+          "evidence": [
+            "Thus, when compared to the slightly nonlinear scaling of total amount of words, not all words follow the growth homogeneously with this same exponent. Though a significant amount remains in the linear or inconclusive range according to the statistical model test, most words are sensitive to city size and exhibit a super- or sublinear scaling. Those that fit the linear model the best, correspond to a kind of 'core-Twitter' vocabulary, which has a lot in common with the most common words of the English language, but also shows some Twitter-specific elements. A visible group of words that are amongst the most super- or sublinearly scaling words are related to the abundance or lack of the elements of urban lifestyle (e.g. deer, fitness). Thus, the imprint of the physical environment appears in a quantifiable way in the growths of word occurrences as a function of urban populations. Swearwords and slang, that are quite prevalent in this type of corpus BIBREF7 , BIBREF6 , appear at both ends of the regime that suggests that some specific forms of swearing disappear with urbanization, but the share of overall swearing on Twitter grows with city size. The peak consisting of Spanish words at the superlinear end of the exponent distribution marks the stronger presence of the biggest non-English speaking ethnicity in bigger urban areas. This is confirmed by fitting the scaling relationship to the Hispanic or Latino population BIBREF53 of the MSA areas ( INLINEFORM0 , see SI), which despite the large error, is very superlinear."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The authors explain that the super- or sublinear urban scaling of words is related to the meaning of the words and the physical environment. Specifically, they suggest that words associated with urban lifestyle elements (e.g., deer, fitness) exhibit superlinear scaling, while words related to weather services, outdoor activities, and certain slang or swearwords show sublinear scaling. The imprint of the physical environment appears in a quantifiable way in the growth of word occurrences as a function of urban populations [2]. Additionally, the authors note that the exponents of Zipf's law change with city size, indicating that the scaling behavior is influenced by the characteristics of the urban environment [1].",
+      "predicted_answer": "The authors explain that the super- or sublinear urban scaling of words is related to the meaning of the words and the physical environment. Specifically, they suggest that words associated with urban lifestyle elements (e.g., deer, fitness) exhibit superlinear scaling, while words related to weather services, outdoor activities, and certain slang or swearwords show sublinear scaling. The imprint of the physical environment appears in a quantifiable way in the growth of word occurrences as a function of urban populations . Additionally, the authors note that the exponents of Zipf's law change with city size, indicating that the scaling behavior is influenced by the characteristics of the urban environment .",
+      "retrieved_chunks": [
+        0,
+        22,
+        9,
+        20,
+        18
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0.12,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "retrieval_s": 0.02883031201781705,
+      "generation_s": 3.9881977699988056,
+      "judging_s": 0.21778805600479245,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "200c37060d037dee33f3b7c8b1a2aaa58376566e",
+      "question": "Do the authors give examples of the core vocabulary which follows the scaling relationship of the bulk text?",
+      "references": [
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We sorted the words falling into the \"linear\" scaling category according to their INLINEFORM0 values showing the goodness of fit for the fixed INLINEFORM1 model. The first 50 words in Table TABREF12 according to this ranking are some of the most common words of the English language, apart from some swearwords and abbreviations (e.g. lol) that are typical for Twitter language BIBREF10 . These are the words that are most homogeneously present in the text of all urban areas."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "The authors mention that a certain core vocabulary follows the scaling relationship of that of the bulk text, but they do not provide specific examples of these words in the context provided [1][2].",
+      "predicted_answer": "The authors mention that a certain core vocabulary follows the scaling relationship of that of the bulk text, but they do not provide specific examples of these words in the context provided .",
+      "retrieved_chunks": [
+        0,
+        28,
+        27,
+        18,
+        19
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0,
+      "answer_type": "boolean",
+      "evidence_f1": 0.0,
+      "retrieval_recall": 1.0,
+      "retrieval_s": 0.026774194004246965,
+      "generation_s": 1.4790331549884286,
+      "judging_s": 0.18449216199223883,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    }
+  ]
+}

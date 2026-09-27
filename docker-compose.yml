@@ -42,7 +42,8 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull ${LLM_MODEL:-qwen3:8b}"]
+    # pulls the answering model and the Contextual Retrieval model
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${LLM_MODEL:-qwen3:8b} && ollama pull ${CONTEXT_MODEL:-qwen3:4b}"]
     restart: "no"
 
   backend:
@@ -58,6 +59,9 @@ services:
       LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-30m}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-600}
       LLM_LOAD_TIMEOUT: ${LLM_LOAD_TIMEOUT:-1800}
+      CONTEXTUAL_EMBEDDING: ${CONTEXTUAL_EMBEDDING:-true}
+      CONTEXT_MODEL: ${CONTEXT_MODEL:-qwen3:4b}
+      CONTEXT_NUM_CTX: ${CONTEXT_NUM_CTX:-16384}
       CHUNK_SIZE: ${CHUNK_SIZE:-1000}
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-150}
       TOP_K: ${TOP_K:-5}

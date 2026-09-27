@@ -37,6 +37,7 @@ import httpx
 from . import db, llm, retrieval
 from .chunker import chunk_markdown
 from .config import settings
+from .contextual import contextualize, indexed_content
 from .embeddings import embed_passages, get_model
 from .ingest import _wait_until_searchable
 
@@ -59,17 +60,45 @@ ANSWER_TYPES = ("extractive", "abstractive", "boolean", "none")
 RESULTS_HEADER = (
     "# QASPER evaluation results\n\n"
     "Dataset: [allenai/qasper](https://huggingface.co/datasets/allenai/qasper). "
-    "Embedding = chunking + embedding one paper (seconds per paper); retrieval = query embedding + BM25 + "
+    "Contextualization = the context model writing a context for every chunk of one paper, "
+    "embedding = embedding one paper (seconds per paper); retrieval = query embedding + BM25 + "
     "vector search + RRF, generation = full LLM answer, judging = one judge call (seconds per question). "
     "Answer F1 and Evidence F1 are the official QASPER metrics (evidence = paragraphs in the passages the "
     "answer cites). Retrieval recall@k = share of gold evidence paragraphs present in the top-k chunks. "
     "Judge correct = the judge model says the answer matches a reference answer. All scores are 0-100.\n\n"
-    "| Run ID | Date (UTC) | Split · papers · questions | LLM / judge | Retrieval config | Embedding (s/paper) "
+    "| Run ID | Date (UTC) | Split · papers · questions | LLM / judge | Retrieval config "
+    "| Contextualization (s/paper) | Embedding (s/paper) "
     "| Retrieval (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
     "| F1 extractive / abstractive / yes-no / unanswerable | Evidence F1 | Retrieval recall@k "
     "| Judge correct | Errors |\n"
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
 )
+
+
+def _cells(line: str) -> list[str]:
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def _upgrade_results_table(path) -> None:
+    """Rewrite an older results.md for the current columns; columns an old run lacks get '–'."""
+    header_line, sep_line = RESULTS_HEADER.rstrip("\n").split("\n")[-2:]
+    new_cols = _cells(header_line)
+    lines = path.read_text(encoding="utf-8").splitlines()
+    try:
+        h = next(i for i, ln in enumerate(lines) if ln.startswith("| Run ID |"))
+    except StopIteration:
+        return
+    old_cols = _cells(lines[h])
+    if old_cols == new_cols:
+        return
+    rows = []
+    for ln in lines[h + 2:]:
+        if ln.startswith("|"):
+            old = dict(zip(old_cols, _cells(ln)))
+            if "Retrieval config" in old and "ctx" not in old["Retrieval config"]:
+                old["Retrieval config"] += " · no ctx"  # runs before contextual embedding existed
+            rows.append("| " + " | ".join(old.get(c, "–") for c in new_cols) + " |")
+    path.write_text(RESULTS_HEADER + "\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
 
 JUDGE_PROMPT = """You are grading an answer to a question about a research paper.
 
@@ -383,7 +412,8 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     total_q = sum(len(data[p]["qas"]) for p in paper_ids)
     _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {total_q} questions (QASPER {split}, seed {seed}) ===")
     _say(f"LLM {settings.llm_model} · judge {settings.judge_model} · top {settings.top_k} · "
-         f"BM25 {settings.bm25_candidates} · vec ≥ {settings.vector_min_score}")
+         f"BM25 {settings.bm25_candidates} · vec ≥ {settings.vector_min_score} · "
+         f"{'context ' + settings.context_model if settings.contextual_embedding else 'no context'}")
 
     st = _Status("Connecting to MongoDB and loading the embedding model…")
     retrieval.vector_index_ready = db.ensure_vector_index()
@@ -392,62 +422,89 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     started = time.perf_counter()
     rows: list[dict] = []
     embedding_times: list[float] = []
+    context_times: list[float] = []
     rag_times: list[float] = []
+    ingested: dict[str, list[str]] = {}  # paper id -> its paragraphs, for papers that ingested fine
+    ingest_errors: dict[str, str] = {}
 
-    _load_model(settings.llm_model)
+    # The phases run model by model (context model, then answering model, then judge), so Ollama
+    # doesn't swap models in and out of GPU memory for every paper.
+    try:
+        # Phase 1: ingest every paper (optional contexts, embeddings, vector index)
+        _say(f"\n--- Phase 1/3: ingesting papers "
+             f"({'with contexts from ' + settings.context_model if settings.contextual_embedding else 'no contexts'}) ---")
+        if settings.contextual_embedding:
+            _load_model(settings.context_model)
+        for n, pid in enumerate(paper_ids, start=1):
+            paper = data[pid]
+            doc_id = f"eval-{run_id}-{pid}"
+            markdown, paragraphs = _paper_markdown(paper)
+            _say(f"\n[paper {n}/{len(paper_ids)}] {_short(paper['title'])} ({len(paper['qas'])} questions)")
+            try:
+                _cleanup(doc_id)
+                chunks = chunk_markdown(markdown, settings.chunk_size, settings.chunk_overlap)
+                contexts = [""] * len(chunks)
+                if settings.contextual_embedding:
+                    st = _Status("  adding context…")
+                    t0 = time.perf_counter()
+                    contexts = contextualize(markdown, chunks,
+                                             lambda done, total: st.set(f"{done}/{total} chunks"))
+                    context_times.append(time.perf_counter() - t0)
+                    st.done(f"  context: {len(chunks)} chunks in {_fmt_secs(context_times[-1])} "
+                            f"(e.g. \"{_short(contexts[len(contexts) // 2], 80)}\")")
+                contents = [indexed_content(c, ctx) for c, ctx in zip(chunks, contexts)]
 
-    # Phase 1: ingest each paper once, then ask all of its questions
-    _say("\n--- Phase 1/2: answering questions ---")
-    for n, pid in enumerate(paper_ids, start=1):
-        paper = data[pid]
-        doc_id = f"eval-{run_id}-{pid}"
-        markdown, paragraphs = _paper_markdown(paper)
-        _say(f"\n[paper {n}/{len(paper_ids)}] {_short(paper['title'])} ({len(paper['qas'])} questions)")
-        try:
-            _cleanup(doc_id)
-            st = _Status("  chunking + embedding…")
-            t0 = time.perf_counter()
-            chunks = chunk_markdown(markdown, settings.chunk_size, settings.chunk_overlap)
-            st.set(f"{len(chunks)} chunks")
-            vectors = embed_passages([c.content for c in chunks])
-            embedding_times.append(time.perf_counter() - t0)
-            st.done(f"  embedding: {len(chunks)} chunks in {_fmt_secs(embedding_times[-1])}")
-            db.chunks().insert_many(
-                [
-                    {"doc_id": doc_id, "index": c.index, "section": c.section, "text": c.text,
-                     "content": c.content, "embedding": v.tolist()}
-                    for c, v in zip(chunks, vectors)
-                ]
-            )
-            st = _Status("  waiting for the vector index…")
-            _wait_until_searchable(doc_id, len(chunks))  # index sync is excluded from the timings
-            st.done(f"  vector index ready in {_fmt_secs(st.elapsed)}")
+                st = _Status("  embedding…")
+                t0 = time.perf_counter()
+                vectors = embed_passages(contents)
+                embedding_times.append(time.perf_counter() - t0)
+                st.done(f"  embedding: {len(chunks)} chunks in {_fmt_secs(embedding_times[-1])}")
+                db.chunks().insert_many(
+                    [
+                        {"doc_id": doc_id, "index": c.index, "section": c.section, "text": c.text,
+                         "context": ctx, "content": content, "embedding": v.tolist()}
+                        for c, ctx, content, v in zip(chunks, contexts, contents, vectors)
+                    ]
+                )
+                st = _Status("  waiting for the vector index…")
+                _wait_until_searchable(doc_id, len(chunks))  # index sync is excluded from the timings
+                st.done(f"  vector index ready in {_fmt_secs(st.elapsed)}")
+                ingested[pid] = paragraphs
+            except Exception as e:  # noqa: BLE001
+                log.exception("Ingesting paper %s failed", pid)
+                _say(f"  FAILED to ingest paper: {e}")
+                ingest_errors[pid] = str(e)
 
+        # Phase 2: ask every question with the answering model
+        _say("\n--- Phase 2/3: answering questions ---")
+        _load_model(settings.llm_model)
+        for pid in paper_ids:
+            paper, doc_id = data[pid], f"eval-{run_id}-{pid}"
             for qa in paper["qas"]:
+                if pid in ingest_errors:
+                    rows.append({"paper_id": pid, "question_id": qa["question_id"], "question": qa["question"],
+                                 "error": f"ingest: {ingest_errors[pid]}"})
+                    continue
                 done_q = len(rows)
                 eta = ""
                 if rag_times:
-                    eta = f" · ~{_fmt_secs(sum(rag_times) / len(rag_times) * (total_q - done_q))} left in phase 1"
+                    eta = f" · ~{_fmt_secs(sum(rag_times) / len(rag_times) * (total_q - done_q))} left in phase 2"
                 _say(f"  [Q {done_q + 1}/{total_q}{eta}] {_short(qa['question'])}")
                 t0 = time.perf_counter()
                 try:
-                    row = _ask(doc_id, qa, paragraphs, indent="      ")
+                    row = _ask(doc_id, qa, ingested[pid], indent="      ")
                 except Exception as e:  # noqa: BLE001
                     log.exception("Question %s failed", qa["question_id"])
                     _say(f"      FAILED: {e}")
                     row = {"question_id": qa["question_id"], "question": qa["question"], "error": f"rag: {e}"}
                 rag_times.append(time.perf_counter() - t0)
                 rows.append({"paper_id": pid, **row})
-        except Exception as e:  # noqa: BLE001
-            log.exception("Ingesting paper %s failed", pid)
-            _say(f"  FAILED to ingest paper: {e}")
-            rows += [{"paper_id": pid, "question_id": qa["question_id"], "question": qa["question"],
-                      "error": f"ingest: {e}"} for qa in paper["qas"]]
-        finally:
-            _cleanup(doc_id)
+    finally:
+        for pid in paper_ids:
+            _cleanup(f"eval-{run_id}-{pid}")
 
-    # Phase 2: LLM judge (kept separate so Ollama doesn't swap models between every question)
-    _say(f"\n--- Phase 2/2: judging answers with {settings.judge_model} ---")
+    # Phase 3: LLM judge
+    _say(f"\n--- Phase 3/3: judging answers with {settings.judge_model} ---")
     if settings.judge_model != settings.llm_model:
         _load_model(settings.judge_model)
     for n, row in enumerate(rows, start=1):
@@ -487,6 +544,9 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
         "vector_min_score": settings.vector_min_score,
         "chunk_size": settings.chunk_size,
         "chunk_overlap": settings.chunk_overlap,
+        "contextual_embedding": settings.contextual_embedding,
+        "context_model": settings.context_model if settings.contextual_embedding else None,
+        "contextualization_s_per_paper": _mean(context_times),
         "embedding_s_per_paper": _mean(embedding_times),
         "retrieval_s_per_question": _mean([r["retrieval_s"] for r in ok]),
         "generation_s_per_question": _mean([r["generation_s"] for r in ok]),
@@ -505,11 +565,13 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     summary["environment"] = env
     s = summary
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
+    ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
     line = (
         f"| {run_id} | {s['date_utc']} | {split} · {s['papers']} · {s['questions']} (seed {seed}) "
         f"| {s['llm_model']} / {s['judge_model']} "
         f"| top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
-        f"· chunk {s['chunk_size']}/{s['chunk_overlap']} "
+        f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} "
+        f"| {_secs(s['contextualization_s_per_paper'])} "
         f"| {_secs(s['embedding_s_per_paper'])} | {_secs(s['retrieval_s_per_question'])} "
         f"| {_secs(s['generation_s_per_question'])} | {_secs(s['judging_s_per_question'])} | {total_min:.1f} "
         f"| **{_pct(s['answer_f1'])}** | {by_type} | {_pct(s['evidence_f1'])} | {_pct(s['retrieval_recall'])} "
@@ -517,7 +579,9 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     )
 
     settings.eval_dir.mkdir(parents=True, exist_ok=True)
-    if not results_md.exists():
+    if results_md.exists():
+        _upgrade_results_table(results_md)
+    else:
         results_md.write_text(RESULTS_HEADER, encoding="utf-8")
     with results_md.open("a", encoding="utf-8") as f:
         f.write(line)

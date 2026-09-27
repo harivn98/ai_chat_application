@@ -30,6 +30,11 @@ class Settings:
         "QUERY_INSTRUCTION", "Represent this sentence for searching relevant passages: "
     )
 
+    # Contextual Retrieval: a small LLM writes a context for each chunk before embedding/BM25
+    contextual_embedding: bool = _bool("CONTEXTUAL_EMBEDDING", True)
+    context_model: str = os.getenv("CONTEXT_MODEL", "qwen3:4b")
+    context_num_ctx: int = int(os.getenv("CONTEXT_NUM_CTX", "16384"))  # tokens of document the model reads
+
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))        # characters
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))   # characters
     top_k: int = int(os.getenv("TOP_K", "5"))                     # chunks sent to the LLM
