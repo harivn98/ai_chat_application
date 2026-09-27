@@ -213,7 +213,7 @@ def _judge(prompt: str) -> str:
 
 def _load_model(model: str) -> None:
     """Load a model into Ollama before timing anything; on CPU this alone can take several minutes."""
-    st = _Status(f"Loading {model} into Ollama memory (CPU-only can take several minutes)…")
+    st = _Status(f"Loading {model} into Ollama (instant if already loaded; minutes if Ollama runs on CPU)…")
     llm.warm_up(model)
     st.done(f"{model} loaded in {_fmt_secs(st.elapsed)}")
 
