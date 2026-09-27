@@ -10,6 +10,7 @@ prompt prefix and Ollama can reuse its KV cache instead of re-reading the docume
 """
 import logging
 import threading
+import time
 from collections.abc import Callable
 
 import httpx
@@ -86,6 +87,37 @@ def _generate(document: str, chunk: str) -> str:
     if r.status_code != 200:
         raise ContextError(f"Ollama error {r.status_code}: {r.text[:300]}")
     return " ".join(r.json()["message"]["content"].split())
+
+
+def warm_up() -> None:
+    """Load the context model into Ollama without generating anything.
+
+    Uses the same num_ctx as _generate(); with a different one Ollama would load it again on the first chunk.
+    """
+    payload = {
+        "model": settings.context_model,
+        "keep_alive": settings.llm_keep_alive,
+        "options": {"num_ctx": settings.context_num_ctx},
+    }
+    timeout = httpx.Timeout(connect=10, read=settings.llm_load_timeout, write=30, pool=10)
+    r = httpx.post(f"{settings.ollama_url}/api/generate", json=payload, timeout=timeout)
+    if r.status_code != 200:
+        raise RuntimeError(f"Ollama error {r.status_code}: {r.text[:300]}")
+
+
+def warm_up_in_background(reason: str) -> None:
+    """Start loading the context model without waiting for it (logs how long it took)."""
+
+    def run():
+        try:
+            started = time.perf_counter()
+            warm_up()
+            log.info("Context model %s loaded (%s) in %.0fs", settings.context_model, reason,
+                     time.perf_counter() - started)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Could not preload context model %s: %s", settings.context_model, e)
+
+    threading.Thread(target=run, daemon=True).start()
 
 
 _active = 0                  # contextualize() calls in progress (uploads run in parallel threads)

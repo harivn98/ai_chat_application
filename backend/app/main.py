@@ -11,7 +11,7 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import db, llm, prejudge, retrieval
+from . import contextual, db, llm, prejudge, retrieval
 from .config import ALLOWED_EXTENSIONS, MARKDOWN_DIR, UPLOAD_DIR, settings
 from .embeddings import get_model
 from .ingest import ingest
@@ -31,8 +31,12 @@ async def lifespan(_: FastAPI):
         from . import reranker
 
         reranker.get_model()  # and the reranker (small, CPU)
-    # Load the LLM in the background so the first chat doesn't time out while Ollama loads it (slow on CPU)
-    threading.Thread(target=_warm_up_llm, daemon=True).start()
+    # Preload in the background the model the next step needs. With contextual embedding that is the context
+    # model, since a new session starts with an upload; after contextualizing, ingest swaps in the answering model.
+    if settings.contextual_embedding:
+        contextual.warm_up_in_background("at startup")
+    else:
+        threading.Thread(target=_warm_up_llm, daemon=True).start()
     log.info("Backend ready (vector index: %s, llm: %s)", retrieval.vector_index_ready, settings.llm_model)
     yield
 

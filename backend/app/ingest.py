@@ -73,6 +73,9 @@ def _prepare_for_chat() -> None:
 
 
 def ingest(doc_id: str, path: Path, original_name: str) -> None:
+    if settings.contextual_embedding:
+        # contextualizing is the next model step: load the context model while converting and chunking
+        contextual.warm_up_in_background("for a new upload")
     stage = "converting"
     try:
         _status(doc_id, "converting", 10)
