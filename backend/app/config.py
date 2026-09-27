@@ -39,6 +39,10 @@ class Settings:
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
 
+    # QASPER evaluation (python -m app.evaluate)
+    judge_model: str = os.getenv("JUDGE_MODEL", os.getenv("LLM_MODEL", "qwen3:8b"))
+    eval_dir: Path = Path(os.getenv("EVAL_DIR", str(Path(__file__).resolve().parents[2] / "evaluation")))
+
 
 settings = Settings()
 UPLOAD_DIR = settings.data_dir / "uploads"

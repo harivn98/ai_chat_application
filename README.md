@@ -95,12 +95,35 @@ backend/app/
   retrieval.py   BM25 + $vectorSearch + RRF
   llm.py         prompt + Ollama streaming
   main.py        FastAPI routes
+  evaluate.py    QASPER evaluation (CLI)
 frontend/
   app/page.tsx                 upload → chat flow
   app/api/[...path]/route.ts   proxy to the backend (single exposed origin)
   components/Uploader.tsx      upload + ingestion progress
   components/ChatWindow.tsx    streaming chat, citations, sources
 ```
+
+## Evaluation (QASPER)
+
+The RAG pipeline can be scored on [QASPER](https://huggingface.co/datasets/allenai/qasper): NLP research papers with questions, gold answers and the evidence paragraphs for each answer. It only runs when you trigger it:
+
+```bash
+docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 5 --seed 0
+```
+
+Each sampled paper is converted to Markdown and ingested like an upload (chunk, embed, store). Every question on it then goes through hybrid retrieval and Qwen3, and each stage is timed. Scores:
+
+- **Answer F1**: official QASPER token F1 against the closest annotator answer, also broken down by answer type. It penalizes long answers, even correct ones.
+- **Evidence F1**: official QASPER paragraph F1, using the paper paragraphs inside the passages the answer cites.
+- **Retrieval recall@k**: share of gold evidence paragraphs that are in the top-k retrieved chunks. This measures retrieval on its own.
+- **Judge correct**: `JUDGE_MODEL` decides whether the answer matches a reference answer.
+
+Notes:
+
+- One row per run is appended to `evaluation/results.md`. Run IDs must be unique.
+- Per-question answers, references and judge output go to `evaluation/runs/<run-id>.json`.
+- Keep `--seed` fixed to compare runs on the same papers. `--split validation` uses the dev set instead of test.
+- `JUDGE_MODEL` defaults to the answering model. A model judging its own answers is lenient, so use a different one when possible (`docker compose exec ollama ollama pull <model>`).
 
 ## Troubleshooting
 

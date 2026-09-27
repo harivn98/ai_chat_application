@@ -61,8 +61,11 @@ services:
       BM25_CANDIDATES: ${BM25_CANDIDATES:-10}
       VECTOR_MIN_SCORE: ${VECTOR_MIN_SCORE:-0.85}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      JUDGE_MODEL: ${JUDGE_MODEL:-qwen3:8b}
+      EVAL_DIR: /evaluation
     volumes:
       - app_data:/data
+      - ./evaluation:/evaluation   # QASPER evaluation results (results.md, runs/*.json)
     ports:
       - "8000:8000"              # optional: FastAPI docs at http://localhost:8000/docs
     depends_on:
