@@ -56,12 +56,13 @@ def _wait_until_searchable(doc_id: str, expected: int, timeout_s: int = 120) -> 
 
 
 def _free_gpu_for_chat() -> None:
-    """Unload the context model (only needed during upload) and bring the answering model back."""
-    if contextual.release_model():
-        threading.Thread(target=_warm_chat_model, daemon=True).start()
+    """In the background: move the context model off the GPU (to CPU for the pre-judge) and reload the chat model."""
+    threading.Thread(target=_prepare_for_chat, daemon=True).start()
 
 
-def _warm_chat_model() -> None:
+def _prepare_for_chat() -> None:
+    if contextual.hand_over() is None:
+        return  # another upload is still contextualizing; it hands over when it finishes
     try:
         llm.warm_up()
     except Exception as e:  # noqa: BLE001

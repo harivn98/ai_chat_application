@@ -11,7 +11,7 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import db, llm, retrieval
+from . import db, llm, prejudge, retrieval
 from .config import ALLOWED_EXTENSIONS, MARKDOWN_DIR, UPLOAD_DIR, settings
 from .embeddings import get_model
 from .ingest import ingest
@@ -40,6 +40,14 @@ def _warm_up_llm():
         log.info("LLM %s loaded in %.0fs", settings.llm_model, time.perf_counter() - started)
     except Exception as e:  # noqa: BLE001
         log.warning("Could not preload %s: %s", settings.llm_model, e)
+    if settings.prejudge_enabled:
+        try:
+            started = time.perf_counter()
+            prejudge.warm_up()
+            log.info("Pre-judge %s loaded (%s) in %.0fs", settings.prejudge_model,
+                     "CPU" if settings.prejudge_on_cpu else "GPU", time.perf_counter() - started)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Could not preload pre-judge %s: %s", settings.prejudge_model, e)
 
 
 app = FastAPI(title="RAG AI_chat_application API", lifespan=lifespan)
@@ -82,6 +90,7 @@ def health():
         "llm_available": llm.model_available(),
         "embed_model": settings.embed_model,
         "context_model": settings.context_model if settings.contextual_embedding else None,
+        "prejudge_model": settings.prejudge_model if settings.prejudge_enabled else None,
     }
 
 
@@ -169,6 +178,20 @@ def chat(req: ChatRequest):
             for i, p in enumerate(passages, start=1)
         ]
         yield json.dumps({"type": "sources", "sources": sources}) + "\n"
+
+        # Pre-judge: skip the answering LLM when the passages can't answer the question
+        if settings.prejudge_enabled:
+            try:
+                ok = prejudge.can_answer(req.question, passages)
+            except Exception:  # noqa: BLE001
+                log.exception("pre-judge failed; answering anyway")
+                ok = True
+            yield json.dumps({"type": "prejudge", "can_answer": ok}) + "\n"
+            if not ok:
+                yield json.dumps({"type": "token", "content": prejudge.NOT_ENOUGH_CONTENT}) + "\n"
+                yield json.dumps({"type": "done"}) + "\n"
+                return
+
         try:
             for token in llm.stream_chat(messages):
                 yield json.dumps({"type": "token", "content": token}) + "\n"

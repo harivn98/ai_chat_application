@@ -35,10 +35,10 @@ from datetime import datetime, timezone
 
 import httpx
 
-from . import db, llm, retrieval
+from . import db, llm, prejudge, retrieval
 from .chunker import chunk_markdown
 from .config import settings
-from .contextual import contextualize, indexed_content, release_model
+from .contextual import contextualize, hand_over, indexed_content
 from .embeddings import embed_passages, get_model
 from .ingest import _wait_until_searchable
 
@@ -63,16 +63,19 @@ RESULTS_HEADER = (
     "Dataset: [allenai/qasper](https://huggingface.co/datasets/allenai/qasper). "
     "Contextualization = the context model writing a context for every chunk of one paper, "
     "embedding = embedding one paper (seconds per paper); retrieval = query embedding + BM25 + "
-    "vector search + RRF, generation = full LLM answer, judging = one judge call (seconds per question). "
+    "vector search + RRF, pre-judge = the YES/NO check whether the passages can answer, "
+    "generation = full LLM answer (answered questions only), judging = one judge call (seconds per question). "
+    "Pre-judge rejected = questions answered with 'not enough content' instead of calling the LLM, and how many "
+    "of those an annotator also marked unanswerable. "
     "Answer F1 and Evidence F1 are the official QASPER metrics (evidence = paragraphs in the passages the "
     "answer cites). Retrieval recall@k = share of gold evidence paragraphs present in the top-k chunks. "
     "Judge correct = the judge model says the answer matches a reference answer. All scores are 0-100.\n\n"
     "| Run ID | Date (UTC) | Split · papers · questions | LLM / judge | Retrieval config "
     "| Contextualization (s/paper) | Embedding (s/paper) "
-    "| Retrieval (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
+    "| Retrieval (s/q) | Pre-judge (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
     "| F1 extractive / abstractive / yes-no / unanswerable | Evidence F1 | Retrieval recall@k "
-    "| Judge correct | Errors |\n"
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+    "| Judge correct | Pre-judge rejected | Errors |\n"
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
 )
 
 
@@ -98,6 +101,8 @@ def _upgrade_results_table(path) -> None:
             old = dict(zip(old_cols, _cells(ln)))
             if "Retrieval config" in old and "ctx" not in old["Retrieval config"]:
                 old["Retrieval config"] += " · no ctx"  # runs before contextual embedding existed
+            if "Retrieval config" in old and "prejudge" not in old["Retrieval config"]:
+                old["Retrieval config"] += " · no prejudge"  # runs before the pre-judge existed
             rows.append("| " + " | ".join(old.get(c, "–") for c in new_cols) + " |")
     path.write_text(RESULTS_HEADER + "\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
 
@@ -322,20 +327,33 @@ def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str) -> dict:
     retrieval_s = time.perf_counter() - t0
     _say(f"{indent}retrieval: {len(passages)} chunks in {retrieval_s:.2f}s")
 
-    st = _Status(f"{indent}generating…")
-    st.set("waiting for first token")
-    pieces: list[str] = []
-    t0 = time.perf_counter()
-    for piece in llm.stream_chat(llm.build_messages(question, passages, [])):
-        pieces.append(piece)
-        st.set(f"{len(pieces)} tokens")
-    generation_s = time.perf_counter() - t0
-    response = "".join(pieces)
-    st.done(f"{indent}generation: {len(pieces)} tokens in {_fmt_secs(generation_s)}")
-    _say(f"{indent}answer: {_short(response, 90)}")
+    can_answer, prejudge_s = True, None
+    if settings.prejudge_enabled:
+        st = _Status(f"{indent}pre-judge…")
+        t0 = time.perf_counter()
+        can_answer = prejudge.can_answer(question, passages)
+        prejudge_s = time.perf_counter() - t0
+        st.done(f"{indent}pre-judge: {'YES, answering' if can_answer else 'NO, not enough content'} "
+                f"({_fmt_secs(prejudge_s)})")
+
+    generation_s = None
+    if can_answer:
+        st = _Status(f"{indent}generating…")
+        st.set("waiting for first token")
+        pieces: list[str] = []
+        t0 = time.perf_counter()
+        for piece in llm.stream_chat(llm.build_messages(question, passages, [])):
+            pieces.append(piece)
+            st.set(f"{len(pieces)} tokens")
+        generation_s = time.perf_counter() - t0
+        response = "".join(pieces)
+        st.done(f"{indent}generation: {len(pieces)} tokens in {_fmt_secs(generation_s)}")
+        _say(f"{indent}answer: {_short(response, 90)}")
+    else:
+        response = prejudge.NOT_ENOUGH_CONTENT
 
     cited = sorted({int(n) for n in CITE_RE.findall(response) if 1 <= int(n) <= len(passages)})
-    if NOT_FOUND_RE.search(response) and not cited:
+    if not can_answer or (NOT_FOUND_RE.search(response) and not cited):
         predicted_answer, predicted_evidence = "Unanswerable", []
     else:
         predicted_answer = CITE_RE.sub("", response)
@@ -362,8 +380,11 @@ def _ask(doc_id: str, qa: dict, paragraphs: list[str], indent: str) -> dict:
         "answer_type": answer_type,
         "evidence_f1": evidence_f1,
         "retrieval_recall": max(recalls) if recalls else None,  # None: no text evidence (e.g. unanswerable)
+        "prejudge_can_answer": can_answer if settings.prejudge_enabled else None,
+        "gold_unanswerable": any(r["type"] == "none" for r in refs),  # some annotator says the paper can't answer
         "retrieval_s": retrieval_s,
-        "generation_s": generation_s,
+        "prejudge_s": prejudge_s,
+        "generation_s": generation_s,  # None when the pre-judge skipped generation
     }
 
 
@@ -478,8 +499,14 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
 
         # Phase 2: ask every question with the answering model
         _say("\n--- Phase 2/3: answering questions ---")
-        if settings.contextual_embedding and release_model():
-            _say(f"Unloaded {settings.context_model} from the GPU")
+        if settings.contextual_embedding:
+            st = _Status(f"Handing {settings.context_model} over…")
+            st.done(f"After contextualizing: {hand_over() or 'nothing to hand over'}")
+        if settings.prejudge_enabled:
+            where = "CPU" if settings.prejudge_on_cpu else "GPU"
+            st = _Status(f"Loading pre-judge {settings.prejudge_model} on the {where}…")
+            prejudge.warm_up()
+            st.done(f"Pre-judge {settings.prejudge_model} ready on the {where} in {_fmt_secs(st.elapsed)}")
         _load_model(settings.llm_model)
         for pid in paper_ids:
             paper, doc_id = data[pid], f"eval-{run_id}-{pid}"
@@ -549,10 +576,18 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
         "chunk_overlap": settings.chunk_overlap,
         "contextual_embedding": settings.contextual_embedding,
         "context_model": settings.context_model if settings.contextual_embedding else None,
+        "prejudge_enabled": settings.prejudge_enabled,
+        "prejudge_model": settings.prejudge_model if settings.prejudge_enabled else None,
+        "prejudge_on_cpu": settings.prejudge_on_cpu if settings.prejudge_enabled else None,
         "contextualization_s_per_paper": _mean(context_times),
         "embedding_s_per_paper": _mean(embedding_times),
         "retrieval_s_per_question": _mean([r["retrieval_s"] for r in ok]),
-        "generation_s_per_question": _mean([r["generation_s"] for r in ok]),
+        "prejudge_s_per_question": _mean([r.get("prejudge_s") for r in ok]),
+        "generation_s_per_question": _mean([r["generation_s"] for r in ok]),  # answered questions only
+        # rejected by the pre-judge, and how many of those some annotator also marked unanswerable
+        "prejudge_rejected": sum(1 for r in ok if r.get("prejudge_can_answer") is False),
+        "prejudge_rejected_unanswerable": sum(1 for r in ok if r.get("prejudge_can_answer") is False
+                                              and r.get("gold_unanswerable")),
         "judging_s_per_question": _mean([r.get("judging_s") for r in ok]),
         "total_minutes": total_min,
         "answer_f1": _mean([r["answer_f1"] for r in ok]),
@@ -569,16 +604,21 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     s = summary
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
+    pj = (f"prejudge {s['prejudge_model']}/{'cpu' if s['prejudge_on_cpu'] else 'gpu'}"
+          if s["prejudge_enabled"] else "no prejudge")
+    rejected = (f"{s['prejudge_rejected']}/{len(ok)} ({s['prejudge_rejected_unanswerable']} gold unanswerable)"
+                if s["prejudge_enabled"] else "–")
     line = (
         f"| {run_id} | {s['date_utc']} | {split} · {s['papers']} · {s['questions']} (seed {seed}) "
         f"| {s['llm_model']} / {s['judge_model']} "
         f"| top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
-        f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} "
+        f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} · {pj} "
         f"| {_secs(s['contextualization_s_per_paper'])} "
         f"| {_secs(s['embedding_s_per_paper'])} | {_secs(s['retrieval_s_per_question'])} "
+        f"| {_secs(s['prejudge_s_per_question'])} "
         f"| {_secs(s['generation_s_per_question'])} | {_secs(s['judging_s_per_question'])} | {total_min:.1f} "
         f"| **{_pct(s['answer_f1'])}** | {by_type} | {_pct(s['evidence_f1'])} | {_pct(s['retrieval_recall'])} "
-        f"| {_pct(s['judge_correct'])} | {s['errors']} failed · {s['judge_errors']} unjudged |\n"
+        f"| {_pct(s['judge_correct'])} | {rejected} | {s['errors']} failed · {s['judge_errors']} unjudged |\n"
     )
 
     settings.eval_dir.mkdir(parents=True, exist_ok=True)
@@ -597,6 +637,8 @@ def run(run_id: str, num_papers: int, seed: int, split: str) -> None:
     for name, key in [(f"retrieval recall@{settings.top_k}", "retrieval_recall"), ("evidence F1", "evidence_f1"),
                       ("answer F1", "answer_f1"), ("judge correct", "judge_correct")]:
         _say(f"  {name:<21}{_pct(summary[key])}")
+    if settings.prejudge_enabled:
+        _say(f"  {'pre-judge rejected':<21}{rejected}")
     _say(f"\nSaved {details} (complete details)\n      {results_md} (side-by-side comparison)")
 
 

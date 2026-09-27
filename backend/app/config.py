@@ -35,6 +35,12 @@ class Settings:
     context_model: str = os.getenv("CONTEXT_MODEL", "qwen3:4b-instruct")  # non-thinking; plain qwen3:4b is thinking-only
     context_num_ctx: int = int(os.getenv("CONTEXT_NUM_CTX", "16384"))  # tokens of document the model reads
 
+    # Pre-judge: before answering, a small LLM checks whether the retrieved passages can answer the question
+    prejudge_enabled: bool = _bool("PREJUDGE_ENABLED", True)
+    prejudge_model: str = os.getenv("PREJUDGE_MODEL", "qwen3:4b-instruct")
+    prejudge_on_cpu: bool = _bool("PREJUDGE_ON_CPU", True)   # keeps it loaded next to the GPU answering model
+    prejudge_num_ctx: int = int(os.getenv("PREJUDGE_NUM_CTX", "4096"))
+
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))        # characters
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))   # characters
     top_k: int = int(os.getenv("TOP_K", "5"))                     # chunks sent to the LLM

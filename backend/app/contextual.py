@@ -14,7 +14,7 @@ from collections.abc import Callable
 
 import httpx
 
-from . import llm
+from . import llm, prejudge
 from .chunker import Chunk
 from .config import settings
 
@@ -114,22 +114,31 @@ def contextualize(
             _active -= 1
 
 
-def release_model() -> bool:
-    """Unload the context model from the GPU, unless another upload is still contextualizing.
+def hand_over() -> str | None:
+    """After contextualizing, give the GPU back to the answering model (unless another upload is still running).
 
-    The context model is only needed while documents are ingested; unloading it leaves the GPU
-    to the answering model. Returns True if it was unloaded.
+    - Context model is also the pre-judge on CPU: move it to the CPU, where it stays loaded for the pre-judge.
+    - Context model is also the pre-judge on GPU: leave it loaded.
+    - Otherwise nothing else needs it: unload it.
+    Returns what was done, or None if another upload is still contextualizing.
     """
     with _active_lock:
         if _active:
-            return False
+            return None
         try:
-            llm.unload(settings.context_model)
+            if settings.prejudge_enabled and settings.prejudge_model == settings.context_model:
+                if not settings.prejudge_on_cpu:
+                    return f"kept {settings.context_model} on the GPU for the pre-judge"
+                prejudge.warm_up()  # same model, CPU options: Ollama moves it off the GPU
+                action = f"moved {settings.context_model} to the CPU for the pre-judge"
+            else:
+                llm.unload(settings.context_model)
+                action = f"unloaded {settings.context_model}"
         except Exception as e:  # noqa: BLE001
-            log.warning("Could not unload %s: %s", settings.context_model, e)
-            return False
-    log.info("Unloaded %s from Ollama", settings.context_model)
-    return True
+            log.warning("Could not hand over %s: %s", settings.context_model, e)
+            return None
+    log.info("After contextualizing: %s", action)
+    return action
 
 
 def indexed_content(chunk: Chunk, context: str) -> str:
