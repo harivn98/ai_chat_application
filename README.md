@@ -126,7 +126,7 @@ frontend/
   app/page.tsx                 upload → chat flow
   app/api/[...path]/route.ts   proxy to the backend (single exposed origin)
   components/Uploader.tsx      upload + ingestion progress
-  components/ChatWindow.tsx    streaming chat, citations, sources
+  components/ChatWindow.tsx    streaming chat, Markdown with KaTeX math and code highlighting, citations, sources
 ```
 
 ## Evaluation (QASPER)

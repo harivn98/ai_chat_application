@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import IngestProgress from "@/components/IngestProgress";
 import { DocInfo, Message, Source, streamChat } from "@/lib/api";
 
@@ -11,8 +14,33 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 // A question asked while the document is still being indexed waits here and is sent once it is ready
 type ChatMessage = Message & { queued?: boolean; question?: string };
 
-// Turn "[3]" citations into in-page links we can render as clickable chips
-const linkCitations = (md: string) => md.replace(/\[(\d{1,2})\](?!\()/g, "[[$1]](#cite-$1)");
+const remarkPlugins = [remarkGfm, remarkMath];
+// Math is rendered with KaTeX; fenced code with a language (```python) is syntax highlighted
+const rehypePlugins = [rehypeKatex, rehypeHighlight];
+
+// Code (fenced blocks, also an unclosed one while streaming, and inline spans) is never rewritten
+const CODE = /(```[\s\S]*?(?:```|$)|`[^`\n]*`)/;
+const MATH = /(\$\$[\s\S]*?\$\$|(?<!\\)\$[^$\n]+?(?<!\\)\$)/;
+
+// Prepare the model's Markdown outside code: \( \) and \[ \] become $ and $$ (the only math delimiters
+// remark-math reads), "$5 and $10" stays money instead of math, and "[3]" citations outside math become
+// in-page links we render as clickable chips
+function prepareMarkdown(md: string) {
+  return md
+    .split(CODE)
+    .map((part, i) => {
+      if (i % 2) return part;
+      const text = part
+        .replace(/\\\[([\s\S]*?)\\\]/g, (_, m) => `\n$$\n${m.trim()}\n$$\n`)
+        .replace(/\\\(([\s\S]*?)\\\)/g, (_, m) => `$${m.trim()}$`)
+        .replace(/(?<![\\$])\$(?=\d[\d.,]*(?:[\s;:!?)\]]|$))/g, "\\$");
+      return text
+        .split(MATH)
+        .map((t, j) => (j % 2 ? t : t.replace(/\[(\d{1,2})\](?!\()/g, "[[$1]](#cite-$1)")))
+        .join("");
+    })
+    .join("");
+}
 
 function SourceList({ sources, active, id }: { sources: Source[]; active: number | null; id: string }) {
   return (
@@ -69,7 +97,8 @@ function AssistantMessage({ msg }: { msg: ChatMessage }) {
         ) : (
           <div className={`markdown ${msg.streaming ? "streaming" : ""}`}>
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={remarkPlugins}
+              rehypePlugins={rehypePlugins}
               components={{
                 a: ({ href, children }) => {
                   if (href?.startsWith("#cite-")) {
@@ -88,7 +117,7 @@ function AssistantMessage({ msg }: { msg: ChatMessage }) {
                 },
               }}
             >
-              {linkCitations(msg.content)}
+              {prepareMarkdown(msg.content)}
             </ReactMarkdown>
           </div>
         )}

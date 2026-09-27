@@ -113,6 +113,20 @@ h2 { font-size: 22px; }
 .markdown table { border-collapse: collapse; display: block; overflow-x: auto; margin: 0 0 10px; }
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
 .markdown a { color: var(--accent); }
+.markdown .katex { font-size: 1.05em; }
+.markdown .katex-display { margin: 0 0 10px; padding: 4px 0; overflow-x: auto; overflow-y: hidden; }
+
+/* Syntax highlighting (rehype-highlight / highlight.js classes), tuned to the white and blue theme */
+.hljs-comment, .hljs-quote { color: #7a869a; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type, .hljs-literal { color: #1f5fd6; }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-string { color: #1b7f4b; }
+.hljs-number, .hljs-symbol, .hljs-bullet, .hljs-variable.constant_ { color: #b35c00; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #7a3fd1; }
+.hljs-attr, .hljs-attribute, .hljs-property, .hljs-params, .hljs-variable { color: #0f1f3a; }
+.hljs-meta, .hljs-tag, .hljs-name, .hljs-selector-class, .hljs-selector-id { color: #0e7490; }
+.hljs-deletion { color: var(--danger); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
 .markdown.streaming > :last-child::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; margin-left: 1px; }
 @keyframes blink { 50% { opacity: 0; } }
 
