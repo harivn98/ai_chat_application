@@ -34,20 +34,24 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 Requirements: Docker Desktop / Docker Engine with Compose v2, ~12 GB free disk (Qwen3 8B ≈ 5.2 GB), 16 GB RAM recommended.
 
+Start it with the script. It uses your NVIDIA GPU when Docker can reach one, and falls back to CPU otherwise:
+
+```powershell
+.\start.ps1 --build        # Windows (PowerShell)
+```
 ```bash
-cp .env.example .env              # optional, defaults work
-docker compose up --build
+./start.sh --build         # Linux / macOS
 ```
 
-First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama-init` job). When the logs show the frontend is up, open **http://localhost:3000**.
+First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama-init` job). Then open **http://localhost:3000**.
 
-### NVIDIA GPU (strongly recommended for Qwen3 8B)
+- Use `--build` after code changes. Without it, the script just starts the app or applies `.env` changes.
+- The script saves its GPU/CPU choice as `COMPOSE_FILE` in `.env`, so plain `docker compose exec / logs / stop` commands use the same setup afterwards. Rerun the script if the GPU situation changes.
+- If PowerShell blocks the script, run `powershell -ExecutionPolicy Bypass -File .\start.ps1 --build`.
+- Check where the model runs with `docker compose exec ollama ollama ps`. It should say `100% GPU`.
+- Stop the app with `docker compose stop` (or `docker compose down` to remove the containers; data is kept).
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
-```
-
-On Windows this needs Docker Desktop with the WSL 2 backend and a current NVIDIA driver; on Linux the NVIDIA Container Toolkit. An 8 GB card fits Qwen3 8B (Q4) with the 8k context. Check it's on the GPU with `docker compose exec ollama ollama ps` (should say `100% GPU`).
+**GPU requirements:** on Windows, Docker Desktop with the WSL 2 backend and a current NVIDIA driver; on Linux, the NVIDIA Container Toolkit. An 8 GB card fits Qwen3 8B (Q4) with the 8k context. Even when the GPU is attached, Ollama falls back to CPU by itself if the model doesn't fit.
 
 ### Useful URLs
 
@@ -111,7 +115,7 @@ frontend/
 The RAG pipeline can be scored on [QASPER](https://huggingface.co/datasets/allenai/qasper): NLP research papers with questions, gold answers and the evidence paragraphs for each answer. It only runs when you trigger it:
 
 ```bash
-docker compose up -d --build     # the code is baked into the image: rebuild after changing it
+.\start.ps1 --build              # or ./start.sh --build; the code is baked into the image
 docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 5 --seed 0
 ```
 
@@ -142,7 +146,7 @@ Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATE
 - `<run-id>.json`: the complete details. It holds the metrics, timings, all the environment variables the run used (MongoDB password masked), and every question's answer, references, retrieved and cited chunks, scores and judge output.
 - `results.md`: one row per run, for comparing runs side by side.
 
-**Comparing settings.** Change one value in `.env`, apply it with `docker compose up -d`, then rerun with a new run ID and the same seed:
+**Comparing settings.** Change one value in `.env`, apply it with `.\start.ps1` (or `./start.sh`), then rerun with a new run ID and the same seed:
 
 ```bash
 docker compose exec backend python -m app.evaluate --run-id minscore-075 --papers 5 --seed 0
