@@ -27,6 +27,7 @@ export interface ModeInfo {
   llm_model: string;
   reranker_model: string | null; // null: this mode doesn't rerank
   prejudge_model: string | null; // null: this mode doesn't pre-judge
+  passages: number; // passages sent to the LLMs per question
   missing_keys: string[]; // API keys the backend still needs for this mode
 }
 

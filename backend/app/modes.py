@@ -34,6 +34,10 @@ class Mode:
     reranker: bool            # the local cross-encoder reranks the fused candidates down to TOP_K
     prejudge: bool            # a pre-judge checks the passages before the answer is generated
     prejudge_model: str
+    top_k: int                # passages sent to the pre-judge and the answering model
+    bm25_candidates: int      # chunks BM25 contributes to the fusion
+    vector_candidates: int    # max chunks vector search contributes (before its score cutoff)
+    rerank_candidates: int    # fused chunks the reranker chooses the top_k from
     embedding_field: str      # chunk field holding this mode's vectors
     vector_index: str
     embed_dim: int
@@ -54,6 +58,7 @@ class Mode:
             "llm_model": self.llm_model,
             "reranker_model": settings.reranker_model if self.reranker else None,
             "prejudge_model": self.prejudge_model if self.prejudge else None,
+            "passages": self.top_k,
             "missing_keys": self.missing_keys(),
         }
 
@@ -108,6 +113,10 @@ MODES = {
         reranker=settings.reranker_enabled,
         prejudge=settings.prejudge_enabled,
         prejudge_model=settings.llm_model,
+        top_k=settings.top_k,
+        bm25_candidates=settings.bm25_candidates,
+        vector_candidates=settings.vector_candidates,
+        rerank_candidates=settings.rerank_candidates,
         embedding_field="embedding",
         vector_index=settings.vector_index,
         embed_dim=settings.embed_dim,
@@ -121,6 +130,10 @@ MODES = {
                     "The document text and your questions leave this machine.",
         reranker=True,
         prejudge=False,
+        top_k=settings.top_k,  # the local reranker picks as many passages as in private mode
+        bm25_candidates=settings.bm25_candidates,
+        vector_candidates=settings.vector_candidates,
+        rerank_candidates=settings.rerank_candidates,
         **_CLOUD,
     ),
     CLOUD_PREJUDGE: Mode(
@@ -131,6 +144,10 @@ MODES = {
                     "this machine.",
         reranker=False,
         prejudge=True,
+        top_k=settings.cloud_prejudge_top_k,  # no reranker: Flash-Lite and DeepSeek read more passages instead
+        bm25_candidates=settings.cloud_prejudge_bm25_candidates,
+        vector_candidates=settings.cloud_prejudge_vector_candidates,
+        rerank_candidates=0,
         **_CLOUD,
     ),
 }

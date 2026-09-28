@@ -76,12 +76,20 @@ Before each upload you pick one of three modes:
 | Embeddings | `BAAI/bge-small-en-v1.5` (CPU) | Gemini Embedding 2 (`google/gemini-embedding-2`, cut to 768-d) | same |
 | Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`, minimal reasoning) | same |
 | Answers | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) | same |
-| Reranking | local cross-encoder if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`) | none: the top 5 after BM25 + vector fusion |
+| Retrieval | BM25 top 10 + vector top 20, fused | same as private | BM25 top 20 + vector top 30, fused |
+| Reranking | local cross-encoder, top 5 of 20, if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`), top 5 of 20 | none: the top 15 after fusion |
+| Passages sent to the LLMs | 5 (`TOP_K`) | 5 (`TOP_K`) | 15 (`CLOUD_PREJUDGE_TOP_K`) |
 | Pre-judge | YES / NO by `qwen3:8b` if `PREJUDGE_ENABLED` | none | ALL / PARTIAL / NONE by Gemini Flash-Lite (`CLOUD_PREJUDGE_MODEL`) |
 | BM25, MongoDB | this machine | this machine (same MongoDB) | same |
 | Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek | same |
 
-In **Cloud · pre-judge**, Gemini Flash-Lite reads the question and the 5 passages before any answer is written and
+Cloud · reranker retrieves exactly like private mode; only the models differ. Cloud · pre-judge has no reranker to
+bring the best passages to the top, and Flash-Lite and DeepSeek read far more than `qwen3:8b`'s 8k-token window, so
+it retrieves and sends more instead: 15 passages of about 1,000 characters are roughly 4,000 tokens per question.
+In `cloud-1` (5 papers, cloud reranker mode) the gold evidence was among the 20 fused candidates for every question,
+but only 81.6 % of it made the reranked top 5.
+
+In **Cloud · pre-judge**, Gemini Flash-Lite reads the question and the 15 passages before any answer is written and
 decides how much of the answer they hold:
 
 - **ALL**: DeepSeek answers as usual.
@@ -166,6 +174,8 @@ reasoning tokens against it.
 | `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode, with minimal reasoning |
 | `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers in the cloud modes (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
 | `CLOUD_PREJUDGE_MODEL` | `google/gemini-3.5-flash-lite` | Says ALL / PARTIAL / NONE in **Cloud · pre-judge** mode, with minimal reasoning |
+| `CLOUD_PREJUDGE_TOP_K` | `15` | Passages sent to the pre-judge and DeepSeek in **Cloud · pre-judge** mode |
+| `CLOUD_PREJUDGE_BM25_CANDIDATES` / `CLOUD_PREJUDGE_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in **Cloud · pre-judge** mode (**Cloud · reranker** uses `TOP_K`, `BM25_CANDIDATES`, `VECTOR_CANDIDATES` and `RERANK_CANDIDATES` like private mode) |
 | `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud modes](#private-and-cloud-modes)). Cloud model IDs are OpenRouter's |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
@@ -231,7 +241,7 @@ docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 
 | `--papers` | How many papers to sample (default 5). Every question on a sampled paper is asked, about 3.5 per paper. |
 | `--seed` | Which papers get sampled (default 0). Same seed = same papers, so runs are comparable. |
 | `--split` | `test` (default, 416 papers / 1,451 questions) or `validation`. |
-| `--mode` | `private` (default), `cloud-rerank` or `cloud-prejudge`: ingest, retrieve and answer as in that mode (the cloud modes send the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so all modes are graded the same way. Cloud rows start with `cloud · emb <model>` in the Retrieval config column; *Pre-judge rejected* also counts the PARTIAL verdicts, and `<run-id>.json` has each question's `prejudge_verdict`. |
+| `--mode` | `private` (default), `cloud-rerank` or `cloud-prejudge`: ingest, retrieve and answer as in that mode (the cloud modes send the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so all modes are graded the same way. Cloud rows start with `cloud · emb <model> · vec top <n>` in the Retrieval config column; *Pre-judge rejected* also counts the PARTIAL verdicts, and `<run-id>.json` has each question's `prejudge_verdict`. |
 
 On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
 

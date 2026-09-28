@@ -23,6 +23,7 @@ export default function ModePicker({
           m.llm_model,
           m.reranker_model && `rerank: ${m.reranker_model}`,
           m.prejudge_model && `pre-judge: ${m.prejudge_model}`,
+          `${m.passages} passages per question`,
         ]
           .filter(Boolean)
           .join(" · ");

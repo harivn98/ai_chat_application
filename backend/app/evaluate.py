@@ -271,7 +271,7 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, mode: Mode, indent: str) -> di
     question = qa["question"].strip()
     t0 = time.perf_counter()
     if mode.reranker:
-        candidates = retrieval.hybrid_search(doc_id, question, mode, settings.rerank_candidates)
+        candidates = retrieval.hybrid_search(doc_id, question, mode, mode.rerank_candidates)
     else:
         candidates = passages = retrieval.hybrid_search(doc_id, question, mode)
     retrieval_s = time.perf_counter() - t0
@@ -280,7 +280,7 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, mode: Mode, indent: str) -> di
     rerank_s = None
     if mode.reranker:
         t0 = time.perf_counter()
-        passages = reranker.rerank(question, candidates, settings.top_k)
+        passages = reranker.rerank(question, candidates, mode.top_k)
         rerank_s = time.perf_counter() - t0
         moved = [p["fused_rank"] for p in passages]
         _say(f"{indent}rerank: kept fused #{', #'.join(map(str, moved))} in {rerank_s:.2f}s")
@@ -476,8 +476,9 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "embed_model": mode.embed_model,
         "llm_model": mode.llm_model,
         "judge_model": settings.judge_model,
-        "top_k": settings.top_k,
-        "bm25_candidates": settings.bm25_candidates,
+        "top_k": mode.top_k,
+        "bm25_candidates": mode.bm25_candidates,
+        "vector_candidates": mode.vector_candidates,
         "vector_min_score": mode.vector_min_score,
         "chunk_size": settings.chunk_size,
         "chunk_overlap": settings.chunk_overlap,
@@ -487,7 +488,7 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "prejudge_model": mode.prejudge_model if mode.prejudge else None,
         "reranker_enabled": mode.reranker,
         "reranker_model": settings.reranker_model if mode.reranker else None,
-        "rerank_candidates": settings.rerank_candidates if mode.reranker else None,
+        "rerank_candidates": mode.rerank_candidates if mode.reranker else None,
         "contextualization_s_per_paper": _mean(ingested.context_times),
         "embedding_s_per_paper": _mean(ingested.embedding_times),
         "retrieval_s_per_question": _mean([r["retrieval_s"] for r in ok]),
@@ -526,7 +527,7 @@ def _results_row(s: dict) -> str:
     """The run's row in results.md (columns as in RESULTS_HEADER)."""
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     local = s["mode"] == PRIVATE
-    cloud = "" if local else f"cloud · emb {s['embed_model']} · "
+    cloud = "" if local else f"cloud · emb {s['embed_model']} · vec top {s['vector_candidates']} · "
     ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
     pj = f"prejudge {s['prejudge_model']}{'/gpu' if local else ''}" if s["prejudge_enabled"] else "no prejudge"
     rr = (f"rerank {s['reranker_model'].split('/')[-1]} top {s['rerank_candidates']}"
@@ -561,11 +562,11 @@ def _save(summary: dict, rows: list[dict], results_md: Path, details_json: Path)
 def _print_summary(s: dict, results_md: Path, details_json: Path) -> None:
     _say(f"\n=== Done in {s['total_minutes']:.1f} min: {s['questions'] - s['errors']}/{s['questions']} "
          f"questions answered ===")
-    for name, key in [(f"retrieval recall@{settings.top_k}", "retrieval_recall"), ("evidence F1", "evidence_f1"),
+    for name, key in [(f"retrieval recall@{s['top_k']}", "retrieval_recall"), ("evidence F1", "evidence_f1"),
                       ("answer F1", "answer_f1"), ("judge correct", "judge_correct")]:
         _say(f"  {name:<21}{_pct(s[key])}")
     if s["reranker_enabled"]:
-        _say(f"  {'candidate recall@' + str(settings.rerank_candidates):<21}{_pct(s['candidate_recall'])}"
+        _say(f"  {'candidate recall@' + str(s['rerank_candidates']):<21}{_pct(s['candidate_recall'])}"
              f"  (evidence among the chunks the reranker chose from)")
     if s["prejudge_enabled"]:
         _say(f"  {'pre-judge rejected':<21}{_prejudge_rejected(s)}")
@@ -588,9 +589,9 @@ def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PR
     doc_ids = {pid: f"eval-{run_id}-{pid}" for pid in paper_ids}
     _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {len(questions)} questions (QASPER {split}, seed {seed}) ===")
     _say(f"{mode.label}: LLM {mode.llm_model} · embeddings {mode.embed_model} · judge {settings.judge_model} · "
-         f"top {settings.top_k} · BM25 {settings.bm25_candidates} · vec ≥ {mode.vector_min_score} · "
+         f"top {mode.top_k} · BM25 {mode.bm25_candidates} · vec {mode.vector_candidates} ≥ {mode.vector_min_score} · "
          f"{'context ' + mode.context_model if settings.contextual_embedding else 'no context'} · "
-         f"{'rerank top ' + str(settings.rerank_candidates) + ' with ' + settings.reranker_model if mode.reranker else 'no rerank'} · "
+         f"{'rerank top ' + str(mode.rerank_candidates) + ' with ' + settings.reranker_model if mode.reranker else 'no rerank'} · "
          f"{'pre-judge ' + mode.prejudge_model if mode.prejudge else 'no pre-judge'}")
 
     st = _Status("Connecting to MongoDB and loading the embedding model…")

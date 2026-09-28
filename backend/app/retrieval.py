@@ -138,12 +138,12 @@ def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -
 
 
 def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None) -> list[dict]:
-    """BM25 + vector search fused with RRF; the top k (default TOP_K) chunks."""
+    """BM25 + vector search fused with RRF; the top k (default: the mode's top_k) chunks."""
     rankings = {
-        "bm25": bm25_search(doc_id, query, settings.bm25_candidates),
-        "vector": vector_search(doc_id, query, settings.vector_candidates, mode),
+        "bm25": bm25_search(doc_id, query, mode.bm25_candidates),
+        "vector": vector_search(doc_id, query, mode.vector_candidates, mode),
     }
-    fused = rrf_fuse(rankings, k or settings.top_k, settings.rrf_k)
+    fused = rrf_fuse(rankings, k or mode.top_k, settings.rrf_k)
     _, rows = bm25_cache.get(doc_id)
     by_index = {r["index"]: r for r in rows}
     results = []
@@ -164,8 +164,8 @@ def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None) -> 
 
 def search(doc_id: str, query: str, mode: Mode) -> list[dict]:
     """The passages sent to the LLM: hybrid search, then (if the mode reranks) cross-encoder reranking
-    of the top RERANK_CANDIDATES fused chunks down to TOP_K."""
+    of the mode's top rerank_candidates fused chunks down to its top_k."""
     if not mode.reranker:
         return hybrid_search(doc_id, query, mode)
-    candidates = hybrid_search(doc_id, query, mode, settings.rerank_candidates)
-    return reranker.rerank(query, candidates, settings.top_k)
+    candidates = hybrid_search(doc_id, query, mode, mode.rerank_candidates)
+    return reranker.rerank(query, candidates, mode.top_k)
