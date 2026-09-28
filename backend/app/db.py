@@ -61,7 +61,7 @@ def ensure_vector_index(timeout_s: int = 180) -> bool:
     while True:
         try:
             queryable = True
-            for mode in MODES.values():
+            for mode in {m.vector_index: m for m in MODES.values()}.values():  # modes can share an index
                 if _find_vector_index(mode.vector_index) is None:
                     chunks().create_search_index(
                         SearchIndexModel(definition=_index_definition(mode), name=mode.vector_index, type="vectorSearch")

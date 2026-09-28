@@ -1,12 +1,15 @@
-"""The two ways a document can be processed, chosen per upload in the UI.
+"""The ways a document can be processed, chosen per upload in the UI.
 
-private  everything runs on this machine: bge-small embeddings and Ollama models (the default).
-cloud    document text and questions are sent through OpenRouter to Google (Gemini embeddings and chunk
-         contexts) and DeepSeek (answers and the pre-judge).
+private          everything runs on this machine: bge-small embeddings, Ollama models, the local reranker and
+                 pre-judge as RERANKER_ENABLED / PREJUDGE_ENABLED say (the default).
+cloud-rerank     document text and questions go through OpenRouter to Google (Gemini embeddings and chunk
+                 contexts) and DeepSeek (answers); the local cross-encoder reranks the fused candidates.
+cloud-prejudge   the same cloud models without the reranker; instead Gemini Flash-Lite pre-judges whether the
+                 top passages hold all, part or none of the information the question asks for.
 
-Both modes use the same MongoDB, BM25 and reranker. Embeddings of different models can't be compared,
-so each mode stores its vectors in its own chunk field with its own vector index, and a document is
-answered in the mode it was uploaded in.
+All modes use the same MongoDB and BM25. Embeddings of different models can't be compared, so the cloud modes
+store their vectors in their own chunk field with their own vector index, and a document is answered in the mode
+it was uploaded in.
 """
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -16,7 +19,7 @@ import numpy as np
 from . import cloud, embeddings, llm
 from .config import settings
 
-PRIVATE, CLOUD = "private", "cloud"
+PRIVATE, CLOUD_RERANK, CLOUD_PREJUDGE = "private", "cloud-rerank", "cloud-prejudge"
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,9 @@ class Mode:
     embed_model: str
     context_model: str
     llm_model: str
+    reranker: bool            # the local cross-encoder reranks the fused candidates down to TOP_K
+    prejudge: bool            # a pre-judge checks the passages before the answer is generated
+    prejudge_model: str
     embedding_field: str      # chunk field holding this mode's vectors
     vector_index: str
     embed_dim: int
@@ -46,6 +52,8 @@ class Mode:
             "embed_model": self.embed_model,
             "context_model": self.context_model if settings.contextual_embedding else None,
             "llm_model": self.llm_model,
+            "reranker_model": settings.reranker_model if self.reranker else None,
+            "prejudge_model": self.prejudge_model if self.prejudge else None,
             "missing_keys": self.missing_keys(),
         }
 
@@ -64,16 +72,29 @@ class Mode:
                               reasoning=cloud.MINIMAL_REASONING)
 
     def judge_passages(self, prompt: str) -> str:
-        """The answering model's short reply to the pre-judge prompt."""
+        """The pre-judge model's one-word reply to a pre-judge prompt."""
         if self.local:
-            # num_ctx must match answer generation (llm.stream_chat), or Ollama reloads the model
+            # the answering model; num_ctx must match answer generation (llm.stream_chat), or Ollama reloads it
             return llm.complete(settings.llm_model, prompt, settings.llm_num_ctx,
                                 read_timeout=settings.llm_timeout, num_predict=3)
-        return cloud.complete(settings.cloud_llm_model, prompt, max_tokens=3)
+        return cloud.complete(self.prejudge_model, prompt, max_tokens=50, reasoning=cloud.MINIMAL_REASONING)
 
     def stream_answer(self, messages: list[dict]) -> Iterator[str]:
         return llm.stream_chat(messages) if self.local else cloud.stream_chat(messages)
 
+
+_CLOUD = dict(
+    local=False,
+    embed_model=settings.cloud_embed_model,
+    context_model=settings.cloud_context_model,
+    llm_model=settings.cloud_llm_model,
+    prejudge_model=settings.cloud_prejudge_model,
+    embedding_field="embedding_cloud",  # both cloud modes share the embeddings and their index
+    vector_index=f"{settings.vector_index}_cloud",
+    embed_dim=settings.cloud_embed_dim,
+    vector_min_score=settings.cloud_vector_min_score,
+    context_num_ctx=settings.context_num_ctx,  # same windows as private mode, so the modes stay comparable
+)
 
 MODES = {
     PRIVATE: Mode(
@@ -84,29 +105,40 @@ MODES = {
         embed_model=settings.embed_model,
         context_model=settings.context_model,
         llm_model=settings.llm_model,
+        reranker=settings.reranker_enabled,
+        prejudge=settings.prejudge_enabled,
+        prejudge_model=settings.llm_model,
         embedding_field="embedding",
         vector_index=settings.vector_index,
         embed_dim=settings.embed_dim,
         vector_min_score=settings.vector_min_score,
         context_num_ctx=settings.context_num_ctx,
     ),
-    CLOUD: Mode(
-        name=CLOUD,
-        label="Cloud mode",
-        description="Runs through OpenRouter (Gemini, DeepSeek): the document text and your questions leave this machine.",
-        local=False,
-        embed_model=settings.cloud_embed_model,
-        context_model=settings.cloud_context_model,
-        llm_model=settings.cloud_llm_model,
-        embedding_field="embedding_cloud",
-        vector_index=f"{settings.vector_index}_cloud",
-        embed_dim=settings.cloud_embed_dim,
-        vector_min_score=settings.cloud_vector_min_score,
-        context_num_ctx=settings.context_num_ctx,  # same windows as private mode, so the two stay comparable
+    CLOUD_RERANK: Mode(
+        name=CLOUD_RERANK,
+        label="Cloud · reranker",
+        description="Cloud models via OpenRouter; this machine's cross-encoder reranks the retrieved passages. "
+                    "The document text and your questions leave this machine.",
+        reranker=True,
+        prejudge=False,
+        **_CLOUD,
+    ),
+    CLOUD_PREJUDGE: Mode(
+        name=CLOUD_PREJUDGE,
+        label="Cloud · pre-judge",
+        description="Cloud models via OpenRouter, no reranker; before answering, a pre-judge checks whether the "
+                    "passages hold all, part or none of the answer. The document text and your questions leave "
+                    "this machine.",
+        reranker=False,
+        prejudge=True,
+        **_CLOUD,
     ),
 }
+
+_RENAMED = {"cloud": CLOUD_RERANK}  # cloud documents uploaded before the two cloud modes existed were reranked
 
 
 def get(name: str | None) -> Mode:
     """A document's mode; documents from before modes existed are private."""
-    return MODES[name or PRIVATE]
+    name = name or PRIVATE
+    return MODES[_RENAMED.get(name, name)]

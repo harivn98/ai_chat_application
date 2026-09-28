@@ -11,8 +11,12 @@ export type DocStatus =
   | "ready"
   | "failed";
 
-/** private: everything runs on this machine; cloud: Gemini + DeepSeek (the document leaves this machine) */
-export type ModeId = "private" | "cloud";
+/** private: everything runs on this machine; the cloud modes use Gemini + DeepSeek via OpenRouter (the document
+ * leaves this machine), with the local reranker or with the Flash-Lite pre-judge */
+export type ModeId = "private" | "cloud-rerank" | "cloud-prejudge";
+
+/** The pre-judge's finding: the passages hold all, part or none of the answer */
+export type Verdict = "all" | "partial" | "none";
 
 export interface ModeInfo {
   id: ModeId;
@@ -21,6 +25,8 @@ export interface ModeInfo {
   embed_model: string;
   context_model: string | null; // null when contextual embedding is off
   llm_model: string;
+  reranker_model: string | null; // null: this mode doesn't rerank
+  prejudge_model: string | null; // null: this mode doesn't pre-judge
   missing_keys: string[]; // API keys the backend still needs for this mode
 }
 
@@ -28,6 +34,7 @@ export interface DocInfo {
   doc_id: string;
   filename: string;
   mode: ModeId; // chosen at upload; the document is answered in this mode
+  mode_label: string;
   embed_model: string;
   llm_model: string;
   status: DocStatus;
@@ -59,6 +66,7 @@ export interface ChatTurn {
 
 type StreamEvent =
   | { type: "sources"; sources: Source[] }
+  | { type: "prejudge"; verdict: Verdict }
   | { type: "token"; content: string }
   | { type: "done" }
   | { type: "error"; message: string };

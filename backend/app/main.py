@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
     db.client().admin.command("ping")
     db.ensure_vector_index()
     embeddings.get_model()  # load the embedding model before accepting traffic
-    if settings.reranker_enabled:
+    if any(mode.reranker for mode in modes.MODES.values()):
         reranker.get_model()  # and the reranker (small, CPU)
     # Preload the model the next step needs. A new session starts with an upload, so with contextual embedding
     # that is the context model; after contextualizing, ingest swaps in the answering model.
@@ -58,6 +58,7 @@ def _doc_info(doc: dict) -> dict:
         "doc_id": doc["_id"],
         "filename": doc["filename"],
         "mode": mode.name,
+        "mode_label": mode.label,
         "embed_model": mode.embed_model,
         "llm_model": mode.llm_model,
         "status": doc["status"],
@@ -99,13 +100,13 @@ def health():
         "llm_available": llm.model_available(),
         "embed_model": settings.embed_model,
         "context_model": settings.context_model if settings.contextual_embedding else None,
-        "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,
+        "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,  # private mode
     }
 
 
 @app.get("/modes")
 def list_modes():
-    """Private and cloud mode with their models; cloud mode lists the API keys it still needs."""
+    """Private and cloud modes with their models; cloud modes list the API keys they still need."""
     return [mode.info() for mode in modes.MODES.values()]
 
 
@@ -188,24 +189,27 @@ def chat(req: ChatRequest):
         raise HTTPException(400, f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
 
     passages = retrieval.search(req.doc_id, req.question, mode)
-    messages = llm.build_messages(req.question, passages, [h.model_dump() for h in req.history])
+    history = [h.model_dump() for h in req.history]
 
     def events():
-        # NDJSON stream: one "sources" event, many "token" events, then "done" (or "error")
+        # NDJSON stream: one "sources" event, a "prejudge" event (if the mode pre-judges), many "token" events,
+        # then "done" (or "error")
         yield _ndjson({"type": "sources", "sources": [_source(n, p) for n, p in enumerate(passages, start=1)]})
 
-        # Pre-judge: skip the answering LLM when the passages can't answer the question
-        if settings.prejudge_enabled:
+        # Pre-judge: skip the answering LLM when the passages hold none of the answer
+        verdict = prejudge.ALL
+        if mode.prejudge:
             try:
-                can_answer = prejudge.can_answer(req.question, passages, mode)
+                verdict = prejudge.verdict(req.question, passages, mode)
+                yield _ndjson({"type": "prejudge", "verdict": verdict})
             except Exception:  # noqa: BLE001
                 log.exception("pre-judge failed; answering anyway")
-                can_answer = True
-            if not can_answer:
+            if verdict == prejudge.NONE:
                 yield _ndjson({"type": "token", "content": prejudge.NOT_ENOUGH_CONTENT})
                 yield _ndjson({"type": "done"})
                 return
 
+        messages = llm.build_messages(req.question, passages, history, partial=verdict == prejudge.PARTIAL)
         try:
             for token in mode.stream_answer(messages):
                 yield _ndjson({"type": "token", "content": token})

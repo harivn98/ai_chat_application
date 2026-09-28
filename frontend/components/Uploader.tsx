@@ -77,7 +77,7 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
       </p>
 
       {modes.length > 0 && <ModePicker modes={modes} value={mode} onChange={chooseMode} />}
-      {mode === "cloud" && (
+      {mode !== "private" && (
         <p className="cloud-warning">
           Cloud mode sends the document text and your questions to OpenRouter, which passes them to Google and
           DeepSeek. Use private mode for confidential documents.

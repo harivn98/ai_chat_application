@@ -1,0 +1,1277 @@
+{
+  "summary": {
+    "run_id": "cloud-1",
+    "date_utc": "2026-09-28 14:58",
+    "split": "test",
+    "seed": 0,
+    "papers": 5,
+    "questions": 20,
+    "mode": "cloud",
+    "embed_model": "google/gemini-embedding-2",
+    "llm_model": "deepseek/deepseek-v4.1-flash",
+    "judge_model": "qwen3:8b",
+    "top_k": 5,
+    "bm25_candidates": 10,
+    "vector_min_score": 0.0,
+    "chunk_size": 1000,
+    "chunk_overlap": 150,
+    "contextual_embedding": true,
+    "context_model": "google/gemini-3.5-flash-lite",
+    "prejudge_enabled": false,
+    "prejudge_model": null,
+    "reranker_enabled": true,
+    "reranker_model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+    "rerank_candidates": 20,
+    "contextualization_s_per_paper": 33.76133535519475,
+    "embedding_s_per_paper": 1.4225637574039864,
+    "retrieval_s_per_question": 0.2952866238498245,
+    "rerank_s_per_question": 0.6896145139005967,
+    "candidate_recall": 1.0,
+    "prejudge_s_per_question": null,
+    "generation_s_per_question": 2.382854218549619,
+    "prejudge_rejected": 0,
+    "prejudge_rejected_unanswerable": 0,
+    "judging_s_per_question": 0.3021205314027611,
+    "total_minutes": 4.693490579199958,
+    "answer_f1": 0.21852082544070392,
+    "answer_f1_by_type": {
+      "extractive": 0.2875639746211815,
+      "abstractive": 0.41656569153539896,
+      "boolean": 0.01730348605782055,
+      "none": 0.0
+    },
+    "evidence_f1": 0.48428571428571426,
+    "retrieval_recall": 0.8157894736842105,
+    "judge_correct": 0.8,
+    "errors": 0,
+    "judge_errors": 0,
+    "environment": {
+      "MONGO_URI": "mongodb://admin:***@mongodb:27017/?directConnection=true",
+      "MONGO_DB": "ragdb",
+      "VECTOR_INDEX": "chunk_vector_index",
+      "OLLAMA_URL": "http://ollama:11434",
+      "LLM_MODEL": "qwen3:8b",
+      "LLM_NUM_CTX": "8192",
+      "LLM_TEMPERATURE": "0.0",
+      "LLM_THINK": "False",
+      "LLM_KEEP_ALIVE": "30m",
+      "LLM_TIMEOUT": "600",
+      "LLM_LOAD_TIMEOUT": "1800",
+      "HISTORY_TURNS": "6",
+      "EMBED_MODEL": "BAAI/bge-small-en-v1.5",
+      "EMBED_DIM": "384",
+      "QUERY_INSTRUCTION": "Represent this sentence for searching relevant passages: ",
+      "CONTEXTUAL_EMBEDDING": "True",
+      "CONTEXT_MODEL": "qwen3:4b-instruct",
+      "CONTEXT_NUM_CTX": "16384",
+      "PREJUDGE_ENABLED": "False",
+      "CHUNK_SIZE": "1000",
+      "CHUNK_OVERLAP": "150",
+      "TOP_K": "5",
+      "BM25_CANDIDATES": "10",
+      "VECTOR_CANDIDATES": "20",
+      "VECTOR_MIN_SCORE": "0.85",
+      "RRF_K": "60",
+      "RERANKER_ENABLED": "True",
+      "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L6-v2",
+      "RERANK_CANDIDATES": "20",
+      "OPENROUTER_API_KEY": "***",
+      "OPENROUTER_URL": "https://openrouter.ai/api/v1",
+      "CLOUD_EMBED_MODEL": "google/gemini-embedding-2",
+      "CLOUD_EMBED_DIM": "768",
+      "CLOUD_VECTOR_MIN_SCORE": "0.0",
+      "CLOUD_CONTEXT_MODEL": "google/gemini-3.5-flash-lite",
+      "CLOUD_LLM_MODEL": "deepseek/deepseek-v4.1-flash",
+      "MAX_UPLOAD_MB": "25",
+      "DATA_DIR": "/data",
+      "JUDGE_MODEL": "qwen3:8b",
+      "EVAL_DIR": "/evaluation_metrics"
+    }
+  },
+  "questions": [
+    {
+      "paper_id": "1606.02892",
+      "question_id": "2686e8d51caff9a19684e0c9984bcb5a1937d08d",
+      "question": "What morphological features are considered?",
+      "references": [
+        {
+          "answer": "case, number, gender, person, tense, aspect",
+          "evidence": [
+            "For German INLINEFORM0 English, the parser annotates the German input with morphological features. Different word types have different sets of features – for instance, nouns have case, number and gender, while verbs have person, number, tense and aspect – and features may be underspecified. We treat the concatenation of all morphological features of a word, using a special symbol for underspecified features, as a string, and treat each such string as a separate feature value."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "nouns have case, number and gender, verbs have person, number, tense and aspect, features may be underspecified",
+          "evidence": [
+            "For German INLINEFORM0 English, the parser annotates the German input with morphological features. Different word types have different sets of features – for instance, nouns have case, number and gender, while verbs have person, number, tense and aspect – and features may be underspecified. We treat the concatenation of all morphological features of a word, using a special symbol for underspecified features, as a string, and treat each such string as a separate feature value."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the morphological features considered are described as follows:\n\n- Different word types have different sets of features. For example, **nouns** have **case, number, and gender**, while **verbs** have **person, number, tense, and aspect** [1].\n- Features may be **underspecified**, and the concatenation of all morphological features of a word (using a special symbol for underspecified features) is treated as a string, with each such string treated as a separate feature value [1].\n\nThe document also notes that morphological features can encode distinctions such as **grammatical case** (e.g., nominative vs. accusative) [2].",
+      "predicted_answer": "Based on the document, the morphological features considered are described as follows:\n\n- Different word types have different sets of features. For example, **nouns** have **case, number, and gender**, while **verbs** have **person, number, tense, and aspect** .\n- Features may be **underspecified**, and the concatenation of all morphological features of a word (using a special symbol for underspecified features) is treated as a string, with each such string treated as a separate feature value .\n\nThe document also notes that morphological features can encode distinctions such as **grammatical case** (e.g., nominative vs. accusative) .",
+      "retrieved_chunks": [
+        15,
+        26,
+        0,
+        34,
+        12
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        5,
+        10,
+        17
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0.3434343434343434,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.5125958840071689,
+      "rerank_s": 0.903119674010668,
+      "prejudge_s": null,
+      "generation_s": 0.8601599679968785,
+      "judging_s": 0.7823976359795779,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1606.02892",
+      "question_id": "df623717255ea2c9e0f846859d8a9ef51dc1102b",
+      "question": "What type of attention do they use in the decoder?",
+      "references": [
+        {
+          "answer": "Generalized attention",
+          "evidence": [
+            "The decoder is a recurrent neural network that predicts a target sequence INLINEFORM0 . Each word INLINEFORM1 is predicted based on a recurrent hidden state INLINEFORM2 , the previously predicted word INLINEFORM3 , and a context vector INLINEFORM4 . INLINEFORM5 is computed as a weighted sum of the annotations INLINEFORM6 . The weight of each annotation INLINEFORM7 is computed through an alignment model INLINEFORM8 , which models the probability that INLINEFORM9 is aligned to INLINEFORM10 . The alignment model is a single-layer feedforward neural network that is learned jointly with the rest of the network through backpropagation."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "weighted sum of the annotations",
+          "evidence": [
+            "The decoder is a recurrent neural network that predicts a target sequence INLINEFORM0 . Each word INLINEFORM1 is predicted based on a recurrent hidden state INLINEFORM2 , the previously predicted word INLINEFORM3 , and a context vector INLINEFORM4 . INLINEFORM5 is computed as a weighted sum of the annotations INLINEFORM6 . The weight of each annotation INLINEFORM7 is computed through an alignment model INLINEFORM8 , which models the probability that INLINEFORM9 is aligned to INLINEFORM10 . The alignment model is a single-layer feedforward neural network that is learned jointly with the rest of the network through backpropagation."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the context, the decoder uses an attention mechanism in which the context vector is computed as a weighted sum of the encoder annotations, with weights determined by an alignment model [4]. The alignment model is described as a single-layer feedforward neural network learned jointly with the rest of the network through backpropagation [4][5].\n\nThe document does not give a more specific name for the attention type (e.g., \"additive\" or \"multiplicative\") beyond this description.",
+      "predicted_answer": "Based on the context, the decoder uses an attention mechanism in which the context vector is computed as a weighted sum of the encoder annotations, with weights determined by an alignment model . The alignment model is described as a single-layer feedforward neural network learned jointly with the rest of the network through backpropagation .\n\nThe document does not give a more specific name for the attention type (e.g., \"additive\" or \"multiplicative\") beyond this description.",
+      "retrieved_chunks": [
+        6,
+        34,
+        0,
+        7,
+        8
+      ],
+      "fused_ranks": [
+        1,
+        19,
+        2,
+        7,
+        5
+      ],
+      "cited_passages": [
+        4,
+        5
+      ],
+      "answer_f1": 0.12698412698412698,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.20906278700567782,
+      "rerank_s": 0.600043864978943,
+      "prejudge_s": null,
+      "generation_s": 0.6196117429935839,
+      "judging_s": 0.263081745011732,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1804.05306",
+      "question_id": "2a9c7243744b42f1e9fed9ff2ab17c6f156b1ba4",
+      "question": "What was the baseline?",
+      "references": [
+        {
+          "answer": "Model A, which was trained on LibriSpeech data with SAT, together with the language model also trained with LibriSpeech.",
+          "evidence": [
+            "Row(1) is for Model A in Fig. FIGREF5 taken as the baseline, which was trained on LibriSpeech data with SAT, together with the language model also trained with LibriSpeech. The extremely high WER (96.21%) indicated the wide mismatch between speech and song audio, and the high difficulties in transcribing song audio. This is taken as the baseline of this work. After going through the series of Alignments a, b, c, d and training the series of Models B, C, D, we finally obtained the best GMM-HMM model, Model E-4 in Model E with fMLLR on the fragment level, as explained in section SECREF3 and shown in Fig. FIGREF5 . As shown in row(2) of Table. TABREF14 , with the same LibriSpeech LM, Model E-4 reduced WER to 88.26%, and brought an absolute improvement of 7.95% (rows (2) vs. (1)), which shows the achievements by the series of GMM-HMM alone. When we replaced the LibriSpeech language model with Lyrics language model but with the same Model E-4, we obtained an WER of 80.40% or an absolute improvement of 7.86% (rows (3) vs. (2)). This shows the achievement by the Lyrics language model alone."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "a model trained on LibriSpeech data with SAT and a with a LM also trained with LibriSpeech",
+          "evidence": [
+            "Row(1) is for Model A in Fig. FIGREF5 taken as the baseline, which was trained on LibriSpeech data with SAT, together with the language model also trained with LibriSpeech. The extremely high WER (96.21%) indicated the wide mismatch between speech and song audio, and the high difficulties in transcribing song audio. This is taken as the baseline of this work. After going through the series of Alignments a, b, c, d and training the series of Models B, C, D, we finally obtained the best GMM-HMM model, Model E-4 in Model E with fMLLR on the fragment level, as explained in section SECREF3 and shown in Fig. FIGREF5 . As shown in row(2) of Table. TABREF14 , with the same LibriSpeech LM, Model E-4 reduced WER to 88.26%, and brought an absolute improvement of 7.95% (rows (2) vs. (1)), which shows the achievements by the series of GMM-HMM alone. When we replaced the LibriSpeech language model with Lyrics language model but with the same Model E-4, we obtained an WER of 80.40% or an absolute improvement of 7.86% (rows (3) vs. (2)). This shows the achievement by the Lyrics language model alone."
+          ],
+          "type": "abstractive"
+        }
+      ],
+      "response": "The baseline was **Model A** (shown in Fig. 5), trained on LibriSpeech data with SAT, together with a language model also trained on LibriSpeech. It achieved an extremely high WER of **96.21%**, which was taken as the baseline of this work [1].",
+      "predicted_answer": "The baseline was **Model A** (shown in Fig. 5), trained on LibriSpeech data with SAT, together with a language model also trained on LibriSpeech. It achieved an extremely high WER of **96.21%**, which was taken as the baseline of this work .",
+      "retrieved_chunks": [
+        20,
+        21,
+        8,
+        27,
+        0
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        8,
+        6,
+        3
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.6037735849056604,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.34349076900980435,
+      "rerank_s": 0.8278224329988007,
+      "prejudge_s": null,
+      "generation_s": 1.759426981996512,
+      "judging_s": 0.20362068500253372,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1804.05306",
+      "question_id": "f8f64da7172e72e684f0e024a19411b43629ff55",
+      "question": "How many songs were collected?",
+      "references": [
+        {
+          "answer": "110 pieces of music-removed version of commercial English popular songs",
+          "evidence": [
+            "To make our work easier and compatible to more available singing content, we collected 130 music-removed (or vocal-only) English songs from www.youtube.com so as to consider only the vocal line.The music-removing processes are conducted by the video owners, containing the original vocal recordings by the singers and vocal elements for remix purpose.",
+            "After initial test by speech recognition system trained with LibriSpeech BIBREF20 , we dropped 20 songs, with WERs exceeding 95%. The remaining 110 pieces of music-removed version of commercial English popular songs were produced by 15 male singers, 28 female singers and 19 groups. The term group means by more than one person. No any further preprocessing was performed on the data, so the data preserves many characteristics of the vocal extracted from commercial polyphonic music, such as harmony, scat, and silent parts. Some pieces also contain overlapping verses and residual background music, and some frequency components may be truncated. Below this database is called vocal data here."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "130 ",
+          "evidence": [
+            "To make our work easier and compatible to more available singing content, we collected 130 music-removed (or vocal-only) English songs from www.youtube.com so as to consider only the vocal line.The music-removing processes are conducted by the video owners, containing the original vocal recordings by the singers and vocal elements for remix purpose."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, **130** music-removed (vocal-only) English songs were collected from YouTube [1]. After an initial test, 20 songs were dropped, leaving **110** songs in the final vocal data [2].",
+      "predicted_answer": "Based on the document, **130** music-removed (vocal-only) English songs were collected from YouTube . After an initial test, 20 songs were dropped, leaving **110** songs in the final vocal data .",
+      "retrieved_chunks": [
+        7,
+        8,
+        11,
+        6,
+        9
+      ],
+      "fused_ranks": [
+        3,
+        1,
+        5,
+        2,
+        4
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0.2222222222222222,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.19976375400437973,
+      "rerank_s": 0.7785594959859736,
+      "prejudge_s": null,
+      "generation_s": 2.6433290830173064,
+      "judging_s": 0.1838846369937528,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "8b8adb1d5a1824c8995b3eba668745c44f61c9c6",
+      "question": "Is this analysis performed only on English data?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [
+            "From the first 5000 words according to word rank by occurrence, the most sublinearly and superlinearly scaling words can be seen in Table TABREF13 . Their exponent differs significantly from that of the total word count, and their meaning can usually be linked to the exponent range qualitatively. The sublinearly scaling words mostly correspond to weather services reporting (flood 0.54, thunderstorm 0.61, wind 0.85), some certain slang and swearword forms (shxt 0.81, dang 0.88, damnit 0.93), outdoor-related activities (fishing 0.82, deer 0.81, truck 0.90, hunting 0.87) and certain companies (walmart 0.83). There is a longer tail in the range of superlinearly scaling words than in the sublinear regime in Figure FIGREF11 . This tail corresponds to Spanish words (gracias 1.41, por 1.40, para 1.39 etc.), that could not be separated from the English text, since the shortness of tweets make automated language detection very noisy. Apart from the Spanish words, again some special slang or swearwords (deadass 1.52, thx 1.16, lmfao 1.17, omfg 1.16), flight-reporting (flight 1.25, delayed 1.24 etc.) and lifestyle-related words (fitness 1.15, fashion 1.15, restaurant 1.14, traffic 1.22) dominate this end of the distribution."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [
+            "We use data from the online social network Twitter, which freely provides approximately 1% of all sent messages via their streaming API. For mobile devices, users have an option to share their exact location along with the Twitter message. Therefore, some messages contain geolocation information in the form of GPS-coordinates. In this study, we analyze 456 millions of these geolocated tweets collected between February 2012 and August 2014 from the area of the United States. We construct a geographically indexed database of these tweets, permitting the efficient analysis of regional features BIBREF41 . Using the Hierarchical Triangular Mesh scheme for practical geographic indexing, we assigned a US county to each tweet BIBREF42 , BIBREF43 . County borders are obtained from the GAdm database BIBREF44 . Counties are then aggregated into Metropolitan and Micropolitan Areas using the county to metro area crosswalk file from BIBREF45 . Population data for the MSA areas is obtained from BIBREF46 .",
+            "From the first 5000 words according to word rank by occurrence, the most sublinearly and superlinearly scaling words can be seen in Table TABREF13 . Their exponent differs significantly from that of the total word count, and their meaning can usually be linked to the exponent range qualitatively. The sublinearly scaling words mostly correspond to weather services reporting (flood 0.54, thunderstorm 0.61, wind 0.85), some certain slang and swearword forms (shxt 0.81, dang 0.88, damnit 0.93), outdoor-related activities (fishing 0.82, deer 0.81, truck 0.90, hunting 0.87) and certain companies (walmart 0.83). There is a longer tail in the range of superlinearly scaling words than in the sublinear regime in Figure FIGREF11 . This tail corresponds to Spanish words (gracias 1.41, por 1.40, para 1.39 etc.), that could not be separated from the English text, since the shortness of tweets make automated language detection very noisy. Apart from the Spanish words, again some special slang or swearwords (deadass 1.52, thx 1.16, lmfao 1.17, omfg 1.16), flight-reporting (flight 1.25, delayed 1.24 etc.) and lifestyle-related words (fitness 1.15, fashion 1.15, restaurant 1.14, traffic 1.22) dominate this end of the distribution.",
+            "Thus, when compared to the slightly nonlinear scaling of total amount of words, not all words follow the growth homogeneously with this same exponent. Though a significant amount remains in the linear or inconclusive range according to the statistical model test, most words are sensitive to city size and exhibit a super- or sublinear scaling. Those that fit the linear model the best, correspond to a kind of 'core-Twitter' vocabulary, which has a lot in common with the most common words of the English language, but also shows some Twitter-specific elements. A visible group of words that are amongst the most super- or sublinearly scaling words are related to the abundance or lack of the elements of urban lifestyle (e.g. deer, fitness). Thus, the imprint of the physical environment appears in a quantifiable way in the growths of word occurrences as a function of urban populations. Swearwords and slang, that are quite prevalent in this type of corpus BIBREF7 , BIBREF6 , appear at both ends of the regime that suggests that some specific forms of swearing disappear with urbanization, but the share of overall swearing on Twitter grows with city size. The peak consisting of Spanish words at the superlinear end of the exponent distribution marks the stronger presence of the biggest non-English speaking ethnicity in bigger urban areas. This is confirmed by fitting the scaling relationship to the Hispanic or Latino population BIBREF53 of the MSA areas ( INLINEFORM0 , see SI), which despite the large error, is very superlinear."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We use data from the online social network Twitter, which freely provides approximately 1% of all sent messages via their streaming API. For mobile devices, users have an option to share their exact location along with the Twitter message. Therefore, some messages contain geolocation information in the form of GPS-coordinates. In this study, we analyze 456 millions of these geolocated tweets collected between February 2012 and August 2014 from the area of the United States. We construct a geographically indexed database of these tweets, permitting the efficient analysis of regional features BIBREF41 . Using the Hierarchical Triangular Mesh scheme for practical geographic indexing, we assigned a US county to each tweet BIBREF42 , BIBREF43 . County borders are obtained from the GAdm database BIBREF44 . Counties are then aggregated into Metropolitan and Micropolitan Areas using the county to metro area crosswalk file from BIBREF45 . Population data for the MSA areas is obtained from BIBREF46 .",
+            "We sorted the words falling into the \"linear\" scaling category according to their INLINEFORM0 values showing the goodness of fit for the fixed INLINEFORM1 model. The first 50 words in Table TABREF12 according to this ranking are some of the most common words of the English language, apart from some swearwords and abbreviations (e.g. lol) that are typical for Twitter language BIBREF10 . These are the words that are most homogeneously present in the text of all urban areas."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "No — the analysis is not limited to English data. The authors note that Spanish words appear among the superlinearly scaling words (e.g., *gracias* 1.41, *por* 1.40, *para* 1.39) and could not be separated from the English text because automated language detection is very noisy given the shortness of tweets [2][3].",
+      "predicted_answer": "No — the analysis is not limited to English data. The authors note that Spanish words appear among the superlinearly scaling words (e.g., *gracias* 1.41, *por* 1.40, *para* 1.39) and could not be separated from the English text because automated language detection is very noisy given the shortness of tweets .",
+      "retrieved_chunks": [
+        5,
+        21,
+        20,
+        1,
+        22
+      ],
+      "fused_ranks": [
+        1,
+        7,
+        14,
+        3,
+        9
+      ],
+      "cited_passages": [
+        2,
+        3
+      ],
+      "answer_f1": 0.04347826086956522,
+      "answer_type": "boolean",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.3208808589843102,
+      "rerank_s": 0.6956134780193679,
+      "prejudge_s": null,
+      "generation_s": 1.3219881059776526,
+      "judging_s": 0.18586628400953487,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "88d1bd21b53b8be4f9d3cb26ecc3cbcacffcd63e",
+      "question": "Do they authors offer any hypothesis for why the parameters of Zipf's law and Heaps' law differ on Twitter?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We use the following form for Zipf's law that is proposed in BIBREF48 , and that fits the probability distribution of the word frequencies apart from the very rare words: INLINEFORM0",
+            "We fit the probability distribution of the frequencies using the powerlaw package of Python BIBREF49 , that uses a Maximum Likelihood method based on the results of BIBREF50 , BIBREF51 , BIBREF52 . INLINEFORM0 is the frequency for which the power-law fit is the most probable with respect to the Kolmogorov-Smirnov distance BIBREF49 .",
+            "We use the previous form because the fitting method of BIBREF49 can only reliably tell the exponent for the tail of a distribution. In the rank-frequency case, the interesting part of the fit would be at the first few ranks, while the most common words are in the tail of the INLINEFORM0 distribution."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        }
+      ],
+      "response": "Yes. The authors suggest that the nature of the communication medium itself affects the parameters of linguistic laws.\n\n- They state that the carrying medium has a huge impact on the exact values of the parameters of linguistic laws, and that because most prior observations hold only for books or corpora with longer texts than tweets, the nature of communication—in this case Twitter itself—affects the parameters of linguistic laws [1].\n- They also note that the Zipf exponent measured in the overall corpus is much lower than the original law's value, and that they do not observe the second power-law regime suggested by other work [1].\n- In discussing the decreasing Zipf exponent with city size, they suggest it can be understood as decreased communication efficiency due to an increased number of different tokens, requiring more reader effort, and that using more specific words may result from the 140-character tweet limit, possibly similar to texting effects [2].\n\nFor Heaps' law specifically, the provided context does not contain a hypothesis explaining why its parameters differ on Twitter; it only mentions that Heaps' law exhibits a power-law form on Twitter [5].",
+      "predicted_answer": "Yes. The authors suggest that the nature of the communication medium itself affects the parameters of linguistic laws.\n\n- They state that the carrying medium has a huge impact on the exact values of the parameters of linguistic laws, and that because most prior observations hold only for books or corpora with longer texts than tweets, the nature of communication—in this case Twitter itself—affects the parameters of linguistic laws .\n- They also note that the Zipf exponent measured in the overall corpus is much lower than the original law's value, and that they do not observe the second power-law regime suggested by other work .\n- In discussing the decreasing Zipf exponent with city size, they suggest it can be understood as decreased communication efficiency due to an increased number of different tokens, requiring more reader effort, and that using more specific words may result from the 140-character tweet limit, possibly similar to texting effects .\n\nFor Heaps' law specifically, the provided context does not contain a hypothesis explaining why its parameters differ on Twitter; it only mentions that Heaps' law exhibits a power-law form on Twitter .",
+      "retrieved_chunks": [
+        26,
+        25,
+        0,
+        24,
+        4
+      ],
+      "fused_ranks": [
+        1,
+        3,
+        2,
+        5,
+        4
+      ],
+      "cited_passages": [
+        1,
+        2,
+        5
+      ],
+      "answer_f1": 0.012269938650306747,
+      "answer_type": "boolean",
+      "evidence_f1": 0.0,
+      "retrieval_recall": 0.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.1595639500010293,
+      "rerank_s": 0.7395007350132801,
+      "prejudge_s": null,
+      "generation_s": 4.124040369992144,
+      "judging_s": 0.25305708701489493,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "74cef0205e0f31d0ab28d0e4d96c1e8ef62d4cce",
+      "question": "What explanation do the authors offer for the super or sublinear urban scaling?",
+      "references": [
+        {
+          "answer": "abundance or lack of the elements of urban lifestyle",
+          "evidence": [
+            "Thus, when compared to the slightly nonlinear scaling of total amount of words, not all words follow the growth homogeneously with this same exponent. Though a significant amount remains in the linear or inconclusive range according to the statistical model test, most words are sensitive to city size and exhibit a super- or sublinear scaling. Those that fit the linear model the best, correspond to a kind of 'core-Twitter' vocabulary, which has a lot in common with the most common words of the English language, but also shows some Twitter-specific elements. A visible group of words that are amongst the most super- or sublinearly scaling words are related to the abundance or lack of the elements of urban lifestyle (e.g. deer, fitness). Thus, the imprint of the physical environment appears in a quantifiable way in the growths of word occurrences as a function of urban populations. Swearwords and slang, that are quite prevalent in this type of corpus BIBREF7 , BIBREF6 , appear at both ends of the regime that suggests that some specific forms of swearing disappear with urbanization, but the share of overall swearing on Twitter grows with city size. The peak consisting of Spanish words at the superlinear end of the exponent distribution marks the stronger presence of the biggest non-English speaking ethnicity in bigger urban areas. This is confirmed by fitting the scaling relationship to the Hispanic or Latino population BIBREF53 of the MSA areas ( INLINEFORM0 , see SI), which despite the large error, is very superlinear."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the authors offer a **meaning-based explanation** for the super- or sublinear urban scaling of words.\n\nSpecifically:\n\n- For both the superlinear and sublinear regimes, they \"can offer a plausible explanation based on the meaning of the words\" [1].\n- Words that scale most super- or sublinearly are \"related to the abundance or lack of the elements of urban lifestyle (e.g. deer, fitness),\" suggesting that \"the imprint of the physical environment appears in a quantifiable way in the growths of word occurrences as a function of urban populations\" [3].\n\nThe document also notes that words fitting the linear model best correspond to a \"core-Twitter\" vocabulary, similar to the most common words of English but with some Twitter-specific elements [3].",
+      "predicted_answer": "Based on the document, the authors offer a **meaning-based explanation** for the super- or sublinear urban scaling of words.\n\nSpecifically:\n\n- For both the superlinear and sublinear regimes, they \"can offer a plausible explanation based on the meaning of the words\" .\n- Words that scale most super- or sublinearly are \"related to the abundance or lack of the elements of urban lifestyle (e.g. deer, fitness),\" suggesting that \"the imprint of the physical environment appears in a quantifiable way in the growths of word occurrences as a function of urban populations\" .\n\nThe document also notes that words fitting the linear model best correspond to a \"core-Twitter\" vocabulary, similar to the most common words of English but with some Twitter-specific elements .",
+      "retrieved_chunks": [
+        0,
+        9,
+        22,
+        18,
+        17
+      ],
+      "fused_ranks": [
+        4,
+        1,
+        2,
+        3,
+        5
+      ],
+      "cited_passages": [
+        1,
+        3
+      ],
+      "answer_f1": 0.15094339622641506,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.24781405201065354,
+      "rerank_s": 0.7135258380149025,
+      "prejudge_s": null,
+      "generation_s": 8.934753034991445,
+      "judging_s": 0.2859542020014487,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "200c37060d037dee33f3b7c8b1a2aaa58376566e",
+      "question": "Do the authors give examples of the core vocabulary which follows the scaling relationship of the bulk text?",
+      "references": [
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We sorted the words falling into the \"linear\" scaling category according to their INLINEFORM0 values showing the goodness of fit for the fixed INLINEFORM1 model. The first 50 words in Table TABREF12 according to this ranking are some of the most common words of the English language, apart from some swearwords and abbreviations (e.g. lol) that are typical for Twitter language BIBREF10 . These are the words that are most homogeneously present in the text of all urban areas."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "Yes. The authors state that the words fitting the linear model best correspond to a kind of \"core-Twitter\" vocabulary, which has a lot in common with the most common words of the English language, but also shows some Twitter-specific elements [4]. They also note that the top 50 words in this ranking are some of the most common words of the English language, apart from some swearwords and abbreviations (e.g. lol) typical of Twitter language [3].",
+      "predicted_answer": "Yes. The authors state that the words fitting the linear model best correspond to a kind of \"core-Twitter\" vocabulary, which has a lot in common with the most common words of the English language, but also shows some Twitter-specific elements . They also note that the top 50 words in this ranking are some of the most common words of the English language, apart from some swearwords and abbreviations (e.g. lol) typical of Twitter language .",
+      "retrieved_chunks": [
+        0,
+        28,
+        19,
+        22,
+        18
+      ],
+      "fused_ranks": [
+        4,
+        1,
+        2,
+        5,
+        7
+      ],
+      "cited_passages": [
+        3,
+        4
+      ],
+      "answer_f1": 0.03076923076923077,
+      "answer_type": "boolean",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.33980738001991995,
+      "rerank_s": 0.7309240390022751,
+      "prejudge_s": null,
+      "generation_s": 2.9152373030083254,
+      "judging_s": 0.1975232260010671,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "3e6b6820e7843209495b4f9a72177573afaa4bc3",
+      "question": "What conclusions do the authors draw about the aspects and mechanisms of personal recovery in bipolar disorder?",
+      "references": [
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Occurrences of the identified keywords or concepts can be quantified in the full corpus to identify the importance of the related personal recovery aspects",
+          "evidence": [
+            "A specific challenge will be to narrow down the data to parts relevant for personal recovery, since there is no control over the discussed topics compared to structured interviews. To investigate how individuals discuss personal recovery online and what (potentially unrecorded) aspects they associate with it, without a priori narrowing down the search-space to specific known keywords seems like a chicken-and-egg problem. We propose to address this challenge by an iterative approach similar to the one taken in a corpus linguistic study of cancer metaphors BIBREF63 . Drawing on results from previous qualitative research BIBREF24 , BIBREF23 , we will compile an initial dictionary of recovery-related terms. Next, we will examine a small portion of the dataset manually, which will be partly randomly sampled and partly selected to contain recovery-related terms. Based on this, we will be able to expand the dictionary and additionally automatically annotate semantic concepts of the identified relevant text passages using a semantic tagging approach such as the UCREL Semantic Analysis System (USAS) BIBREF64 . Crucially for the multilingual aspect of the project, USAS can tag semantic categories in eight languages BIBREF8 . Then, semantic tagging will be applied to the full corpus to retrieve all text passages mentioning relevant concepts. Furthermore, distributional semantics methods BIBREF65 , BIBREF66 can be used to find terms that frequently co-occur with words from our keyword dictionary. Occurrences of the identified keywords or concepts can be quantified in the full corpus to identify the importance of the related personal recovery aspects."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "a recovery approach as leading principle for national or global health service strategies, should be informed by voices of individuals, expect the proposed investigations of views on recovery by previously under-researched ethnic, language, and cultural groups to yield valuable insights on the appropriateness of the recovery approach for a wider population, The datasets collected in this project can serve as useful resources for future research",
+          "evidence": [
+            "The importance of the recovery concept in the design of mental health services has recently been prominently reinforced, suggesting ‘recovery-oriented social enterprises as key component of the integrated service’ BIBREF20 . We think that a recovery approach as leading principle for national or global health service strategies, should be informed by voices of individuals as diverse as those it is supposed to serve. Therefore, we expect the proposed investigations of views on recovery by previously under-researched ethnic, language, and cultural groups to yield valuable insights on the appropriateness of the recovery approach for a wider population. The datasets collected in this project can serve as useful resources for future research. More generally, our social-media data-driven approach could be applied to investigate other areas of mental health if it proves successful in leading to relevant new insights."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the provided context, I could not find a passage that states the authors' conclusions specifically about the *aspects and mechanisms* of personal recovery in bipolar disorder.\n\nThe context does describe aspects of personal recovery in general (the CHIME model: Connectedness, Hope and optimism, Identity, Meaning and purpose, and Empowerment) [1], and it discusses the importance and motivation for BD-specific personal recovery research [2][4]. However, the conclusions drawn in the \"Impact and conclusion\" section concern the recovery approach in service design, the value of including diverse voices, and the usefulness of the datasets and social-media approach for future research [3]—not the aspects or mechanisms of personal recovery in BD.",
+      "predicted_answer": "Based on the provided context, I could not find a passage that states the authors' conclusions specifically about the *aspects and mechanisms* of personal recovery in bipolar disorder.\n\nThe context does describe aspects of personal recovery in general (the CHIME model: Connectedness, Hope and optimism, Identity, Meaning and purpose, and Empowerment) , and it discusses the importance and motivation for BD-specific personal recovery research . However, the conclusions drawn in the \"Impact and conclusion\" section concern the recovery approach in service design, the value of including diverse voices, and the usefulness of the datasets and social-media approach for future research —not the aspects or mechanisms of personal recovery in BD.",
+      "retrieved_chunks": [
+        3,
+        4,
+        29,
+        5,
+        17
+      ],
+      "fused_ranks": [
+        7,
+        8,
+        2,
+        10,
+        3
+      ],
+      "cited_passages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "answer_f1": 0.24836601307189543,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": true,
+      "retrieval_s": 0.49540238798363134,
+      "rerank_s": 0.6737070459930692,
+      "prejudge_s": null,
+      "generation_s": 2.034286553011043,
+      "judging_s": 0.3007768500247039,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "a926d71e6e58066d279d9f7dc3210cd43f410164",
+      "question": "What languages were included in this multilingual population?",
+      "references": [
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        }
+      ],
+      "response": "The document does not specify which languages were included in the multilingual population. It refers to \"multilingual data by individuals of diverse ethnicities\" [2] and to \"multilingual accounts\" [4], but no particular languages are named.",
+      "predicted_answer": "The document does not specify which languages were included in the multilingual population. It refers to \"multilingual data by individuals of diverse ethnicities\"  and to \"multilingual accounts\" , but no particular languages are named.",
+      "retrieved_chunks": [
+        0,
+        8,
+        23,
+        13,
+        1
+      ],
+      "fused_ranks": [
+        2,
+        1,
+        3,
+        5,
+        4
+      ],
+      "cited_passages": [
+        2,
+        4
+      ],
+      "answer_f1": 0,
+      "answer_type": "none",
+      "evidence_f1": 0.0,
+      "retrieval_recall": null,
+      "candidate_recall": null,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": true,
+      "retrieval_s": 0.22115027098334394,
+      "rerank_s": 0.7202942399890162,
+      "prejudge_s": null,
+      "generation_s": 0.9827522590057924,
+      "judging_s": 0.18392869300441816,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "3d547a7dda18a2dd5dc89f12d25d7fe782d66450",
+      "question": "What computational linguistic methods were used for the analysis?",
+      "references": [
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "language identification",
+          "evidence": [
+            "Since language and culture are important factors in our research questions, we need information on the language of the texts and the country of residence of their authors, which is not provided in a structured format in the three data sources. For language identification, Twitter employs an automatic tool BIBREF48 , which can be used to filter tweets according to 60 language codes, and there are free, fairly accurate tools such as the Google Compact Language Detector, which can be applied to Reddit and blog posts. The location of Twitter users can be automatically inferred from their tweets BIBREF49 or the (albeit noisy) location field in their user profiles BIBREF50 . Only one attempt to classify the location of Reddit users has been published so far BIBREF51 showing meagre results, indicating that the development of robust location classification approaches on this platform would constitute a valuable contribution. Some companies collect mental health-related online data and make them available to researchers subject to approval of their internal review boards, e.g., OurDataHelps by Qntfy or the peer-support forum provider 7 Cups. Unlike `raw' social media data, these datasets have richer user-provided metadata and explicit consent for research usage. On the other hand, less data is available, the process to obtain access might be tedious within the short timeline of a PhD project and it might be impossible to share the used portions of the data with other researchers. Therefore, we will follow up the possibilities of obtaining access to these datasets, but in parallel also collect our own datasets to avoid dependence on external data providers."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the context, the following computational linguistic methods and tools are mentioned:\n\n- **Topic modelling** — noted as having been applied to explore cultural differences in mental-health related online data [1].\n- **The Differential Language Analysis ToolKit (DLATK)** — facilitates social-scientific language analyses, including preprocessing tools (e.g., emoticon-aware tokenisers), filtering according to meta data, and analysis via robust topic modelling methods [1].\n- **Comparative analysis tools such as Wmatrix** — used to uncover important linguistic features, e.g., keywords and key concepts occurring with unexpected frequency relative to reference corpora [3].\n\nThe document also refers more generally to **corpus and computational linguistic methods** designed for processing large amounts of linguistic data [2], and mentions advances in tasks such as syntactic and semantic parsing, emotion classification, and sentiment analysis, as well as multilingual models and semantic annotation resources [5].",
+      "predicted_answer": "Based on the context, the following computational linguistic methods and tools are mentioned:\n\n- **Topic modelling** — noted as having been applied to explore cultural differences in mental-health related online data .\n- **The Differential Language Analysis ToolKit (DLATK)** — facilitates social-scientific language analyses, including preprocessing tools (e.g., emoticon-aware tokenisers), filtering according to meta data, and analysis via robust topic modelling methods .\n- **Comparative analysis tools such as Wmatrix** — used to uncover important linguistic features, e.g., keywords and key concepts occurring with unexpected frequency relative to reference corpora .\n\nThe document also refers more generally to **corpus and computational linguistic methods** designed for processing large amounts of linguistic data , and mentions advances in tasks such as syntactic and semantic parsing, emotion classification, and sentiment analysis, as well as multilingual models and semantic annotation resources .",
+      "retrieved_chunks": [
+        20,
+        7,
+        15,
+        16,
+        1
+      ],
+      "fused_ranks": [
+        1,
+        7,
+        5,
+        6,
+        10
+      ],
+      "cited_passages": [
+        1,
+        2,
+        3,
+        5
+      ],
+      "answer_f1": 0.015625,
+      "answer_type": "extractive",
+      "evidence_f1": 0.0,
+      "retrieval_recall": 0.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": true,
+      "retrieval_s": 0.20252219497342594,
+      "rerank_s": 0.6064382650074549,
+      "prejudge_s": null,
+      "generation_s": 2.920042804995319,
+      "judging_s": 0.3392001730098855,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "4a32adb0d54da90434d5bd1c66cc03a7956d12a0",
+      "question": "Was permission sought from the bipolar patients to use this data?",
+      "references": [
+        {
+          "answer": "For Twitter and Reddit users , implicit consent is assumed to use their public tweets. Blog users are  contacted to obtain consent for using their texts.",
+          "evidence": [
+            "We plan to collect data relevant for BD in general as well as for personal recovery in BD from three sources varying in their available amount versus depth of the accounts we expect to find: 1) Twitter, 2) Reddit (focusing on mental health-related content unlike previous work), 3) blogs authored by affected individuals. Twitter and Reddit users with a BD diagnosis will be identified automatically via self-reported diagnosis statements, such as `I was diagnosed with BD-I last week'. To do so, we will extend on the diagnosis patterns and terms for BD provided by BIBREF47 . Implicit consent is assumed from users on these platforms to use their public tweets and posts. SECREF3 Relevant blogs will be manually identified, and their authors will be contacted to obtain informed consent for using their texts."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "No",
+          "evidence": [
+            "If and how informed consent needs to be obtained for research on social media data is a debated issue BIBREF75 , BIBREF76 , BIBREF77 , mainly because it is not straightforward to determine if posts are made in a public or private context. From a legal point of view, the privacy policies of Twitter and Reddit, explicitly allow analysis of the user contents by third party, but it is unclear to what extent users are aware of this when posting to these platforms BIBREF78 . However, in practice it is often infeasible to seek retrospective consent from hundreds or thousands of social media users. According to current ethical guidelines for social media research BIBREF79 , BIBREF80 and practice in comparable research projects BIBREF81 , BIBREF78 , it is regarded as acceptable to waive explicit consent if the anonymity of the users is preserved. Therefore, we will not ask the account holders of Twitter and Reddit posts included in our datasets for their consent."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "# Permission and Consent in the Dataset\n\nBased on the document, the approach to seeking permission varies by data source:\n\n**Twitter and Reddit:** No explicit consent is sought. The authors state they \"will not ask the account holders of Twitter and Reddit posts included in our datasets for their consent\" [2]. This is justified because it is often infeasible to seek retrospective consent from large numbers of users, and current ethical guidelines regard waiving explicit consent as acceptable if user anonymity is preserved [2]. For these platforms, \"implicit consent is assumed from users... to use their public tweets and posts\" [4].\n\n**Blogs:** Informed consent *is* obtained. Relevant blogs are manually identified, and \"their authors will be contacted to obtain informed consent for using their texts\" [4].\n\n**Data sharing safeguards:** Even where consent is waived, the authors commit to sharing only anonymised and paraphrased excerpts, since verbatim text could allow a user to be re-identified via web search [3]. Original texts would be made available to subsequent researchers only under a data usage agreement, and sensitive demographic annotations only to researchers demonstrating a genuine need [3].\n\n**In summary:** Permission was not sought from Twitter and Reddit users (consent waived under anonymity-preserving conditions), but informed consent was obtained from blog authors.",
+      "predicted_answer": "# Permission and Consent in the Dataset\n\nBased on the document, the approach to seeking permission varies by data source:\n\n**Twitter and Reddit:** No explicit consent is sought. The authors state they \"will not ask the account holders of Twitter and Reddit posts included in our datasets for their consent\" . This is justified because it is often infeasible to seek retrospective consent from large numbers of users, and current ethical guidelines regard waiving explicit consent as acceptable if user anonymity is preserved . For these platforms, \"implicit consent is assumed from users... to use their public tweets and posts\" .\n\n**Blogs:** Informed consent *is* obtained. Relevant blogs are manually identified, and \"their authors will be contacted to obtain informed consent for using their texts\" .\n\n**Data sharing safeguards:** Even where consent is waived, the authors commit to sharing only anonymised and paraphrased excerpts, since verbatim text could allow a user to be re-identified via web search . Original texts would be made available to subsequent researchers only under a data usage agreement, and sensitive demographic annotations only to researchers demonstrating a genuine need .\n\n**In summary:** Permission was not sought from Twitter and Reddit users (consent waived under anonymity-preserving conditions), but informed consent was obtained from blog authors.",
+      "retrieved_chunks": [
+        12,
+        25,
+        26,
+        10,
+        9
+      ],
+      "fused_ranks": [
+        1,
+        7,
+        3,
+        2,
+        4
+      ],
+      "cited_passages": [
+        2,
+        3,
+        4
+      ],
+      "answer_f1": 0.2293577981651376,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.4,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": true,
+      "retrieval_s": 0.15223605898790993,
+      "rerank_s": 0.6068355960014742,
+      "prejudge_s": null,
+      "generation_s": 5.115518562000943,
+      "judging_s": 1.0658786320127547,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "c17ece1dad42d92c78fca2e3d8afa9a20ff19598",
+      "question": "How are the individuals with bipolar disorder identified?",
+      "references": [
+        {
+          "answer": "characterised by recurring episodes of depressed and elated (hypomanic or manic) mood BIBREF25 , BIBREF12",
+          "evidence": [
+            "Concurrently, it has been argued for mental health research that it would constitute a `valuable critical step' BIBREF10 to analyse first-hand accounts by individuals with lived experience of severe mental health issues in blog posts, tweets, and discussion forums. Several severe mental health difficulties, e.g., bipolar disorder (BD) and schizophrenia are considered as chronic and clinical recovery, defined as being relapse and symptom free for a sustained period of time BIBREF11 , is considered difficult to achieve BIBREF12 , BIBREF13 , BIBREF14 . Moreover, clinically recovered individuals often do not regain full social and educational/vocational functioning BIBREF15 , BIBREF16 . Therefore, research originating from initiatives by people with lived experience of mental health issues has been advocating emphasis on the individual's goals in recovery BIBREF17 , BIBREF18 . This movement gave rise to the concept of personal recovery BIBREF19 , BIBREF20 , loosely defined as a `way of living a satisfying, hopeful, and contributing life even with limitations caused by illness' BIBREF18 . The aspects of personal recovery have been conceptualised in various ways BIBREF21 , BIBREF22 , BIBREF23 . According to the frequently used CHIME model BIBREF24 , its main components are Connectedness, Hope and optimism, Identity, Meaning and purpose, and Empowerment. Here, we focus on BD, which is characterised by recurring episodes of depressed and elated (hypomanic or manic) mood BIBREF25 , BIBREF12 . Bipolar spectrum disorders were estimated to affect approximately 2% of the UK population BIBREF13 with rates ranging from 0.1%-4.4% across 11 other European, American and Asian countries BIBREF26 . Moreover, BD is associated with a high risk of suicide BIBREF27 , making its prevention and treatment important tasks for society. BD-specific personal recovery research is motivated by mainly two facts: First, the pole of positive/elevated mood and ongoing mood instability constitute core features of BD and pose special challenges compared to other mental health issues, such as unipolar depression BIBREF25 . Second, unlike for some other severe mental health difficulties, return to normal functioning is achievable given appropriate treatment BIBREF28 , BIBREF16 , BIBREF29 ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": " Twitter and Reddit users with a BD diagnosis will be identified automatically via self-reported diagnosis statements, such as `I was diagnosed with BD-I last week'.",
+          "evidence": [
+            "We plan to collect data relevant for BD in general as well as for personal recovery in BD from three sources varying in their available amount versus depth of the accounts we expect to find: 1) Twitter, 2) Reddit (focusing on mental health-related content unlike previous work), 3) blogs authored by affected individuals. Twitter and Reddit users with a BD diagnosis will be identified automatically via self-reported diagnosis statements, such as `I was diagnosed with BD-I last week'. To do so, we will extend on the diagnosis patterns and terms for BD provided by BIBREF47 . Implicit consent is assumed from users on these platforms to use their public tweets and posts. SECREF3 Relevant blogs will be manually identified, and their authors will be contacted to obtain informed consent for using their texts."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Twitter and Reddit users  are identified automatically  via self-reported diagnosis statements. Blog users are identified manually.",
+          "evidence": [
+            "We plan to collect data relevant for BD in general as well as for personal recovery in BD from three sources varying in their available amount versus depth of the accounts we expect to find: 1) Twitter, 2) Reddit (focusing on mental health-related content unlike previous work), 3) blogs authored by affected individuals. Twitter and Reddit users with a BD diagnosis will be identified automatically via self-reported diagnosis statements, such as `I was diagnosed with BD-I last week'. To do so, we will extend on the diagnosis patterns and terms for BD provided by BIBREF47 . Implicit consent is assumed from users on these platforms to use their public tweets and posts. SECREF3 Relevant blogs will be manually identified, and their authors will be contacted to obtain informed consent for using their texts."
+          ],
+          "type": "abstractive"
+        }
+      ],
+      "response": "Individuals with bipolar disorder are identified **automatically via self-reported diagnosis statements** on Twitter and Reddit, such as `I was diagnosed with BD-I last week'. The project plans to extend on the diagnosis patterns and terms for BD provided by BIBREF47 [1]. Relevant blogs, by contrast, are manually identified, and their authors are contacted to obtain informed consent [1].",
+      "predicted_answer": "Individuals with bipolar disorder are identified **automatically via self-reported diagnosis statements** on Twitter and Reddit, such as `I was diagnosed with BD-I last week'. The project plans to extend on the diagnosis patterns and terms for BD provided by BIBREF47 . Relevant blogs, by contrast, are manually identified, and their authors are contacted to obtain informed consent .",
+      "retrieved_chunks": [
+        10,
+        0,
+        28,
+        5,
+        11
+      ],
+      "fused_ranks": [
+        1,
+        16,
+        6,
+        15,
+        5
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.5384615384615385,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2134571709902957,
+      "rerank_s": 0.6013132240041159,
+      "prejudge_s": null,
+      "generation_s": 1.635576898988802,
+      "judging_s": 0.21410261598066427,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "9465d96a1368299fd3662d91aa94ba85347b4ccd",
+      "question": "What is the performance of the best model?",
+      "references": [
+        {
+          "answer": "F1 Macro of 0.89",
+          "evidence": [],
+          "type": "abstractive"
+        },
+        {
+          "answer": "LSTMs and GRU with attention which achieved 0.89 F1 score",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "0.89 F1 score",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The best model (LSTM and GRU with Attention) achieved an F1-macro of 0.89 [2][4].",
+      "predicted_answer": "The best model (LSTM and GRU with Attention) achieved an F1-macro of 0.89 .",
+      "retrieved_chunks": [
+        27,
+        28,
+        23,
+        2,
+        29
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        8,
+        7
+      ],
+      "cited_passages": [
+        2,
+        4
+      ],
+      "answer_f1": 0.5714285714285713,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.9923063680180348,
+      "rerank_s": 0.6323517889832146,
+      "prejudge_s": null,
+      "generation_s": 2.2518226410029456,
+      "judging_s": 0.16029783198609948,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "e8c3f59313df20db0cdd49b84a37c44da849fe17",
+      "question": "What are the models tested on the dataset?",
+      "references": [
+        {
+          "answer": "linear SVM, RBF SVM, linear classifier with SGDC, multinomial naive bayes, bernoulli naive bayes, pooled GRU, stacked LSTM with attention, LSTM and GRU with attention, 2d convolution with pooling, GRU with Capsule, LSTM with Capsule and attention, and BERT",
+          "evidence": [
+            "Every classical model was considered on the condition it could take matrices as input for fitting and was trained with the default settings because of the size of the dataset. Five models were trained: Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), both with a value of 1 in the penalty parameter C of the error term. The gamma value of the RBF SVM which indicates how much influence a single training example has, was set to 2. The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning. The gradient of the loss is estimated each sample at a time and the SGDC is updated along the way with a decreasing learning rate. The parameters for maximum epochs and the stopping criterion were defined using the default values in scikit-learn. The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features.",
+            "Six different deep learning models were considered. All of these models have been used in an aggression detection task. The models are Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26 and BERT BIBREF24. These models has been used in HASOC 2019 and achieved a third place finish in English task and a eighth place finish in German and Hindi subtasks BIBREF26. Parameters described in BIBREF26 were used as the default parameters in order to ease the training process. The code for the deep learning has been made available on Github ."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning, The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features, Pooled GRU,  Stacked LSTM with Attention, LSTM and GRU with Attention, 2D Convolution with Pooling, GRU with Capsule, LSTM with Capsule and Attention, BERT",
+          "evidence": [
+            "Every classical model was considered on the condition it could take matrices as input for fitting and was trained with the default settings because of the size of the dataset. Five models were trained: Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), both with a value of 1 in the penalty parameter C of the error term. The gamma value of the RBF SVM which indicates how much influence a single training example has, was set to 2. The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning. The gradient of the loss is estimated each sample at a time and the SGDC is updated along the way with a decreasing learning rate. The parameters for maximum epochs and the stopping criterion were defined using the default values in scikit-learn. The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features.",
+            "Six different deep learning models were considered. All of these models have been used in an aggression detection task. The models are Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26 and BERT BIBREF24. These models has been used in HASOC 2019 and achieved a third place finish in English task and a eighth place finish in German and Hindi subtasks BIBREF26. Parameters described in BIBREF26 were used as the default parameters in order to ease the training process. The code for the deep learning has been made available on Github ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), linear classifier with Stochastic Gradient Descent (SGDC) learning, Multinomial Naïve Bayes, Bernoulli Naïve Bayes, Pooled GRU , Stacked LSTM with Attention , LSTM and GRU with Attention, 2D Convolution with Pooling , GRU with Capsule,  LSTM with Capsule and Attention, BERT",
+          "evidence": [
+            "Every classical model was considered on the condition it could take matrices as input for fitting and was trained with the default settings because of the size of the dataset. Five models were trained: Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), both with a value of 1 in the penalty parameter C of the error term. The gamma value of the RBF SVM which indicates how much influence a single training example has, was set to 2. The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning. The gradient of the loss is estimated each sample at a time and the SGDC is updated along the way with a decreasing learning rate. The parameters for maximum epochs and the stopping criterion were defined using the default values in scikit-learn. The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features.",
+            "Six different deep learning models were considered. All of these models have been used in an aggression detection task. The models are Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26 and BERT BIBREF24. These models has been used in HASOC 2019 and achieved a third place finish in English task and a eighth place finish in German and Hindi subtasks BIBREF26. Parameters described in BIBREF26 were used as the default parameters in order to ease the training process. The code for the deep learning has been made available on Github ."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the following models were tested:\n\n**Classical machine learning models** [4]:\n- Linear SVM\n- RBF SVM\n- Stochastic Gradient Descent (SGDC) classifier\n- Multinomial Naïve Bayes\n- Bernoulli Naïve Bayes\n\n**Deep learning models** [1]:\n- LSTM and GRU with Attention\n- Fine-tuned BERT-Base Multilingual Cased model\n\nThe best-performing model overall was LSTM and GRU with Attention, achieving an F1-macro of 0.89 [2].",
+      "predicted_answer": "Based on the document, the following models were tested:\n\n**Classical machine learning models** :\n- Linear SVM\n- RBF SVM\n- Stochastic Gradient Descent (SGDC) classifier\n- Multinomial Naïve Bayes\n- Bernoulli Naïve Bayes\n\n**Deep learning models** :\n- LSTM and GRU with Attention\n- Fine-tuned BERT-Base Multilingual Cased model\n\nThe best-performing model overall was LSTM and GRU with Attention, achieving an F1-macro of 0.89 .",
+      "retrieved_chunks": [
+        27,
+        28,
+        23,
+        19,
+        16
+      ],
+      "fused_ranks": [
+        2,
+        4,
+        10,
+        5,
+        3
+      ],
+      "cited_passages": [
+        1,
+        2,
+        4
+      ],
+      "answer_f1": 0.46153846153846156,
+      "answer_type": "extractive",
+      "evidence_f1": 0.3333333333333333,
+      "retrieval_recall": 0.5,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2893981900124345,
+      "rerank_s": 0.6060246100241784,
+      "prejudge_s": null,
+      "generation_s": 1.8822246179915965,
+      "judging_s": 0.33292412100126967,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "f61268905626c0b2a715282478a5e373adda516c",
+      "question": "Which method best performs on the offensive language identification task?",
+      "references": [
+        {
+          "answer": "LSTM and GRU with Attention can be considered as the best model trained for OGTD",
+          "evidence": [
+            "The performance of the deep learning models is presented in table TABREF18. As we can see LSTM and GRU with Attention outperformed all the other models in-terms of macro-f1. Notably it outperformed all other classifical models and deep learning models in precision, recall and f1 for Offensive class as well as the Not Offensive class. However, fine tuning BERT-Base Multilingual Cased model did not achieve good results. For this task monolingual Greek word embeddings perform significantly better than the multilingual bert embeddings. LSTM and GRU with Attention can be considered as the best model trained for OGTD."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "LSTMs and GRU with attention",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": " a system using LSTMs and GRU with attention",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the best-performing method is **LSTM and GRU with Attention**, which achieved a macro-F1 of 0.89 and outperformed all other classical and deep learning models in precision, recall, and F1 for both the Offensive and Not Offensive classes [2][5].\n\nAmong the classical models, the **Linear SVM** can be considered the marginally best model trained with OGTD, as its weighted average precision and recall scores are higher [3].",
+      "predicted_answer": "Based on the document, the best-performing method is **LSTM and GRU with Attention**, which achieved a macro-F1 of 0.89 and outperformed all other classical and deep learning models in precision, recall, and F1 for both the Offensive and Not Offensive classes .\n\nAmong the classical models, the **Linear SVM** can be considered the marginally best model trained with OGTD, as its weighted average precision and recall scores are higher .",
+      "retrieved_chunks": [
+        22,
+        27,
+        23,
+        26,
+        2
+      ],
+      "fused_ranks": [
+        5,
+        1,
+        3,
+        4,
+        6
+      ],
+      "cited_passages": [
+        2,
+        3,
+        5
+      ],
+      "answer_f1": 0.37333333333333335,
+      "answer_type": "extractive",
+      "evidence_f1": 0.2857142857142857,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2134024370170664,
+      "rerank_s": 0.6201539839967154,
+      "prejudge_s": null,
+      "generation_s": 0.7752596309874207,
+      "judging_s": 0.23455488801118918,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "d9949dd4865e79c53284932d868ca8fd10d55e70",
+      "question": "Did they use crowdsourcing for the annotations?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We collected a set of 49,154 tweets. URLs, Emojis and Emoticons were removed, while usernames and user mentions were filtered as @USER following the same methodology described in OLID BIBREF5. Duplicate punctuation such as question and exclamation marks was normalized. After removing duplicate tweets, the dataset was comprised of 46,218 tweets of which 5,000 were randomly sampled for annotation. We used LightTag to annotate the dataset due to its simple and straightforward user interface and limitless annotations, provided by the software creators.",
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "Based on the context, the annotations were **not** obtained via crowdsourcing. They were performed by a small team of volunteers:\n\n- A team of **three volunteers** classified each tweet using explicit annotation guidelines [2].\n- The acknowledgements name these volunteer annotators (Maria, Raphael, and Anastasia), plus two additional people (Fotini and another) who helped review tweets with ambivalent labels [3].\n\nSo the work was done by a dedicated group of volunteer annotators rather than a crowd platform.",
+      "predicted_answer": "Based on the context, the annotations were **not** obtained via crowdsourcing. They were performed by a small team of volunteers:\n\n- A team of **three volunteers** classified each tweet using explicit annotation guidelines .\n- The acknowledgements name these volunteer annotators (Maria, Raphael, and Anastasia), plus two additional people (Fotini and another) who helped review tweets with ambivalent labels .\n\nSo the work was done by a dedicated group of volunteer annotators rather than a crowd platform.",
+      "retrieved_chunks": [
+        12,
+        13,
+        33,
+        30,
+        5
+      ],
+      "fused_ranks": [
+        2,
+        1,
+        3,
+        4,
+        8
+      ],
+      "cited_passages": [
+        2,
+        3
+      ],
+      "answer_f1": 0,
+      "answer_type": "boolean",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.23025553100160323,
+      "rerank_s": 0.7473561030055862,
+      "prejudge_s": null,
+      "generation_s": 1.8624167580273934,
+      "judging_s": 0.18951766000827774,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "de689a17b0b9fb6bbb80e9b85fb44b36b56de2fd",
+      "question": "How many annotators did they have?",
+      "references": [
+        {
+          "answer": "Three, plus 2 in case of disagreement below 66%.",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "three",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "three volunteers ",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the context, the annotation team consisted of **three volunteers** [2]. The acknowledgements also name them as Maria, Raphael, and Anastasia, and mention two additional people (Fotini and one unnamed person) who helped review tweets with ambivalent labels [4].",
+      "predicted_answer": "Based on the context, the annotation team consisted of **three volunteers** . The acknowledgements also name them as Maria, Raphael, and Anastasia, and mention two additional people (Fotini and one unnamed person) who helped review tweets with ambivalent labels .",
+      "retrieved_chunks": [
+        12,
+        13,
+        14,
+        33,
+        30
+      ],
+      "fused_ranks": [
+        2,
+        1,
+        3,
+        4,
+        5
+      ],
+      "cited_passages": [
+        2,
+        4
+      ],
+      "answer_f1": 0.1081081081081081,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.17751273099565879,
+      "rerank_s": 0.6132301430043299,
+      "prejudge_s": null,
+      "generation_s": 1.1557637219957542,
+      "judging_s": 0.15517760999500751,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "5a90871856beeefaa69a1080e1b3c8b5d4b2b937",
+      "question": "Is the dataset balanced?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [
+            "We collected a set of 49,154 tweets. URLs, Emojis and Emoticons were removed, while usernames and user mentions were filtered as @USER following the same methodology described in OLID BIBREF5. Duplicate punctuation such as question and exclamation marks was normalized. After removing duplicate tweets, the dataset was comprised of 46,218 tweets of which 5,000 were randomly sampled for annotation. We used LightTag to annotate the dataset due to its simple and straightforward user interface and limitless annotations, provided by the software creators."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "I could not find information in the document stating whether the dataset is balanced.\n\nThe context does provide some related details:\n- OGTD v1.0 contains 4,779 tweets, with over 29% offensive content [2][3].\n- The final label distribution and the train/test breakdown are shown in a table (Table TABREF5), but the actual distribution values are not included in the passages [3].\n\nSo while the offensive content proportion (over 29%) suggests an imbalance, the document does not explicitly state whether the dataset is balanced.",
+      "predicted_answer": "I could not find information in the document stating whether the dataset is balanced.\n\nThe context does provide some related details:\n- OGTD v1.0 contains 4,779 tweets, with over 29% offensive content .\n- The final label distribution and the train/test breakdown are shown in a table (Table TABREF5), but the actual distribution values are not included in the passages .\n\nSo while the offensive content proportion (over 29%) suggests an imbalance, the document does not explicitly state whether the dataset is balanced.",
+      "retrieved_chunks": [
+        2,
+        30,
+        14,
+        5,
+        7
+      ],
+      "fused_ranks": [
+        2,
+        5,
+        1,
+        13,
+        6
+      ],
+      "cited_passages": [
+        2,
+        3
+      ],
+      "answer_f1": 0,
+      "answer_type": "boolean",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.20380218399805017,
+      "rerank_s": 0.7508681369945407,
+      "prejudge_s": null,
+      "generation_s": 2.0425189140078146,
+      "judging_s": 0.1694130079995375,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "6cb3007a09ab0f1602cdad20cc0437fbdd4d7f3e",
+      "question": "What models do they experiment on?",
+      "references": [
+        {
+          "answer": " Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), linear classifier with Stochastic Gradient Descent (SGDC) learning, The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features, Pooled GRU, Stacked LSTM with Attention, LSTM and GRU with Attention, 2D Convolution with Pooling, GRU with Capsule, LSTM with Capsule and Attention, BERT",
+          "evidence": [
+            "Every classical model was considered on the condition it could take matrices as input for fitting and was trained with the default settings because of the size of the dataset. Five models were trained: Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), both with a value of 1 in the penalty parameter C of the error term. The gamma value of the RBF SVM which indicates how much influence a single training example has, was set to 2. The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning. The gradient of the loss is estimated each sample at a time and the SGDC is updated along the way with a decreasing learning rate. The parameters for maximum epochs and the stopping criterion were defined using the default values in scikit-learn. The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features.",
+            "Six different deep learning models were considered. All of these models have been used in an aggression detection task. The models are Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26 and BERT BIBREF24. These models has been used in HASOC 2019 and achieved a third place finish in English task and a eighth place finish in German and Hindi subtasks BIBREF26. Parameters described in BIBREF26 were used as the default parameters in order to ease the training process. The code for the deep learning has been made available on Github ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), linear classifier with Stochastic Gradient Descent (SGDC) learning, Multinomial Naïve Bayes, Bernoulli Naïve Bayes, Pooled GRU , Stacked LSTM with Attention , LSTM and GRU with Attention, 2D Convolution with Pooling, GRU with Capsule, LSTM with Capsule and Attention, BERT",
+          "evidence": [
+            "Every classical model was considered on the condition it could take matrices as input for fitting and was trained with the default settings because of the size of the dataset. Five models were trained: Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), both with a value of 1 in the penalty parameter C of the error term. The gamma value of the RBF SVM which indicates how much influence a single training example has, was set to 2. The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning. The gradient of the loss is estimated each sample at a time and the SGDC is updated along the way with a decreasing learning rate. The parameters for maximum epochs and the stopping criterion were defined using the default values in scikit-learn. The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features.",
+            "Six different deep learning models were considered. All of these models have been used in an aggression detection task. The models are Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26 and BERT BIBREF24. These models has been used in HASOC 2019 and achieved a third place finish in English task and a eighth place finish in German and Hindi subtasks BIBREF26. Parameters described in BIBREF26 were used as the default parameters in order to ease the training process. The code for the deep learning has been made available on Github ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), linear classifier with Stochastic Gradient Descent (SGDC) learning, Multinomial Naïve Bayes, Bernoulli Naïve Bayes, Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26, BERT BIBREF24",
+          "evidence": [
+            "Every classical model was considered on the condition it could take matrices as input for fitting and was trained with the default settings because of the size of the dataset. Five models were trained: Two SVMs, one with linear kernel and the other with a radial basis function kernel (RBF), both with a value of 1 in the penalty parameter C of the error term. The gamma value of the RBF SVM which indicates how much influence a single training example has, was set to 2. The third classifier trained was another linear classifier with Stochastic Gradient Descent (SGDC) learning. The gradient of the loss is estimated each sample at a time and the SGDC is updated along the way with a decreasing learning rate. The parameters for maximum epochs and the stopping criterion were defined using the default values in scikit-learn. The final classifier was two models based on the Bayes theorem: Multinomial Naïve Bayes, which works with occurrence counts, and Bernoulli Naïve Bayes, which is designed for binary features.",
+            "Six different deep learning models were considered. All of these models have been used in an aggression detection task. The models are Pooled GRU BIBREF25, Stacked LSTM with Attention BIBREF25, LSTM and GRU with Attention BIBREF25, 2D Convolution with Pooling BIBREF26, GRU with Capsule BIBREF27, LSTM with Capsule and Attention BIBREF26 and BERT BIBREF24. These models has been used in HASOC 2019 and achieved a third place finish in English task and a eighth place finish in German and Hindi subtasks BIBREF26. Parameters described in BIBREF26 were used as the default parameters in order to ease the training process. The code for the deep learning has been made available on Github ."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the models experimented on are:\n\n**Classical machine learning models:**\n- Linear SVM [1][2][3]\n- Naïve Bayes (Multinomial and Bernoulli approaches) [1][2][4]\n- SGDC (Stochastic Gradient Descent Classifier) [1][2]\n- RBF SVM — noted as not used in the linguistic feature experiments due to data handling problems in scikit-learn [3]\n\n**Deep learning models:**\n- LSTM and GRU with Attention [4]\n- BERT-Base Multilingual Cased (fine-tuned) [4][5]\n\nThe document also mentions that Greek word embeddings (300-dimensional vectors) were used to feed the first six deep learning models [5].",
+      "predicted_answer": "Based on the document, the models experimented on are:\n\n**Classical machine learning models:**\n- Linear SVM \n- Naïve Bayes (Multinomial and Bernoulli approaches) \n- SGDC (Stochastic Gradient Descent Classifier) \n- RBF SVM — noted as not used in the linguistic feature experiments due to data handling problems in scikit-learn \n\n**Deep learning models:**\n- LSTM and GRU with Attention \n- BERT-Base Multilingual Cased (fine-tuned) \n\nThe document also mentions that Greek word embeddings (300-dimensional vectors) were used to feed the first six deep learning models .",
+      "retrieved_chunks": [
+        25,
+        26,
+        24,
+        27,
+        18
+      ],
+      "fused_ranks": [
+        7,
+        2,
+        1,
+        3,
+        6
+      ],
+      "cited_passages": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "answer_f1": 0.2903225806451613,
+      "answer_type": "extractive",
+      "evidence_f1": 0.0,
+      "retrieval_recall": 0.0,
+      "candidate_recall": 1.0,
+      "prejudge_can_answer": null,
+      "gold_unanswerable": false,
+      "retrieval_s": 0.18130751699209213,
+      "rerank_s": 0.6246075829840265,
+      "prejudge_s": null,
+      "generation_s": 1.8203544190037064,
+      "judging_s": 0.34125304300687276,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    }
+  ]
+}

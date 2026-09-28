@@ -2,7 +2,7 @@
 
 import { ModeId, ModeInfo } from "@/lib/api";
 
-/** Private or cloud mode for the next upload. A mode whose API keys are missing can't be picked. */
+/** The mode for the next upload. A mode whose API keys are missing can't be picked. */
 export default function ModePicker({
   modes,
   value,
@@ -17,7 +17,15 @@ export default function ModePicker({
       <legend>Where should this document be processed?</legend>
       {modes.map((m) => {
         const disabled = m.missing_keys.length > 0;
-        const models = [m.embed_model, m.context_model, m.llm_model].filter(Boolean).join(" · ");
+        const models = [
+          m.embed_model,
+          m.context_model,
+          m.llm_model,
+          m.reranker_model && `rerank: ${m.reranker_model}`,
+          m.prejudge_model && `pre-judge: ${m.prejudge_model}`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
         return (
           <label key={m.id} className={`mode ${value === m.id ? "selected" : ""} ${disabled ? "disabled" : ""}`}>
             <input

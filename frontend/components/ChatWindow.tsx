@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AssistantMessage from "@/components/AssistantMessage";
 import DocumentViewer, { Highlight } from "@/components/DocumentViewer";
 import IngestProgress from "@/components/IngestProgress";
-import { ChatTurn, DocInfo, Source, streamChat } from "@/lib/api";
+import { ChatTurn, DocInfo, Source, streamChat, Verdict } from "@/lib/api";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -13,6 +13,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 type ChatMessage = ChatTurn & {
   id: string;
   sources?: Source[];
+  verdict?: Verdict;
   streaming?: boolean;
   error?: string;
   queued?: boolean;
@@ -101,6 +102,7 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
         { doc_id: doc.doc_id, question, history },
         (e) => {
           if (e.type === "sources") update(botId, () => ({ sources: e.sources }));
+          else if (e.type === "prejudge") update(botId, () => ({ verdict: e.verdict }));
           else if (e.type === "token") update(botId, (m) => ({ content: m.content + e.content }));
           else if (e.type === "error") update(botId, () => ({ error: e.message }));
         },
@@ -127,7 +129,7 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
           <div>
             <div className="doc-name">{doc.filename}</div>
             <div className="muted small">
-              {doc.mode === "cloud" ? "Cloud mode · " : "Private mode · "}
+              {doc.mode_label} ·{" "}
               {ready
                 ? `Indexed · ${doc.num_chunks} chunks · hybrid BM25 + vector retrieval`
                 : failed

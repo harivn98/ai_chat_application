@@ -70,7 +70,7 @@ h2 { font-size: 22px; }
 .dropzone svg { color: var(--accent); }
 
 /* Private / cloud mode picker */
-.modes { border: none; padding: 0; margin: 18px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modes { border: none; padding: 0; margin: 18px 0 0; display: grid; gap: 8px; }
 .modes legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
 .mode { position: relative; display: flex; flex-direction: column; gap: 4px; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: var(--surface); transition: border-color 0.15s, background 0.15s; }
 .mode input { position: absolute; opacity: 0; pointer-events: none; }
@@ -157,6 +157,11 @@ h2 { font-size: 22px; }
 .hljs-strong { font-weight: 600; }
 
 /* ---------- citations and retrieved passages */
+.verdict { margin: 8px 0 0; font-size: 12px; display: inline-block; padding: 2px 8px; border-radius: 6px; }
+.verdict-all { color: #1b7f4b; background: #e6f5ec; }
+.verdict-partial { color: var(--warning); background: var(--warning-soft); }
+.verdict-none { color: var(--danger); background: var(--danger-soft); }
+
 .cite { border: none; background: var(--accent-soft); color: var(--accent); font: 600 11px var(--mono); border-radius: 5px; padding: 1px 5px; margin: 0 1px; cursor: pointer; vertical-align: 1px; }
 .cite:hover { background: var(--accent); color: var(--accent-ink); }
 
@@ -202,5 +207,4 @@ h2 { font-size: 22px; }
   .head-actions .btn { flex: 1; }
   .pipeline { display: none; }
   .viewer-body { padding: 16px 16px 40vh; }
-  .modes { grid-template-columns: 1fr; }
 }

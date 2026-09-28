@@ -7,16 +7,23 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { citedPassage, prepareAnswerMarkdown } from "@/lib/answerMarkdown";
-import { Source } from "@/lib/api";
+import { Source, Verdict } from "@/lib/api";
 
 const remarkPlugins = [remarkGfm, remarkMath];
 // Math is rendered with KaTeX; fenced code with a language (```python) is syntax highlighted
 const rehypePlugins = [rehypeKatex, rehypeHighlight];
 
+const VERDICT_TEXT: Record<Verdict, string> = {
+  all: "Pre-judge: the passages hold all the information asked for",
+  partial: "Pre-judge: the passages hold only part of the information asked for",
+  none: "Pre-judge: the passages don't hold the information asked for",
+};
+
 type Reply = {
   id: string;
   content: string;
   sources?: Source[];
+  verdict?: Verdict; // set in the cloud pre-judge mode
   streaming?: boolean;
   queued?: boolean; // asked while the document was still being indexed; sent once it is ready
   error?: string;
@@ -124,6 +131,7 @@ export default function AssistantMessage({ msg, onShowSource }: { msg: Reply; on
           </div>
         )}
         {msg.error && <p className="error">{msg.error}</p>}
+        {msg.verdict && <p className={`verdict verdict-${msg.verdict}`}>{VERDICT_TEXT[msg.verdict]}</p>}
         {msg.sources && msg.sources.length > 0 && (
           <div className="sources-wrap">
             <button className="sources-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>

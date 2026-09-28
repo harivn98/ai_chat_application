@@ -163,9 +163,9 @@ def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None) -> 
 
 
 def search(doc_id: str, query: str, mode: Mode) -> list[dict]:
-    """The passages sent to the LLM: hybrid search, then (if RERANKER_ENABLED) cross-encoder reranking
+    """The passages sent to the LLM: hybrid search, then (if the mode reranks) cross-encoder reranking
     of the top RERANK_CANDIDATES fused chunks down to TOP_K."""
-    if not settings.reranker_enabled:
+    if not mode.reranker:
         return hybrid_search(doc_id, query, mode)
     candidates = hybrid_search(doc_id, query, mode, settings.rerank_candidates)
     return reranker.rerank(query, candidates, settings.top_k)

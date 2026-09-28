@@ -99,7 +99,14 @@ def complete(model: str, prompt: str, num_ctx: int, read_timeout: float, num_pre
     return _post("/api/chat", payload, read_timeout)["message"]["content"]
 
 
-def build_messages(question: str, passages: list[dict], history: list[dict]) -> list[dict]:
+PARTIAL_NOTE = """
+
+Note: a check of these passages found that they hold only part of the information the question asks for. Answer
+with what they support and say clearly which part of the question the document doesn't cover."""
+
+
+def build_messages(question: str, passages: list[dict], history: list[dict], partial: bool = False) -> list[dict]:
+    """The answering prompt; `partial`: the pre-judge found only part of the answer in the passages."""
     context = "\n\n".join(
         f"[{i}] (section: {p['section'] or 'n/a'})\n{p['text']}" for i, p in enumerate(passages, start=1)
     ) or "(no relevant passages were retrieved)"
@@ -108,7 +115,8 @@ def build_messages(question: str, passages: list[dict], history: list[dict]) -> 
     for h in history[-settings.history_turns:]:
         if h.get("role") in {"user", "assistant"} and h.get("content"):
             msgs.append({"role": h["role"], "content": h["content"][:4000]})
-    msgs.append({"role": "user", "content": f"Context passages:\n\n{context}\n\n---\nQuestion: {question}"})
+    note = PARTIAL_NOTE if partial else ""
+    msgs.append({"role": "user", "content": f"Context passages:\n\n{context}\n\n---\nQuestion: {question}{note}"})
     return msgs
 
 

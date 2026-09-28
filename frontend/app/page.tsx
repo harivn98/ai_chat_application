@@ -79,7 +79,7 @@ export default function Home() {
         </div>
         {doc && (
           <div className="pipeline">
-            <span className={`mode-tag mode-${doc.mode}`}>{doc.mode === "cloud" ? "Cloud mode" : "Private mode"}</span>
+            <span className={`mode-tag ${doc.mode === "private" ? "" : "mode-cloud"}`}>{doc.mode_label}</span>
             <span>{doc.embed_model}</span>
             <span>BM25 + vector · RRF</span>
             <span>{doc.llm_model}</span>

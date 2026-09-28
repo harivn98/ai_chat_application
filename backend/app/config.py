@@ -61,6 +61,7 @@ class Settings:
     cloud_vector_min_score: float = float(os.getenv("CLOUD_VECTOR_MIN_SCORE", "0"))  # 0: no cutoff (not tuned yet)
     cloud_context_model: str = os.getenv("CLOUD_CONTEXT_MODEL", "google/gemini-3.5-flash-lite")
     cloud_llm_model: str = os.getenv("CLOUD_LLM_MODEL", "deepseek/deepseek-v4.1-flash")
+    cloud_prejudge_model: str = os.getenv("CLOUD_PREJUDGE_MODEL", "google/gemini-3.5-flash-lite")
 
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
