@@ -41,7 +41,7 @@ class Settings:
 
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))        # characters
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))   # characters
-    top_k: int = int(os.getenv("TOP_K", "5"))                     # chunks sent to the LLM
+    top_k: int = int(os.getenv("TOP_K", "8"))                     # chunks sent to the LLM
     bm25_candidates: int = int(os.getenv("BM25_CANDIDATES", "10"))
     vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "20"))  # upper bound before the score cutoff
     vector_min_score: float = float(os.getenv("VECTOR_MIN_SCORE", "0.85"))  # raw cosine similarity
@@ -64,7 +64,7 @@ class Settings:
     cloud_prejudge_model: str = os.getenv("CLOUD_PREJUDGE_MODEL", "google/gemini-3.5-flash-lite")
     # Cloud pre-judge mode has no reranker and large-context models, so it retrieves and sends more passages
     # (cloud reranker mode uses TOP_K / BM25_CANDIDATES / VECTOR_CANDIDATES / RERANK_CANDIDATES like private mode)
-    cloud_prejudge_top_k: int = int(os.getenv("CLOUD_PREJUDGE_TOP_K", "15"))  # passages sent to the LLMs
+    cloud_prejudge_top_k: int = int(os.getenv("CLOUD_PREJUDGE_TOP_K", "8"))  # passages sent to the LLMs
     cloud_prejudge_bm25_candidates: int = int(os.getenv("CLOUD_PREJUDGE_BM25_CANDIDATES", "20"))
     cloud_prejudge_vector_candidates: int = int(os.getenv("CLOUD_PREJUDGE_VECTOR_CANDIDATES", "30"))
 

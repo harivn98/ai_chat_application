@@ -28,9 +28,9 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 10.
 2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20, keeping only chunks with cosine similarity ≥ 0.85.
-3. **Reciprocal Rank Fusion** (k=60) → top 20 candidates (top 5 when the reranker is off).
-4. **Rerank** (`RERANKER_ENABLED=true`) — the cross-encoder `BAAI/bge-reranker-base` (278M parameters, on the CPU so the GPU stays free for Qwen3 8B) reads the question together with each candidate (`RERANK_CANDIDATES`, default 20) and keeps the 5 best. It replaced `cross-encoder/ms-marco-MiniLM-L6-v2`, which ranked well among BM25's ~10 candidates but not among 30 mixed ones. Expect roughly a few seconds per question on 4 CPU cores. BM25 and the embeddings score the question and a chunk separately; a cross-encoder reads them together, so it ranks far more precisely. It can only choose among the candidates, so it can't recover a chunk neither retriever found. The UI shows each kept passage's pre-rerank position as *Fused #n*.
-5. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 5 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
+3. **Reciprocal Rank Fusion** (k=60) → top 20 candidates (top 8 when the reranker is off).
+4. **Rerank** (`RERANKER_ENABLED=true`) — the cross-encoder `BAAI/bge-reranker-base` (278M parameters, on the CPU so the GPU stays free for Qwen3 8B) reads the question together with each candidate (`RERANK_CANDIDATES`, default 20) and keeps the 8 best. It replaced `cross-encoder/ms-marco-MiniLM-L6-v2`, which ranked well among BM25's ~10 candidates but not among 30 mixed ones. Expect roughly a few seconds per question on 4 CPU cores. BM25 and the embeddings score the question and a chunk separately; a cross-encoder reads them together, so it ranks far more precisely. It can only choose among the candidates, so it can't recover a chunk neither retriever found. The UI shows each kept passage's pre-rerank position as *Fused #n*.
+5. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 8 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
 6. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank. Clicking a citation opens the document in a side panel, scrolled to the cited passage, which is highlighted (uploads from before this feature fall back to the passage list; re-upload them to get highlighting).
 
 **GPU use:** all models run on the GPU, one at a time. `qwen3:4b-instruct` is used only to write chunk contexts during an upload. Because a new session starts with an upload, the backend preloads `qwen3:4b-instruct` at startup; a later upload starts loading it the moment the file arrives, while the PDF is still converted and chunked. (With `CONTEXTUAL_EMBEDDING=false`, Qwen3 8B is preloaded at startup instead.) As soon as contextualizing finishes, it is unloaded and Qwen3 8B starts loading in the background, while the upload is still embedding and indexing, so it is usually ready before the first question. Qwen3 8B then does both the pre-judge and the answer, so chatting never swaps models. Loading takes about 45 s for Qwen3 8B and 25 s for `qwen3:4b-instruct` on an RTX 4070 laptop GPU; unloading is instant.
@@ -77,19 +77,20 @@ Before each upload you pick one of three modes:
 | Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`, minimal reasoning) | same |
 | Answers | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) | same |
 | Retrieval | BM25 top 10 + vector top 20, fused | same as private | BM25 top 20 + vector top 30, fused |
-| Reranking | local cross-encoder, top 5 of 20, if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`), top 5 of 20 | none: the top 15 after fusion |
-| Passages sent to the LLMs | 5 (`TOP_K`) | 5 (`TOP_K`) | 15 (`CLOUD_PREJUDGE_TOP_K`) |
+| Reranking | local cross-encoder, top 8 of 20, if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`), top 8 of 20 | none: the top 8 after fusion |
+| Passages sent to the LLMs | 8 (`TOP_K`) | 8 (`TOP_K`) | 8 (`CLOUD_PREJUDGE_TOP_K`) |
 | Pre-judge | YES / NO by `qwen3:8b` if `PREJUDGE_ENABLED` | none | ALL / PARTIAL / NONE by Gemini Flash-Lite (`CLOUD_PREJUDGE_MODEL`) |
 | BM25, MongoDB | this machine | this machine (same MongoDB) | same |
 | Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek | same |
 
 Cloud · reranker retrieves exactly like private mode; only the models differ. Cloud · pre-judge has no reranker to
-bring the best passages to the top, and Flash-Lite and DeepSeek read far more than `qwen3:8b`'s 8k-token window, so
-it retrieves and sends more instead: 15 passages of about 1,000 characters are roughly 4,000 tokens per question.
+bring the best passages to the top, so it fuses a wider pool (BM25 top 20 + vector top 30) and sends the top 8 after
+fusion, like the other modes. In `cloud-prejudge_moredata` (15 passages) recall rose from 89.5 to 94.7 over 5
+passages, but judge-correct stayed at 85 and evidence F1 fell, so all modes now send 8.
 In `cloud-1` (5 papers, cloud reranker mode) the gold evidence was among the 20 fused candidates for every question,
 but only 81.6 % of it made the reranked top 5.
 
-In **Cloud · pre-judge**, Gemini Flash-Lite reads the question and the 15 passages before any answer is written and
+In **Cloud · pre-judge**, Gemini Flash-Lite reads the question and the 8 passages before any answer is written and
 decides how much of the answer they hold:
 
 - **ALL**: DeepSeek answers as usual.
@@ -155,7 +156,7 @@ reasoning tokens against it.
 | `LLM_KEEP_ALIVE` | `30m` | How long Ollama keeps the model loaded after the last request |
 | `LLM_TIMEOUT` / `LLM_LOAD_TIMEOUT` | `600` / `1800` | Seconds to wait for Ollama output / for the model to load (it is preloaded when the backend starts) |
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1000` / `150` | Characters |
-| `TOP_K` | `5` | Passages sent to the LLM after fusion |
+| `TOP_K` | `8` | Passages sent to the LLM after fusion |
 | `BM25_CANDIDATES` | `10` | Chunks taken from BM25 before fusion |
 | `VECTOR_MIN_SCORE` | `0.85` | Minimum cosine similarity for embedding hits |
 | `VECTOR_CANDIDATES` | `20` | Max chunks from vector search before the score cutoff |
@@ -174,7 +175,7 @@ reasoning tokens against it.
 | `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode, with minimal reasoning |
 | `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers in the cloud modes (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
 | `CLOUD_PREJUDGE_MODEL` | `google/gemini-3.5-flash-lite` | Says ALL / PARTIAL / NONE in **Cloud · pre-judge** mode, with minimal reasoning |
-| `CLOUD_PREJUDGE_TOP_K` | `15` | Passages sent to the pre-judge and DeepSeek in **Cloud · pre-judge** mode |
+| `CLOUD_PREJUDGE_TOP_K` | `8` | Passages sent to the pre-judge and DeepSeek in **Cloud · pre-judge** mode |
 | `CLOUD_PREJUDGE_BM25_CANDIDATES` / `CLOUD_PREJUDGE_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in **Cloud · pre-judge** mode (**Cloud · reranker** uses `TOP_K`, `BM25_CANDIDATES`, `VECTOR_CANDIDATES` and `RERANK_CANDIDATES` like private mode) |
 | `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud modes](#private-and-cloud-modes)). Cloud model IDs are OpenRouter's |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
