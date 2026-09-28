@@ -53,7 +53,7 @@ class ChatRequest(BaseModel):
 
 def _doc_info(doc: dict) -> dict:
     """What the UI shows about a document (DocInfo in frontend/lib/api.ts)."""
-    mode = modes.get(doc.get("mode"))
+    mode = modes.for_document(doc)
     return {
         "doc_id": doc["_id"],
         "filename": doc["filename"],
@@ -106,17 +106,26 @@ def health():
 
 @app.get("/modes")
 def list_modes():
-    """Private and cloud modes with their models; cloud modes list the API keys they still need."""
+    """Private and cloud mode; cloud mode lists the API keys it still needs."""
     return [mode.info() for mode in modes.MODES.values()]
 
 
 @app.post("/documents", status_code=202)
 async def upload_document(
-    background: BackgroundTasks, file: UploadFile = File(...), mode_name: str = Form(modes.PRIVATE, alias="mode")
+    background: BackgroundTasks,
+    file: UploadFile = File(...),
+    mode_name: str = Form(modes.PRIVATE, alias="mode"),
+    use_reranker: bool = Form(True, alias="reranker"),  # cloud mode only; private mode follows .env
+    use_prejudge: bool = Form(True, alias="prejudge"),
 ):
     if mode_name not in modes.MODES:
         raise HTTPException(400, f"Unknown mode {mode_name!r}.")
     mode = modes.MODES[mode_name]
+    if mode_name == modes.CLOUD:
+        try:
+            mode = modes.cloud_mode(use_reranker, use_prejudge)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
     if mode.missing_keys():
         raise HTTPException(400, f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
     name = Path(file.filename or "").name
@@ -140,6 +149,7 @@ async def upload_document(
         "filename": name,
         "size": len(data),
         "mode": mode.name,
+        **({} if mode.local else {"reranker": mode.reranker, "prejudge": mode.prejudge}),
         "status": "queued",
         "progress": 0,
         "contextual": settings.contextual_embedding,
@@ -179,12 +189,12 @@ def delete_document(doc_id: str):
 
 @app.post("/chat")
 def chat(req: ChatRequest):
-    doc = db.documents().find_one({"_id": req.doc_id}, {"status": 1, "mode": 1})
+    doc = db.documents().find_one({"_id": req.doc_id}, {"status": 1, "mode": 1, "reranker": 1, "prejudge": 1})
     if not doc:
         raise HTTPException(404, "Document not found.")
     if doc["status"] != "ready":
         raise HTTPException(409, "Document is not indexed yet.")
-    mode = modes.get(doc.get("mode"))  # a document is answered in the mode it was uploaded in
+    mode = modes.for_document(doc)  # a document is answered in the mode (and with the switches) it was uploaded in
     if mode.missing_keys():
         raise HTTPException(400, f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
 

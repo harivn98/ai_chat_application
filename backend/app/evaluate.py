@@ -2,7 +2,8 @@
 
 Runs only when triggered:
     python -m app.evaluate --run-id <id> [--papers 5] [--seed 0] [--split test]
-                           [--mode private|cloud-rerank|cloud-prejudge] [--sweep 30,25,20,15]
+                           [--mode private|cloud-rerank|cloud-prejudge|cloud-rerank-prejudge]
+                           [--sweep 30,25,20,15 | --compare rerank,prejudge,rerank-prejudge]
 
 Runs in four phases, one Ollama model at a time: (1) each sampled paper is converted to Markdown and
 ingested like an upload (chunk + optional Contextual Retrieval contexts + embed + store), (2) every
@@ -10,7 +11,8 @@ question goes through hybrid retrieval + the pre-judge, (3) the questions the pr
 answered, (4) the judge grades the answers. Each stage is timed; model switches are not.
 The cloud modes run steps 1-3 with the cloud models (see modes.py); the judge is always JUDGE_MODEL in Ollama.
 --sweep N,M,... ingests the papers once, then runs steps 2-4 once per N with BM25 top N + vector top N, one result
-row each (<run-id>-bNvN).
+row each (<run-id>-bNvN). --compare ingests the papers once in cloud mode, then runs steps 2-4 once per cloud
+variant (reranker, pre-judge, or both), one result row each (<run-id>-rerank, <run-id>-prejudge, ...).
 
 Metrics:
   - Answer F1     official QASPER token F1 against the best-matching annotator answer
@@ -40,7 +42,7 @@ from .chunker import chunk_markdown
 from .config import settings
 from .contextual import contextualize, hand_over, indexed_content
 from .ingest import store_chunks
-from .modes import MODES, PRIVATE, Mode
+from .modes import CLOUD, CLOUD_VARIANTS, PRIVATE, Mode, by_variant
 from .qasper import (
     ANSWER_TYPES,
     SPLITS,
@@ -497,7 +499,7 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "seed": seed,
         "papers": papers,
         "questions": len(rows),
-        "mode": mode.name,
+        "mode": mode.variant,  # private, cloud-rerank, cloud-prejudge or cloud-rerank-prejudge
         "embed_model": mode.embed_model,
         "llm_model": mode.llm_model,
         "judge_model": settings.judge_model,
@@ -619,11 +621,16 @@ def _print_summary(s: dict, results_md: Path, details_json: Path) -> None:
 
 
 # ------------------------------------------------------------------ run
-def _variants(run_id: str, mode: Mode, sweep: list[int] | None) -> list[tuple[str, Mode]]:
-    """(run id, mode) per result row: the mode as configured, or one BM25 top N + vector top N per sweep value."""
-    if not sweep:
-        return [(run_id, mode)]
-    return [(f"{run_id}-b{n}v{n}", dataclasses.replace(mode, bm25_candidates=n, vector_candidates=n)) for n in sweep]
+def _variants(run_id: str, mode: Mode, sweep: list[int] | None,
+              compare: list[str] | None) -> list[tuple[str, Mode]]:
+    """(run id, mode) per result row: the mode as configured, one BM25 top N + vector top N per sweep value, or
+    one cloud variant per compare value. All of them search the same ingested papers."""
+    if sweep:
+        return [(f"{run_id}-b{n}v{n}", dataclasses.replace(mode, bm25_candidates=n, vector_candidates=n))
+                for n in sweep]
+    if compare:
+        return [(f"{run_id}-{c}", by_variant(f"{CLOUD}-{c}")) for c in compare]
+    return [(run_id, mode)]
 
 
 def _describe(mode: Mode) -> str:
@@ -635,12 +642,12 @@ def _describe(mode: Mode) -> str:
 
 
 def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PRIVATE,
-        sweep: list[int] | None = None) -> None:
-    mode = MODES[mode_name]
+        sweep: list[int] | None = None, compare: list[str] | None = None) -> None:
+    variants = _variants(run_id, by_variant(mode_name), sweep, compare)
+    mode = variants[0][1]  # ingests the papers; every variant shares its embeddings and contexts
     if mode.missing_keys():
         raise SystemExit(f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
     results_md = settings.eval_dir / "result_40.md"
-    variants = _variants(run_id, mode, sweep)
     taken = _existing_run_ids(results_md)
     for vid, _ in variants:
         if vid in taken or (settings.eval_dir / f"{vid}.json").exists():
@@ -651,19 +658,20 @@ def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PR
     questions = [(pid, qa) for pid in paper_ids for qa in data[pid]["qas"]]
     doc_ids = {pid: f"eval-{run_id}-{pid}" for pid in paper_ids}
     _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {len(questions)} questions (QASPER {split}, seed {seed}) ===")
-    _say(f"{mode.label}: LLM {mode.llm_model} · embeddings {mode.embed_model} · judge {settings.judge_model}")
+    _say(f"{'Cloud mode' if compare else mode.label}: LLM {mode.llm_model} · embeddings {mode.embed_model} · "
+         f"judge {settings.judge_model}")
     for vid, variant in variants:
         _say(f"  {vid}: {_describe(variant)}")
 
     st = _Status("Connecting to MongoDB and loading the embedding model…")
     db.ensure_vector_index()
     embeddings.get_model()
-    if mode.reranker:
+    if any(v.reranker for _, v in variants):
         reranker.get_model()  # load it now so the first question's rerank time is not a model load
     st.done(f"Ready (vector index: {'yes' if db.vector_index_ready else 'no, using local fallback'})")
 
     # The phases run model by model (context model, then answering model, then judge), so Ollama
-    # doesn't swap models in and out of GPU memory for every paper. A sweep ingests once and shares it.
+    # doesn't swap models in and out of GPU memory for every paper. A sweep or comparison ingests once.
     started = time.perf_counter()
     try:
         ingested = _ingest_papers(data, paper_ids, doc_ids, mode)
@@ -675,6 +683,8 @@ def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PR
             if sweep:
                 _say(f"\n=== Sweep {n}/{len(variants)}: {vid} (BM25 top {variant.bm25_candidates} + "
                      f"vector top {variant.vector_candidates}) ===")
+            elif compare:
+                _say(f"\n=== Compare {n}/{len(variants)}: {vid} ({variant.label}) ===")
             t0 = time.perf_counter()
             steps = _retrieve_all(questions, doc_ids, ingested.errors, variant)
             rows = _answer_all(questions, steps, ingested, variant)
@@ -700,6 +710,15 @@ def _sweep_values(text: str) -> list[int]:
     return values
 
 
+def _compare_values(text: str) -> list[str]:
+    choices = [name.removeprefix(f"{CLOUD}-") for name in CLOUD_VARIANTS]
+    values = [v.strip() for v in text.split(",") if v.strip()]
+    if not values or len(set(values)) != len(values) or any(v not in choices for v in values):
+        raise argparse.ArgumentTypeError(f"use distinct values from {', '.join(choices)}, "
+                                         "e.g. rerank,prejudge,rerank-prejudge")
+    return values
+
+
 def main():
     logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     p = argparse.ArgumentParser(description="Evaluate the RAG pipeline on QASPER.")
@@ -707,18 +726,25 @@ def main():
     p.add_argument("--papers", type=int, default=5, help="number of papers to sample (~3.5 questions each)")
     p.add_argument("--seed", type=int, default=0, help="sampling seed; keep it fixed to compare runs")
     p.add_argument("--split", choices=sorted(SPLITS), default="test")
-    p.add_argument("--mode", choices=sorted(MODES), default=PRIVATE,
-                   help="private: local models (default); cloud-rerank / cloud-prejudge: Gemini + DeepSeek via "
-                        "OpenRouter with the local reranker / the Flash-Lite pre-judge (sends the papers)")
-    p.add_argument("--sweep", type=_sweep_values, metavar="N,M,...",
-                   help="ingest once, then evaluate BM25 top N + vector top N for each value (one row each, "
-                        "run IDs <run-id>-bNvN), e.g. 30,25,20,15")
+    p.add_argument("--mode", choices=[PRIVATE, *CLOUD_VARIANTS],
+                   help="private: local models (default); cloud-rerank / cloud-prejudge / cloud-rerank-prejudge: "
+                        "Gemini + DeepSeek via OpenRouter with the local reranker, the Flash-Lite pre-judge, or both "
+                        "(sends the papers)")
+    extra = p.add_mutually_exclusive_group()
+    extra.add_argument("--sweep", type=_sweep_values, metavar="N,M,...",
+                       help="ingest once, then evaluate BM25 top N + vector top N for each value (one row each, "
+                            "run IDs <run-id>-bNvN), e.g. 30,25,20,15")
+    extra.add_argument("--compare", type=_compare_values, metavar="VARIANT,...",
+                       help="ingest once in cloud mode, then evaluate each cloud variant (one row each, run IDs "
+                            "<run-id>-<variant>), e.g. rerank,prejudge,rerank-prejudge; don't combine with --mode")
     args = p.parse_args()
+    if args.compare and args.mode:
+        p.error("--compare picks the cloud variants itself; leave out --mode")
     if not RUN_ID_RE.match(args.run_id):
         p.error("--run-id may only contain letters, digits, '.', '_' and '-' (max 64 chars)")
     if args.papers < 1:
         p.error("--papers must be at least 1")
-    run(args.run_id, args.papers, args.seed, args.split, args.mode, args.sweep)
+    run(args.run_id, args.papers, args.seed, args.split, args.mode or PRIVATE, args.sweep, args.compare)
 
 
 if __name__ == "__main__":

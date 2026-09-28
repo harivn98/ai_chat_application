@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import ModePicker from "@/components/ModePicker";
-import { DocInfo, getModes, ModeId, ModeInfo, uploadDocument } from "@/lib/api";
+import { CloudOptions, DocInfo, getModes, ModeId, ModeInfo, uploadDocument } from "@/lib/api";
 
 const EXTENSIONS = [".pdf", ".txt", ".md", ".markdown"];
 const MODE_KEY = "AI_chat_application.mode"; // the last mode picked, remembered in this browser
+const CLOUD_KEY = "AI_chat_application.cloud"; // the last cloud switches, likewise
 
 function fmtSize(b: number) {
   if (b < 1024) return `${b} B`;
@@ -20,6 +21,7 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
   const [uploading, setUploading] = useState(false);
   const [modes, setModes] = useState<ModeInfo[]>([]);
   const [mode, setMode] = useState<ModeId>("private");
+  const [cloud, setCloud] = useState<CloudOptions>({ reranker: true, prejudge: true });
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -32,6 +34,12 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
         } catch {}
         const usable = ms.find((m) => m.id === saved && m.missing_keys.length === 0);
         if (usable) setMode(usable.id);
+        try {
+          const c = JSON.parse(localStorage.getItem(CLOUD_KEY) ?? "null");
+          if (typeof c?.reranker === "boolean" && typeof c?.prejudge === "boolean" && (c.reranker || c.prejudge)) {
+            setCloud({ reranker: c.reranker, prejudge: c.prejudge });
+          }
+        } catch {}
       })
       .catch(() => {}); // without the list, uploads use private mode
   }, []);
@@ -40,6 +48,13 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
     setMode(m);
     try {
       localStorage.setItem(MODE_KEY, m);
+    } catch {}
+  }
+
+  function chooseCloud(c: CloudOptions) {
+    setCloud(c);
+    try {
+      localStorage.setItem(CLOUD_KEY, JSON.stringify(c));
     } catch {}
   }
 
@@ -59,7 +74,7 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
     setUploading(true);
     setError(null);
     try {
-      onUploaded(await uploadDocument(file, mode)); // the chat opens right away; indexing continues in the background
+      onUploaded(await uploadDocument(file, mode, cloud)); // the chat opens right away; indexing continues in the background
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -71,12 +86,10 @@ export default function Uploader({ onUploaded }: { onUploaded: (doc: DocInfo) =>
     <section className="card upload-card">
       <p className="eyebrow">Step 1</p>
       <h2>Upload a document to start chatting</h2>
-      <p className="muted">
-        PDF, TXT and Markdown are converted to Markdown, chunked, embedded and indexed. The chat opens right away:
-        you can type questions while the document is indexed, and they are answered as soon as it is searchable.
-      </p>
 
-      {modes.length > 0 && <ModePicker modes={modes} value={mode} onChange={chooseMode} />}
+      {modes.length > 0 && (
+        <ModePicker modes={modes} value={mode} onChange={chooseMode} cloud={cloud} onCloudChange={chooseCloud} />
+      )}
       {mode !== "private" && (
         <p className="cloud-warning">
           Cloud mode sends the document text and your questions to OpenRouter, which passes them to Google and

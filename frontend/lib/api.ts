@@ -11,9 +11,15 @@ export type DocStatus =
   | "ready"
   | "failed";
 
-/** private: everything runs on this machine; the cloud modes use Gemini + DeepSeek via OpenRouter (the document
- * leaves this machine), with the local reranker or with the Flash-Lite pre-judge */
-export type ModeId = "private" | "cloud-rerank" | "cloud-prejudge";
+/** private: everything runs on this machine; cloud: cloud models via OpenRouter (the document leaves this machine),
+ * with the reranker and/or the pre-judge switched on per upload */
+export type ModeId = "private" | "cloud";
+
+/** Cloud mode's switches; at least one must be on */
+export interface CloudOptions {
+  reranker: boolean;
+  prejudge: boolean;
+}
 
 /** The pre-judge's finding: the passages hold all, part or none of the answer */
 export type Verdict = "all" | "partial" | "none";
@@ -22,12 +28,6 @@ export interface ModeInfo {
   id: ModeId;
   label: string;
   description: string;
-  embed_model: string;
-  context_model: string | null; // null when contextual embedding is off
-  llm_model: string;
-  reranker_model: string | null; // null: this mode doesn't rerank
-  prejudge_model: string | null; // null: this mode doesn't pre-judge
-  passages: number; // passages sent to the LLMs per question
   missing_keys: string[]; // API keys the backend still needs for this mode
 }
 
@@ -35,7 +35,7 @@ export interface DocInfo {
   doc_id: string;
   filename: string;
   mode: ModeId; // chosen at upload; the document is answered in this mode
-  mode_label: string;
+  mode_label: string; // e.g. "Cloud · reranker + pre-judge"
   embed_model: string;
   llm_model: string;
   status: DocStatus;
@@ -87,10 +87,14 @@ export async function getModes(): Promise<ModeInfo[]> {
   return res.json();
 }
 
-export async function uploadDocument(file: File, mode: ModeId): Promise<DocInfo> {
+export async function uploadDocument(file: File, mode: ModeId, cloud: CloudOptions): Promise<DocInfo> {
   const form = new FormData();
   form.append("file", file);
   form.append("mode", mode);
+  if (mode === "cloud") {
+    form.append("reranker", String(cloud.reranker));
+    form.append("prejudge", String(cloud.prejudge));
+  }
   const res = await fetch("/api/documents", { method: "POST", body: form });
   if (!res.ok) throw new Error(await errorText(res));
   return res.json();

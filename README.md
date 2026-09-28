@@ -69,28 +69,36 @@ First start pulls images, builds both apps and downloads `qwen3:8b` (the `ollama
 
 ## Private and cloud modes
 
-Before each upload you pick one of three modes:
+Before each upload you pick **Private** or **Cloud**. Cloud mode has two switches, **Reranker** and
+**Pre-judge**; at least one must be on (the upload page won't turn off the last one, and the API refuses both off).
 
-| | Private mode (default) | Cloud · reranker | Cloud · pre-judge |
+| | Private mode (default) | Cloud mode |
+|---|---|---|
+| Embeddings | `BAAI/bge-small-en-v1.5` (CPU) | Gemini Embedding 2 (`google/gemini-embedding-2`, cut to 768-d) |
+| Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`, minimal reasoning) |
+| Answers | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) |
+| Retrieval | BM25 top 10 + vector top 20, fused | BM25 top 20 + vector top 30, fused (`CLOUD_BM25_CANDIDATES` / `CLOUD_VECTOR_CANDIDATES`) |
+| Reranking | local cross-encoder, top 8 of all fused candidates, if `RERANKER_ENABLED` | **Reranker** switch: local cross-encoder (`RERANKER_MODEL`), top 8 of all fused candidates; off: the top 8 by fused rank |
+| Passages sent to the LLMs | 8 (`TOP_K`) | 8 (`TOP_K`) |
+| Pre-judge | YES / NO by `qwen3:8b` if `PREJUDGE_ENABLED` | **Pre-judge** switch: ALL / PARTIAL / NONE by Gemini Flash-Lite (`CLOUD_PREJUDGE_MODEL`) on the 8 passages |
+| BM25, MongoDB | this machine | this machine (same MongoDB) |
+| Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek |
+
+The three cloud switch settings:
+
+| Reranker | Pre-judge | Label | What runs |
 |---|---|---|---|
-| Embeddings | `BAAI/bge-small-en-v1.5` (CPU) | Gemini Embedding 2 (`google/gemini-embedding-2`, cut to 768-d) | same |
-| Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`, minimal reasoning) | same |
-| Answers | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) | same |
-| Retrieval | BM25 top 10 + vector top 20, fused | same as private | BM25 top 20 + vector top 30, fused |
-| Reranking | local cross-encoder, top 8 of all fused candidates, if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`), top 8 of all fused candidates | none: the top 8 after fusion |
-| Passages sent to the LLMs | 8 (`TOP_K`) | 8 (`TOP_K`) | 8 (`CLOUD_PREJUDGE_TOP_K`) |
-| Pre-judge | YES / NO by `qwen3:8b` if `PREJUDGE_ENABLED` | none | ALL / PARTIAL / NONE by Gemini Flash-Lite (`CLOUD_PREJUDGE_MODEL`) |
-| BM25, MongoDB | this machine | this machine (same MongoDB) | same |
-| Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek | same |
+| on | off | Cloud · reranker | fuse 20 + 30 → reranker keeps the best 8 → DeepSeek |
+| off | on | Cloud · pre-judge | fuse 20 + 30 → top 8 by fused rank → pre-judge → DeepSeek |
+| on | on | Cloud · reranker + pre-judge | fuse 20 + 30 → reranker keeps the best 8 → pre-judge on those 8 → DeepSeek |
 
-Cloud · reranker retrieves exactly like private mode; only the models differ. Cloud · pre-judge has no reranker to
-bring the best passages to the top, so it fuses a wider pool (BM25 top 20 + vector top 30) and sends the top 8 after
-fusion, like the other modes. In `cloud-prejudge_moredata` (15 passages) recall rose from 89.5 to 94.7 over 5
-passages, but judge-correct stayed at 85 and evidence F1 fell, so all modes now send 8.
-In `cloud-1` (5 papers, cloud reranker mode) the gold evidence was among the 20 fused candidates for every question,
-but only 81.6 % of it made the reranked top 5.
+Without the reranker, the 8 passages are chosen by Reciprocal Rank Fusion alone, so a chunk both searches found
+always outranks one that only a single search found. In `cloud-prejudge_moredata` (15 passages) recall rose from 89.5
+to 94.7 over 5 passages, but judge-correct stayed at 85 and evidence F1 fell, so all modes send 8. In `cloud-1`
+(5 papers, cloud reranker) the gold evidence was among the 20 fused candidates for every question, but only 81.6 % of
+it made the reranked top 5.
 
-In **Cloud · pre-judge**, Gemini Flash-Lite reads the question and the 8 passages before any answer is written and
+With the pre-judge on, Gemini Flash-Lite reads the question and the 8 passages before any answer is written and
 decides how much of the answer they hold:
 
 - **ALL**: DeepSeek answers as usual.
@@ -105,11 +113,12 @@ All cloud models run through [OpenRouter](https://openrouter.ai), with one API k
 returns Gemini Embedding 2's full 3072 values; the model is trained so that the first values form an embedding on
 their own, so the backend keeps the first `CLOUD_EMBED_DIM` and renormalises them.
 
-The mode belongs to the document: vectors from different embedding models can't be compared, so private mode
-keeps its vectors in the chunk field `embedding` and both cloud modes in `embedding_cloud`, each with its own vector
-index, and a document is always answered in the mode it was uploaded in. The UI shows the mode in the top bar and
-the chat header. Cloud documents uploaded before the two cloud modes existed are answered as **Cloud · reranker**.
-`RERANKER_ENABLED` and `PREJUDGE_ENABLED` only apply to private mode.
+The mode and the switches belong to the document: vectors from different embedding models can't be compared, so
+private mode keeps its vectors in the chunk field `embedding` and cloud mode in `embedding_cloud`, each with its own
+vector index, and a document is always answered in the mode and with the switches it was uploaded with. The UI
+shows them in the top bar and the chat header. Older cloud documents keep working: `cloud-rerank` ones are answered
+as **Cloud · reranker**, `cloud-prejudge` ones as **Cloud · pre-judge**, and cloud documents from before either
+existed as **Cloud · reranker**. `RERANKER_ENABLED` and `PREJUDGE_ENABLED` only apply to private mode.
 
 **API key.** Cloud mode needs `OPENROUTER_API_KEY` ([OpenRouter keys](https://openrouter.ai/settings/keys), with
 credits on the account). Don't put it in `.env`: it is committed to git. Set it as an environment variable of your
@@ -169,12 +178,11 @@ reasoning tokens against it.
 | `PREJUDGE_ENABLED` | `true` | `true` / `false`: check whether the retrieved passages can answer before calling the answering LLM |
 | `MAX_UPLOAD_MB` | `25` | Upload limit |
 | `CLOUD_EMBED_MODEL` / `CLOUD_EMBED_DIM` | `google/gemini-embedding-2` / `768` | Cloud embeddings. Changing the dimension needs the `chunk_vector_index_cloud` index to be dropped so it is recreated |
-| `CLOUD_VECTOR_MIN_SCORE` | `0` | Minimum cosine similarity for cloud embedding hits; `0` = no cutoff. Not tuned yet: measure it with `--mode cloud-rerank` / `cloud-prejudge` |
+| `CLOUD_VECTOR_MIN_SCORE` | `0` | Minimum cosine similarity for cloud embedding hits; `0` = no cutoff. Not tuned yet: measure it with `--mode cloud-rerank` / `cloud-prejudge` / `cloud-rerank-prejudge` |
 | `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode, with minimal reasoning |
-| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers in the cloud modes (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
-| `CLOUD_PREJUDGE_MODEL` | `google/gemini-3.5-flash-lite` | Says ALL / PARTIAL / NONE in **Cloud · pre-judge** mode, with minimal reasoning |
-| `CLOUD_PREJUDGE_TOP_K` | `8` | Passages sent to the pre-judge and DeepSeek in **Cloud · pre-judge** mode |
-| `CLOUD_PREJUDGE_BM25_CANDIDATES` / `CLOUD_PREJUDGE_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in **Cloud · pre-judge** mode (**Cloud · reranker** uses `TOP_K`, `BM25_CANDIDATES` and `VECTOR_CANDIDATES` like private mode) |
+| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers in cloud mode (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
+| `CLOUD_PREJUDGE_MODEL` | `google/gemini-3.5-flash-lite` | Says ALL / PARTIAL / NONE when cloud mode's **Pre-judge** switch is on, with minimal reasoning |
+| `CLOUD_BM25_CANDIDATES` / `CLOUD_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in cloud mode, whatever the switches |
 | `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud modes](#private-and-cloud-modes)). Cloud model IDs are OpenRouter's |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
@@ -184,8 +192,8 @@ Changing chunking settings only affects newly uploaded documents.
 
 | Method | Path | |
 |---|---|---|
-| `GET` | `/modes` | the three modes with their models, and the API keys the cloud modes still need |
-| `POST` | `/documents` | multipart `file` + `mode` (`private` / `cloud-rerank` / `cloud-prejudge`) → `{doc_id, status}` (202) |
+| `GET` | `/modes` | private and cloud mode, and the API keys cloud mode still needs |
+| `POST` | `/documents` | multipart `file` + `mode` (`private` / `cloud`) + for cloud `reranker` and `prejudge` (`true` / `false`, at least one `true`) → `{doc_id, status}` (202) |
 | `GET` | `/documents/{id}` | status: `queued → converting → chunking → contextualizing → embedding → storing → indexing → ready` (or `failed` + `error`) |
 | `GET` | `/documents/{id}/markdown` | the converted Markdown |
 | `DELETE` | `/documents/{id}` | removes doc, chunks and files |
@@ -207,7 +215,7 @@ backend/app/
   reranker.py    cross-encoder reranking of the fused candidates
   prejudge.py    pre-judge: do the retrieved passages hold all, part or none of the answer?
   llm.py         Ollama client (load/unload, completions, streaming) + answering prompt
-  modes.py       private / cloud-rerank / cloud-prejudge: models, reranker, pre-judge, embedding field and index
+  modes.py       private / cloud (with reranker and pre-judge switches): models, retrieval sizes, embedding field and index
   cloud.py       OpenRouter client for cloud mode (Gemini embeddings and contexts, DeepSeek answers)
   evaluate.py    QASPER evaluation (CLI)
   qasper.py      QASPER dataset download, papers as Markdown, official scoring
@@ -240,8 +248,9 @@ docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 
 | `--papers` | How many papers to sample (default 5). Every question on a sampled paper is asked, about 3.5 per paper. |
 | `--seed` | Which papers get sampled (default 0). Same seed = same papers, so runs are comparable. |
 | `--split` | `test` (default, 416 papers / 1,451 questions) or `validation`. |
-| `--mode` | `private` (default), `cloud-rerank` or `cloud-prejudge`: ingest, retrieve and answer as in that mode (the cloud modes send the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so all modes are graded the same way. Cloud rows start with `cloud · emb <model>` in the Retrieval config column; *Pre-judge rejected* also counts the PARTIAL verdicts, and `<run-id>.json` has each question's `prejudge_verdict`. |
+| `--mode` | `private` (default), `cloud-rerank`, `cloud-prejudge` or `cloud-rerank-prejudge`: ingest, retrieve and answer as in that mode or cloud switch setting (cloud sends the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so all modes are graded the same way. Cloud rows start with `cloud · emb <model>` in the Retrieval config column; *Pre-judge rejected* also counts the PARTIAL verdicts, and `<run-id>.json` has each question's `prejudge_verdict`. |
 | `--sweep` | Comma-separated sizes, e.g. `30,25,20,15`: ingests the papers once, then runs retrieval, answering and judging once per size N with BM25 top N + vector top N (the reranker scores all fused chunks). Each size gets its own row and JSON, as `<run-id>-bNvN`. Overrides `BM25_CANDIDATES` / `VECTOR_CANDIDATES` for the run only. |
+| `--compare` | Comma-separated cloud switch settings, e.g. `rerank,prejudge,rerank-prejudge`: ingests the papers once in cloud mode, then runs retrieval, answering and judging once per setting. Each gets its own row and JSON, as `<run-id>-rerank`, `<run-id>-prejudge`, `<run-id>-rerank-prejudge`. Leave out `--mode`; can't be combined with `--sweep`. |
 
 On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
 
@@ -270,7 +279,7 @@ Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATE
 **Output**, in `evaluation_metrics/`:
 
 - `<run-id>.json`: the complete details. It holds the metrics, timings, all the environment variables the run used (MongoDB password masked), and every question's answer, references, retrieved and cited chunks, scores and judge output.
-- `result_40.md`: one row per run, for comparing runs side by side. Besides the timings and scores, it shows per question how many chunks BM25 returned and how many vector hits it used (average and fewest–most; private mode has no score cutoff, the cloud modes apply `CLOUD_VECTOR_MIN_SCORE`), and the cosine range of those vector hits (lowest–highest over the run, plus the average of each question's lowest and highest). `<run-id>.json` has the same counts and range for every question. (`results.md` holds the runs from before this file existed.)
+- `result_40.md`: one row per run, for comparing runs side by side. Besides the timings and scores, it shows per question how many chunks BM25 returned and how many vector hits it used (average and fewest–most; private mode has no score cutoff, cloud mode applies `CLOUD_VECTOR_MIN_SCORE`), and the cosine range of those vector hits (lowest–highest over the run, plus the average of each question's lowest and highest). `<run-id>.json` has the same counts and range for every question. (`results.md` holds the runs from before this file existed.)
 
 **Comparing settings.** Change one value in `.env`, apply it with `.\start.ps1` (or `./start.sh`), then rerun with a new run ID and the same seed:
 
@@ -291,7 +300,7 @@ docker compose exec backend python -m app.evaluate --run-id minscore-075 --paper
 - **Scanned PDFs** fail with "no extractable text" — OCR isn't included. Adding `tesseract-ocr` to the backend image enables pymupdf4llm's OCR path.
 - **Slow answers on CPU** — expected for an 8B model; use the GPU override or a smaller model (`LLM_MODEL=qwen3:4b`).
 - **Vector index not ready** — `docker compose logs backend` shows the index status. If mongot never becomes available, the backend falls back to in-process cosine search, so chat still works.
-- **"Cloud · reranker needs OPENROUTER_API_KEY"** (or Cloud · pre-judge) — the backend was started without the key; see [the API key notes](#private-and-cloud-modes) and restart it with `.\start.ps1`.
+- **"Cloud · reranker needs OPENROUTER_API_KEY"** (or another cloud label) — the backend was started without the key; see [the API key notes](#private-and-cloud-modes) and restart it with `.\start.ps1`.
 - **"Reasoning is mandatory for this endpoint and cannot be disabled"** (OpenRouter 400) — the cloud model in that message doesn't allow reasoning off. For the context model this is already handled; as `CLOUD_LLM_MODEL`, pick a model that allows it.
 - **"OpenRouter error 404" / "model not found"** — the model ID in `.env` doesn't exist on OpenRouter; check it at https://openrouter.ai/models.
 - **Reset everything** — `docker compose down -v` (deletes documents, vectors and the downloaded model).

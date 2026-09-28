@@ -60,11 +60,10 @@ class Settings:
     cloud_context_model: str = os.getenv("CLOUD_CONTEXT_MODEL", "google/gemini-3.5-flash-lite")
     cloud_llm_model: str = os.getenv("CLOUD_LLM_MODEL", "deepseek/deepseek-v4.1-flash")
     cloud_prejudge_model: str = os.getenv("CLOUD_PREJUDGE_MODEL", "google/gemini-3.5-flash-lite")
-    # Cloud pre-judge mode has no reranker and large-context models, so it retrieves and sends more passages
-    # (cloud reranker mode uses TOP_K / BM25_CANDIDATES / VECTOR_CANDIDATES like private mode)
-    cloud_prejudge_top_k: int = int(os.getenv("CLOUD_PREJUDGE_TOP_K", "8"))  # passages sent to the LLMs
-    cloud_prejudge_bm25_candidates: int = int(os.getenv("CLOUD_PREJUDGE_BM25_CANDIDATES", "20"))
-    cloud_prejudge_vector_candidates: int = int(os.getenv("CLOUD_PREJUDGE_VECTOR_CANDIDATES", "30"))
+    # Cloud retrieval (every variant): BM25 top N + vector top N are fused; the reranker scores all of them, or
+    # without it the top TOP_K by fused rank are kept
+    cloud_bm25_candidates: int = int(os.getenv("CLOUD_BM25_CANDIDATES", "20"))
+    cloud_vector_candidates: int = int(os.getenv("CLOUD_VECTOR_CANDIDATES", "30"))
 
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))
     data_dir: Path = Path(os.getenv("DATA_DIR", "/data"))
