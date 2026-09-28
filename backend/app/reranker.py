@@ -1,8 +1,8 @@
 """Cross-encoder reranking of the fused BM25 + vector candidates (RERANKER_MODEL, default BAAI/bge-reranker-base).
 
 The retrievers score the question and each chunk separately; a cross-encoder reads the question and a
-chunk together, which ranks them much more precisely. Hybrid search hands over its top RERANK_CANDIDATES
-chunks and the reranker keeps the best TOP_K. It runs on the CPU, so the GPU stays free for the LLM.
+chunk together, which ranks them much more precisely. Hybrid search hands over all its fused
+chunks (up to BM25_CANDIDATES + VECTOR_CANDIDATES) and the reranker keeps the best TOP_K. It runs on the CPU, so the GPU stays free for the LLM.
 Both supported models are baked into the image (Dockerfile ARG RERANKER_MODELS); RERANKER_MODEL picks one:
 BAAI/bge-reranker-base (278M parameters, more accurate) or cross-encoder/ms-marco-MiniLM-L6-v2 (23M, fast).
 """

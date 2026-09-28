@@ -27,9 +27,9 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 **Query** (`POST /chat`, streamed as NDJSON)
 
 1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 10.
-2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20, keeping only chunks with cosine similarity ≥ 0.85.
-3. **Reciprocal Rank Fusion** (k=60) → top 20 candidates (top 8 when the reranker is off).
-4. **Rerank** (`RERANKER_ENABLED=true`) — the cross-encoder `BAAI/bge-reranker-base` (278M parameters, on the CPU so the GPU stays free for Qwen3 8B) reads the question together with each candidate (`RERANK_CANDIDATES`, default 20) and keeps the 8 best. It replaced `cross-encoder/ms-marco-MiniLM-L6-v2`, which ranked well among BM25's ~10 candidates but not among 30 mixed ones. Expect roughly a few seconds per question on 4 CPU cores. BM25 and the embeddings score the question and a chunk separately; a cross-encoder reads them together, so it ranks far more precisely. It can only choose among the candidates, so it can't recover a chunk neither retriever found. The UI shows each kept passage's pre-rerank position as *Fused #n*.
+2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20 by similarity, with no score cutoff.
+3. **Reciprocal Rank Fusion** (k=60) → all the BM25 and vector hits, merged by rank (top 8 when the reranker is off).
+4. **Rerank** (`RERANKER_ENABLED=true`) — the cross-encoder `BAAI/bge-reranker-base` (278M parameters, on the CPU so the GPU stays free for Qwen3 8B) reads the question together with every fused candidate (up to `BM25_CANDIDATES` + `VECTOR_CANDIDATES`) and keeps the 8 best. It replaced `cross-encoder/ms-marco-MiniLM-L6-v2`, which ranked well among BM25's ~10 candidates but not among 30 mixed ones. Expect roughly a few seconds per question on 4 CPU cores. BM25 and the embeddings score the question and a chunk separately; a cross-encoder reads them together, so it ranks far more precisely. It can only choose among the candidates, so it can't recover a chunk neither retriever found. The UI shows each kept passage's pre-rerank position as *Fused #n*.
 5. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 8 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
 6. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank. Clicking a citation opens the document in a side panel, scrolled to the cited passage, which is highlighted (uploads from before this feature fall back to the passage list; re-upload them to get highlighting).
 
@@ -77,7 +77,7 @@ Before each upload you pick one of three modes:
 | Chunk contexts | `qwen3:4b-instruct` (Ollama) | Gemini Flash-Lite (`google/gemini-3.5-flash-lite`, minimal reasoning) | same |
 | Answers | `qwen3:8b` (Ollama) | DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`, reasoning off) | same |
 | Retrieval | BM25 top 10 + vector top 20, fused | same as private | BM25 top 20 + vector top 30, fused |
-| Reranking | local cross-encoder, top 8 of 20, if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`), top 8 of 20 | none: the top 8 after fusion |
+| Reranking | local cross-encoder, top 8 of all fused candidates, if `RERANKER_ENABLED` | local cross-encoder (`RERANKER_MODEL`), top 8 of all fused candidates | none: the top 8 after fusion |
 | Passages sent to the LLMs | 8 (`TOP_K`) | 8 (`TOP_K`) | 8 (`CLOUD_PREJUDGE_TOP_K`) |
 | Pre-judge | YES / NO by `qwen3:8b` if `PREJUDGE_ENABLED` | none | ALL / PARTIAL / NONE by Gemini Flash-Lite (`CLOUD_PREJUDGE_MODEL`) |
 | BM25, MongoDB | this machine | this machine (same MongoDB) | same |
@@ -158,12 +158,10 @@ reasoning tokens against it.
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1000` / `150` | Characters |
 | `TOP_K` | `8` | Passages sent to the LLM after fusion |
 | `BM25_CANDIDATES` | `10` | Chunks taken from BM25 before fusion |
-| `VECTOR_MIN_SCORE` | `0.85` | Minimum cosine similarity for embedding hits |
 | `VECTOR_CANDIDATES` | `20` | Max chunks from vector search before the score cutoff |
 | `RRF_K` | `60` | Reciprocal Rank Fusion constant (higher = flatter blend of the two rankings) |
 | `RERANKER_ENABLED` | `true` | `true` / `false`: rerank the fused candidates with the cross-encoder before taking the top `TOP_K` |
 | `RERANKER_MODEL` | `BAAI/bge-reranker-base` | Which reranker runs: `BAAI/bge-reranker-base` (more accurate, ~6–9 s for 30 chunks on 4 CPU cores) or `cross-encoder/ms-marco-MiniLM-L6-v2` (~1 s, weaker on large candidate pools). Both are baked into the image |
-| `RERANK_CANDIDATES` | `20` | How many fused chunks the reranker chooses from |
 | `HISTORY_TURNS` | `6` | Previous chat messages sent with each question |
 | `CONTEXTUAL_EMBEDDING` | `true` | `true` / `false`: add an LLM-written context to every chunk before embedding + BM25. Affects newly uploaded documents |
 | `CONTEXT_MODEL` | `qwen3:4b-instruct` | Ollama model that writes the contexts. Use a non-thinking model: plain `qwen3:4b` is thinking-only and writes its reasoning instead |
@@ -176,7 +174,7 @@ reasoning tokens against it.
 | `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers in the cloud modes (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
 | `CLOUD_PREJUDGE_MODEL` | `google/gemini-3.5-flash-lite` | Says ALL / PARTIAL / NONE in **Cloud · pre-judge** mode, with minimal reasoning |
 | `CLOUD_PREJUDGE_TOP_K` | `8` | Passages sent to the pre-judge and DeepSeek in **Cloud · pre-judge** mode |
-| `CLOUD_PREJUDGE_BM25_CANDIDATES` / `CLOUD_PREJUDGE_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in **Cloud · pre-judge** mode (**Cloud · reranker** uses `TOP_K`, `BM25_CANDIDATES`, `VECTOR_CANDIDATES` and `RERANK_CANDIDATES` like private mode) |
+| `CLOUD_PREJUDGE_BM25_CANDIDATES` / `CLOUD_PREJUDGE_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in **Cloud · pre-judge** mode (**Cloud · reranker** uses `TOP_K`, `BM25_CANDIDATES` and `VECTOR_CANDIDATES` like private mode) |
 | `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud modes](#private-and-cloud-modes)). Cloud model IDs are OpenRouter's |
 | `JUDGE_MODEL` | `qwen3:8b` | Ollama model that grades answers in the [evaluation](#evaluation-qasper) |
 
@@ -242,7 +240,8 @@ docker compose exec backend python -m app.evaluate --run-id baseline-1 --papers 
 | `--papers` | How many papers to sample (default 5). Every question on a sampled paper is asked, about 3.5 per paper. |
 | `--seed` | Which papers get sampled (default 0). Same seed = same papers, so runs are comparable. |
 | `--split` | `test` (default, 416 papers / 1,451 questions) or `validation`. |
-| `--mode` | `private` (default), `cloud-rerank` or `cloud-prejudge`: ingest, retrieve and answer as in that mode (the cloud modes send the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so all modes are graded the same way. Cloud rows start with `cloud · emb <model> · vec top <n>` in the Retrieval config column; *Pre-judge rejected* also counts the PARTIAL verdicts, and `<run-id>.json` has each question's `prejudge_verdict`. |
+| `--mode` | `private` (default), `cloud-rerank` or `cloud-prejudge`: ingest, retrieve and answer as in that mode (the cloud modes send the papers through OpenRouter). The judge stays `JUDGE_MODEL` in Ollama, so all modes are graded the same way. Cloud rows start with `cloud · emb <model>` in the Retrieval config column; *Pre-judge rejected* also counts the PARTIAL verdicts, and `<run-id>.json` has each question's `prejudge_verdict`. |
+| `--sweep` | Comma-separated sizes, e.g. `30,25,20,15`: ingests the papers once, then runs retrieval, answering and judging once per size N with BM25 top N + vector top N (the reranker scores all fused chunks). Each size gets its own row and JSON, as `<run-id>-bNvN`. Overrides `BM25_CANDIDATES` / `VECTOR_CANDIDATES` for the run only. |
 
 On CPU, expect roughly 30–90 s per question: `--papers 1` checks that it works, `--papers 5` is a quick comparison, and `--papers 20` or more gives more stable numbers. The dataset (~4 MB) is downloaded on the first run.
 
@@ -266,12 +265,12 @@ The papers' chunks are deleted afterwards, so nothing shows up in the app.
 - **Answer F1**: official QASPER token F1 against the closest annotator answer, also broken down by answer type (extractive / abstractive / yes-no / unanswerable). It penalizes long answers, even correct ones, so compare it between your own runs rather than with published results.
 - **Judge correct**: `JUDGE_MODEL` decides whether the answer matches a reference answer.
 
-Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATES`, `VECTOR_MIN_SCORE` or the chunk size. High recall with a low judge score points to the prompt or the model instead.
+Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATES`, `VECTOR_CANDIDATES` or the chunk size. High recall with a low judge score points to the prompt or the model instead.
 
 **Output**, in `evaluation_metrics/`:
 
 - `<run-id>.json`: the complete details. It holds the metrics, timings, all the environment variables the run used (MongoDB password masked), and every question's answer, references, retrieved and cited chunks, scores and judge output.
-- `result_40.md`: one row per run, for comparing runs side by side. Besides the timings and scores, it shows per question how many chunks BM25 returned and how many vector hits reached `VECTOR_MIN_SCORE` (average and fewest–most), and the cosine range of those vector hits (lowest–highest over the run, plus the average of each question's lowest and highest). `<run-id>.json` has the same counts and range for every question. (`results.md` holds the runs from before this file existed.)
+- `result_40.md`: one row per run, for comparing runs side by side. Besides the timings and scores, it shows per question how many chunks BM25 returned and how many vector hits it used (average and fewest–most; private mode has no score cutoff, the cloud modes apply `CLOUD_VECTOR_MIN_SCORE`), and the cosine range of those vector hits (lowest–highest over the run, plus the average of each question's lowest and highest). `<run-id>.json` has the same counts and range for every question. (`results.md` holds the runs from before this file existed.)
 
 **Comparing settings.** Change one value in `.env`, apply it with `.\start.ps1` (or `./start.sh`), then rerun with a new run ID and the same seed:
 

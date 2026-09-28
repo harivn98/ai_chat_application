@@ -3,7 +3,7 @@
 private          everything runs on this machine: bge-small embeddings, Ollama models, the local reranker and
                  pre-judge as RERANKER_ENABLED / PREJUDGE_ENABLED say (the default).
 cloud-rerank     document text and questions go through OpenRouter to Google (Gemini embeddings and chunk
-                 contexts) and DeepSeek (answers); the local cross-encoder reranks the fused candidates.
+                 contexts) and DeepSeek (answers); the local cross-encoder reranks all the fused candidates.
 cloud-prejudge   the same cloud models without the reranker; instead Gemini Flash-Lite pre-judges whether the
                  top passages hold all, part or none of the information the question asks for.
 
@@ -36,13 +36,17 @@ class Mode:
     prejudge_model: str
     top_k: int                # passages sent to the pre-judge and the answering model
     bm25_candidates: int      # chunks BM25 contributes to the fusion
-    vector_candidates: int    # max chunks vector search contributes (before its score cutoff)
-    rerank_candidates: int    # fused chunks the reranker chooses the top_k from
+    vector_candidates: int    # max chunks vector search contributes (before its score cutoff, if any)
     embedding_field: str      # chunk field holding this mode's vectors
     vector_index: str
     embed_dim: int
-    vector_min_score: float
+    vector_min_score: float | None  # minimum cosine similarity for vector hits; None = no cutoff
     context_num_ctx: int      # tokens of the document the context model reads per chunk
+
+    @property
+    def candidate_pool(self) -> int:
+        """Most chunks the fusion can return; the reranker scores all of them."""
+        return self.bm25_candidates + self.vector_candidates
 
     def missing_keys(self) -> list[str]:
         return [] if self.local else cloud.missing_keys()
@@ -116,11 +120,10 @@ MODES = {
         top_k=settings.top_k,
         bm25_candidates=settings.bm25_candidates,
         vector_candidates=settings.vector_candidates,
-        rerank_candidates=settings.rerank_candidates,
         embedding_field="embedding",
         vector_index=settings.vector_index,
         embed_dim=settings.embed_dim,
-        vector_min_score=settings.vector_min_score,
+        vector_min_score=None,  # top vector_candidates by rank only; the reranker judges relevance
         context_num_ctx=settings.context_num_ctx,
     ),
     CLOUD_RERANK: Mode(
@@ -133,7 +136,6 @@ MODES = {
         top_k=settings.top_k,  # the local reranker picks as many passages as in private mode
         bm25_candidates=settings.bm25_candidates,
         vector_candidates=settings.vector_candidates,
-        rerank_candidates=settings.rerank_candidates,
         **_CLOUD,
     ),
     CLOUD_PREJUDGE: Mode(
@@ -147,7 +149,6 @@ MODES = {
         top_k=settings.cloud_prejudge_top_k,  # no reranker: Flash-Lite and DeepSeek read more passages instead
         bm25_candidates=settings.cloud_prejudge_bm25_candidates,
         vector_candidates=settings.cloud_prejudge_vector_candidates,
-        rerank_candidates=0,
         **_CLOUD,
     ),
 }

@@ -71,12 +71,10 @@ services:
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-150}
       TOP_K: ${TOP_K:-8}
       BM25_CANDIDATES: ${BM25_CANDIDATES:-10}
-      VECTOR_MIN_SCORE: ${VECTOR_MIN_SCORE:-0.85}
       VECTOR_CANDIDATES: ${VECTOR_CANDIDATES:-20}
       RRF_K: ${RRF_K:-60}
       RERANKER_ENABLED: ${RERANKER_ENABLED:-true}
       RERANKER_MODEL: ${RERANKER_MODEL:-BAAI/bge-reranker-base}
-      RERANK_CANDIDATES: ${RERANK_CANDIDATES:-20}
       HISTORY_TURNS: ${HISTORY_TURNS:-6}
       # Cloud mode (OpenRouter): the key comes from the environment of the shell that starts compose (not from .env)
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}

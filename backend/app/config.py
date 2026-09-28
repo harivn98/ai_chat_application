@@ -43,14 +43,12 @@ class Settings:
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))   # characters
     top_k: int = int(os.getenv("TOP_K", "8"))                     # chunks sent to the LLM
     bm25_candidates: int = int(os.getenv("BM25_CANDIDATES", "10"))
-    vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "20"))  # upper bound before the score cutoff
-    vector_min_score: float = float(os.getenv("VECTOR_MIN_SCORE", "0.85"))  # raw cosine similarity
+    vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "20"))  # private mode: no score cutoff
     rrf_k: int = int(os.getenv("RRF_K", "60"))
 
-    # Reranker: a cross-encoder re-scores the top RERANK_CANDIDATES fused chunks and keeps the best TOP_K
+    # Reranker: a cross-encoder re-scores every fused BM25 + vector chunk and keeps the best TOP_K
     reranker_enabled: bool = _bool("RERANKER_ENABLED", True)
     reranker_model: str = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
-    rerank_candidates: int = int(os.getenv("RERANK_CANDIDATES", "20"))
 
     # Cloud mode (chosen per upload in the UI): every cloud model runs through OpenRouter, so document text and
     # questions leave this machine. The API key comes from the machine's environment, never from the committed .env.
@@ -63,7 +61,7 @@ class Settings:
     cloud_llm_model: str = os.getenv("CLOUD_LLM_MODEL", "deepseek/deepseek-v4.1-flash")
     cloud_prejudge_model: str = os.getenv("CLOUD_PREJUDGE_MODEL", "google/gemini-3.5-flash-lite")
     # Cloud pre-judge mode has no reranker and large-context models, so it retrieves and sends more passages
-    # (cloud reranker mode uses TOP_K / BM25_CANDIDATES / VECTOR_CANDIDATES / RERANK_CANDIDATES like private mode)
+    # (cloud reranker mode uses TOP_K / BM25_CANDIDATES / VECTOR_CANDIDATES like private mode)
     cloud_prejudge_top_k: int = int(os.getenv("CLOUD_PREJUDGE_TOP_K", "8"))  # passages sent to the LLMs
     cloud_prejudge_bm25_candidates: int = int(os.getenv("CLOUD_PREJUDGE_BM25_CANDIDATES", "20"))
     cloud_prejudge_vector_candidates: int = int(os.getenv("CLOUD_PREJUDGE_VECTOR_CANDIDATES", "30"))

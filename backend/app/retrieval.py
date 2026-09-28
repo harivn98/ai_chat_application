@@ -123,6 +123,8 @@ def vector_search(doc_id: str, query: str, k: int, mode: Mode) -> list[tuple[int
             log.warning("$vectorSearch failed, using local fallback: %s", e)
     if not hits:
         hits = _vector_search_local(doc_id, qvec, k, mode)
+    if mode.vector_min_score is None:
+        return hits
     return [(idx, score) for idx, score in hits if score >= mode.vector_min_score]
 
 
@@ -139,7 +141,7 @@ def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -
 
 def candidate_rankings(doc_id: str, query: str, mode: Mode) -> dict[str, list[tuple[int, float]]]:
     """Each search's (chunk index, score) hits before fusion: the BM25 top bm25_candidates, and the vector top
-    vector_candidates at or above vector_min_score."""
+    vector_candidates (at or above vector_min_score, if the mode has one)."""
     return {
         "bm25": bm25_search(doc_id, query, mode.bm25_candidates),
         "vector": vector_search(doc_id, query, mode.vector_candidates, mode),
@@ -173,8 +175,8 @@ def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None,
 
 def search(doc_id: str, query: str, mode: Mode) -> list[dict]:
     """The passages sent to the LLM: hybrid search, then (if the mode reranks) cross-encoder reranking
-    of the mode's top rerank_candidates fused chunks down to its top_k."""
+    of all the fused chunks down to the mode's top_k."""
     if not mode.reranker:
         return hybrid_search(doc_id, query, mode)
-    candidates = hybrid_search(doc_id, query, mode, mode.rerank_candidates)
+    candidates = hybrid_search(doc_id, query, mode, mode.candidate_pool)
     return reranker.rerank(query, candidates, mode.top_k)

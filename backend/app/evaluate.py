@@ -2,13 +2,15 @@
 
 Runs only when triggered:
     python -m app.evaluate --run-id <id> [--papers 5] [--seed 0] [--split test]
-                           [--mode private|cloud-rerank|cloud-prejudge]
+                           [--mode private|cloud-rerank|cloud-prejudge] [--sweep 30,25,20,15]
 
 Runs in four phases, one Ollama model at a time: (1) each sampled paper is converted to Markdown and
 ingested like an upload (chunk + optional Contextual Retrieval contexts + embed + store), (2) every
 question goes through hybrid retrieval + the pre-judge, (3) the questions the pre-judge let through are
 answered, (4) the judge grades the answers. Each stage is timed; model switches are not.
 The cloud modes run steps 1-3 with the cloud models (see modes.py); the judge is always JUDGE_MODEL in Ollama.
+--sweep N,M,... ingests the papers once, then runs steps 2-4 once per N with BM25 top N + vector top N, one result
+row each (<run-id>-bNvN).
 
 Metrics:
   - Answer F1     official QASPER token F1 against the best-matching annotator answer
@@ -94,12 +96,13 @@ RESULTS_HEADER = (
     "Answer F1 and Evidence F1 are the official QASPER metrics (evidence = paragraphs in the passages the "
     "answer cites). Retrieval recall@k = share of gold evidence paragraphs present in the top-k chunks. "
     "Judge correct = the judge model says the answer matches a reference answer. All scores are 0-100. "
-    "BM25 chunks = chunks BM25 returned per question, vector chunks = chunks vector search returned at or above "
-    "the minimum score per question (both as average (fewest–most)); vector score range = lowest–highest cosine "
+    "BM25 chunks = chunks BM25 returned per question, vector chunks = chunks vector search returned per question "
+    "(at or above the minimum score, if the mode has one; both as average (fewest–most)); vector score range = "
+    "lowest–highest cosine "
     "similarity of those vector chunks over the whole run, and in brackets the average of each question's "
     "lowest and highest.\n\n"
     "| Run ID | Date (UTC) | Split · papers · questions | LLM / judge | Retrieval config "
-    "| BM25 chunks (per q) | Vector chunks ≥ min score (per q) | Vector score range "
+    "| BM25 chunks (per q) | Vector chunks (per q) | Vector score range "
     "| Contextualization (s/paper) | Embedding (s/paper) "
     "| Retrieval (s/q) | Rerank (s/q) | Pre-judge (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
     "| F1 extractive / abstractive / yes-no / unanswerable | Evidence F1 | Retrieval recall@k "
@@ -250,14 +253,11 @@ def _ingest_paper(doc_id: str, markdown: str, ingested: _Ingested, mode: Mode) -
 def _retrieve_all(questions: list[tuple[str, dict]], doc_ids: dict[str, str], failed: dict[str, str],
                   mode: Mode) -> dict:
     """Question id -> retrieval + pre-judge result. The answering model does the pre-judge; in private mode it is
-    loaded once here, straight after the context model is unloaded, and stays loaded for phase 3."""
+    loaded here, straight after the context model is unloaded, and stays loaded for phase 3."""
     _say("\n--- Phase 2/4: retrieval + pre-judge "
          f"({'with ' + mode.prejudge_model if mode.prejudge else 'pre-judge off'}) ---")
     if mode.local:
-        if settings.contextual_embedding:
-            st = _Status(f"Unloading {settings.context_model}…")
-            st.done(f"After contextualizing: {hand_over() or 'nothing to hand over'}")
-        _load_model(settings.llm_model, settings.llm_num_ctx)
+        _load_model(settings.llm_model, settings.llm_num_ctx)  # instant if it is still loaded
     steps: dict[str, dict] = {}
     for n, (pid, qa) in enumerate(questions, start=1):
         if pid in failed:
@@ -277,20 +277,21 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, mode: Mode, indent: str) -> di
     t0 = time.perf_counter()
     rankings = retrieval.candidate_rankings(doc_id, question, mode)
     if mode.reranker:
-        candidates = retrieval.hybrid_search(doc_id, question, mode, mode.rerank_candidates, rankings)
+        candidates = retrieval.hybrid_search(doc_id, question, mode, mode.candidate_pool, rankings)
     else:
         candidates = passages = retrieval.hybrid_search(doc_id, question, mode, rankings=rankings)
     retrieval_s = time.perf_counter() - t0
     vector_scores = [score for _, score in rankings["vector"]]
     hits = {
         "bm25_hits": len(rankings["bm25"]),  # chunks BM25 returned (at most BM25_CANDIDATES)
-        "vector_hits": len(vector_scores),  # vector hits at or above the minimum score (at most VECTOR_CANDIDATES)
+        "vector_hits": len(vector_scores),  # vector hits, after the mode's score cutoff if any (at most VECTOR_CANDIDATES)
         "vector_score_min": min(vector_scores, default=None),  # cosine range of those hits
         "vector_score_max": max(vector_scores, default=None),
     }
     score_range = f" {hits['vector_score_min']:.3f}–{hits['vector_score_max']:.3f}" if vector_scores else ""
+    cutoff = "" if mode.vector_min_score is None else f" ≥ {mode.vector_min_score}"
     _say(f"{indent}retrieval: {len(candidates)} chunks in {retrieval_s:.2f}s "
-         f"(BM25 {hits['bm25_hits']} · vector {hits['vector_hits']} ≥ {mode.vector_min_score}{score_range})")
+         f"(BM25 {hits['bm25_hits']} · vector {hits['vector_hits']}{cutoff}{score_range})")
 
     rerank_s = None
     if mode.reranker:
@@ -409,7 +410,7 @@ def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], mode: Mode, i
         "answer_type": answer_type,
         "evidence_f1": evidence_f1,
         "retrieval_recall": max(recalls) if recalls else None,  # None: no text evidence (e.g. unanswerable)
-        "candidate_recall": pool_recall,  # same, over the RERANK_CANDIDATES chunks the reranker chose from
+        "candidate_recall": pool_recall,  # same, over all the fused chunks the reranker chose from
         "prejudge_can_answer": can_answer if mode.prejudge else None,
         "prejudge_verdict": step["verdict"] if mode.prejudge else None,  # all / partial / none
         "gold_unanswerable": any(r["type"] == "none" for r in refs),  # some annotator says the paper can't answer
@@ -503,7 +504,7 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "top_k": mode.top_k,
         "bm25_candidates": mode.bm25_candidates,
         "vector_candidates": mode.vector_candidates,
-        "vector_min_score": mode.vector_min_score,
+        "vector_min_score": mode.vector_min_score,  # None: no cutoff
         "chunk_size": settings.chunk_size,
         "chunk_overlap": settings.chunk_overlap,
         "contextual_embedding": settings.contextual_embedding,
@@ -512,10 +513,9 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "prejudge_model": mode.prejudge_model if mode.prejudge else None,
         "reranker_enabled": mode.reranker,
         "reranker_model": settings.reranker_model if mode.reranker else None,
-        "rerank_candidates": mode.rerank_candidates if mode.reranker else None,
         "contextualization_s_per_paper": _mean(ingested.context_times),
         "embedding_s_per_paper": _mean(ingested.embedding_times),
-        # per question: chunks BM25 returned, vector hits at or above vector_min_score, and their cosine range
+        # per question: chunks BM25 returned, vector hits (after the cutoff, if any), and their cosine range
         "bm25_hits": _spread([r["bm25_hits"] for r in ok]),
         "vector_hits": _spread([r["vector_hits"] for r in ok]),
         "vector_score_min": _spread([r["vector_score_min"] for r in ok]),
@@ -567,15 +567,15 @@ def _results_row(s: dict) -> str:
     """The run's row in result_40.md (columns as in RESULTS_HEADER)."""
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     local = s["mode"] == PRIVATE
-    cloud = "" if local else f"cloud · emb {s['embed_model']} · vec top {s['vector_candidates']} · "
+    cloud = "" if local else f"cloud · emb {s['embed_model']} · "
     ctx = f"ctx {s['context_model']}" if s["contextual_embedding"] else "no ctx"
     pj = f"prejudge {s['prejudge_model']}{'/gpu' if local else ''}" if s["prejudge_enabled"] else "no prejudge"
-    rr = (f"rerank {s['reranker_model'].split('/')[-1]} top {s['rerank_candidates']}"
-          if s["reranker_enabled"] else "no rerank")
+    rr = f"rerank {s['reranker_model'].split('/')[-1]} all fused" if s["reranker_enabled"] else "no rerank"
+    vec = f"vec top {s['vector_candidates']}" + ("" if s["vector_min_score"] is None else f" ≥ {s['vector_min_score']}")
     return (
         f"| {s['run_id']} | {s['date_utc']} | {s['split']} · {s['papers']} · {s['questions']} (seed {s['seed']}) "
         f"| {s['llm_model']} / {s['judge_model']} "
-        f"| {cloud}top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
+        f"| {cloud}top {s['top_k']} · BM25 {s['bm25_candidates']} · {vec} "
         f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} · {pj} · {rr} "
         f"| {_hit_counts(s['bm25_hits'])} | {_hit_counts(s['vector_hits'])} | {_score_range(s)} "
         f"| {_secs(s['contextualization_s_per_paper'])} "
@@ -607,36 +607,53 @@ def _print_summary(s: dict, results_md: Path, details_json: Path) -> None:
                       ("answer F1", "answer_f1"), ("judge correct", "judge_correct")]:
         _say(f"  {name:<21}{_pct(s[key])}")
     _say(f"  {'BM25 chunks/q':<21}{_hit_counts(s['bm25_hits'])}")
-    _say(f"  {'vector chunks/q':<21}{_hit_counts(s['vector_hits'])}  (at or above {s['vector_min_score']})")
+    cutoff = "no score cutoff" if s["vector_min_score"] is None else f"at or above {s['vector_min_score']}"
+    _say(f"  {'vector chunks/q':<21}{_hit_counts(s['vector_hits'])}  ({cutoff})")
     _say(f"  {'vector score range':<21}{_score_range(s)}")
     if s["reranker_enabled"]:
-        _say(f"  {'candidate recall@' + str(s['rerank_candidates']):<21}{_pct(s['candidate_recall'])}"
-             f"  (evidence among the chunks the reranker chose from)")
+        _say(f"  {'candidate recall':<21}{_pct(s['candidate_recall'])}"
+             f"  (evidence among all the fused chunks the reranker chose from)")
     if s["prejudge_enabled"]:
         _say(f"  {'pre-judge rejected':<21}{_prejudge_rejected(s)}")
     _say(f"\nSaved {details_json} (complete details)\n      {results_md} (side-by-side comparison)")
 
 
 # ------------------------------------------------------------------ run
-def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PRIVATE) -> None:
+def _variants(run_id: str, mode: Mode, sweep: list[int] | None) -> list[tuple[str, Mode]]:
+    """(run id, mode) per result row: the mode as configured, or one BM25 top N + vector top N per sweep value."""
+    if not sweep:
+        return [(run_id, mode)]
+    return [(f"{run_id}-b{n}v{n}", dataclasses.replace(mode, bm25_candidates=n, vector_candidates=n)) for n in sweep]
+
+
+def _describe(mode: Mode) -> str:
+    cutoff = "" if mode.vector_min_score is None else f" ≥ {mode.vector_min_score}"
+    return (f"top {mode.top_k} · BM25 {mode.bm25_candidates} · vec {mode.vector_candidates}{cutoff} · "
+            f"{'context ' + mode.context_model if settings.contextual_embedding else 'no context'} · "
+            f"{'rerank all fused with ' + settings.reranker_model if mode.reranker else 'no rerank'} · "
+            f"{'pre-judge ' + mode.prejudge_model if mode.prejudge else 'no pre-judge'}")
+
+
+def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PRIVATE,
+        sweep: list[int] | None = None) -> None:
     mode = MODES[mode_name]
     if mode.missing_keys():
         raise SystemExit(f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
     results_md = settings.eval_dir / "result_40.md"
-    details_json = settings.eval_dir / f"{run_id}.json"
-    if run_id in _existing_run_ids(results_md) or details_json.exists():
-        raise SystemExit(f"Run ID '{run_id}' already exists in {settings.eval_dir}; choose another.")
+    variants = _variants(run_id, mode, sweep)
+    taken = _existing_run_ids(results_md)
+    for vid, _ in variants:
+        if vid in taken or (settings.eval_dir / f"{vid}.json").exists():
+            raise SystemExit(f"Run ID '{vid}' already exists in {settings.eval_dir}; choose another.")
 
     data = load_split(split)
     paper_ids = sorted(random.Random(seed).sample(sorted(data), min(num_papers, len(data))))
     questions = [(pid, qa) for pid in paper_ids for qa in data[pid]["qas"]]
     doc_ids = {pid: f"eval-{run_id}-{pid}" for pid in paper_ids}
     _say(f"\n=== Run {run_id}: {len(paper_ids)} papers, {len(questions)} questions (QASPER {split}, seed {seed}) ===")
-    _say(f"{mode.label}: LLM {mode.llm_model} · embeddings {mode.embed_model} · judge {settings.judge_model} · "
-         f"top {mode.top_k} · BM25 {mode.bm25_candidates} · vec {mode.vector_candidates} ≥ {mode.vector_min_score} · "
-         f"{'context ' + mode.context_model if settings.contextual_embedding else 'no context'} · "
-         f"{'rerank top ' + str(mode.rerank_candidates) + ' with ' + settings.reranker_model if mode.reranker else 'no rerank'} · "
-         f"{'pre-judge ' + mode.prejudge_model if mode.prejudge else 'no pre-judge'}")
+    _say(f"{mode.label}: LLM {mode.llm_model} · embeddings {mode.embed_model} · judge {settings.judge_model}")
+    for vid, variant in variants:
+        _say(f"  {vid}: {_describe(variant)}")
 
     st = _Status("Connecting to MongoDB and loading the embedding model…")
     db.ensure_vector_index()
@@ -646,21 +663,41 @@ def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PR
     st.done(f"Ready (vector index: {'yes' if db.vector_index_ready else 'no, using local fallback'})")
 
     # The phases run model by model (context model, then answering model, then judge), so Ollama
-    # doesn't swap models in and out of GPU memory for every paper.
+    # doesn't swap models in and out of GPU memory for every paper. A sweep ingests once and shares it.
     started = time.perf_counter()
     try:
         ingested = _ingest_papers(data, paper_ids, doc_ids, mode)
-        steps = _retrieve_all(questions, doc_ids, ingested.errors, mode)
-        rows = _answer_all(questions, steps, ingested, mode)
+        ingest_min = (time.perf_counter() - started) / 60
+        if mode.local and settings.contextual_embedding:
+            st = _Status(f"Unloading {settings.context_model}…")
+            st.done(f"After contextualizing: {hand_over() or 'nothing to hand over'}")
+        for n, (vid, variant) in enumerate(variants, start=1):
+            if sweep:
+                _say(f"\n=== Sweep {n}/{len(variants)}: {vid} (BM25 top {variant.bm25_candidates} + "
+                     f"vector top {variant.vector_candidates}) ===")
+            t0 = time.perf_counter()
+            steps = _retrieve_all(questions, doc_ids, ingested.errors, variant)
+            rows = _answer_all(questions, steps, ingested, variant)
+            _judge_all(rows, variant)
+            # each row's total counts the shared ingestion once, so it compares with a single run
+            total_min = ingest_min + (time.perf_counter() - t0) / 60
+            summary = _summary(vid, split, seed, len(paper_ids), rows, ingested, total_min, variant)
+            details_json = settings.eval_dir / f"{vid}.json"
+            _save(summary, rows, results_md, details_json)
+            _print_summary(summary, results_md, details_json)
     finally:
         for doc_id in doc_ids.values():
             _cleanup(doc_id)
-    _judge_all(rows, mode)
 
-    summary = _summary(run_id, split, seed, len(paper_ids), rows, ingested, (time.perf_counter() - started) / 60,
-                       mode)
-    _save(summary, rows, results_md, details_json)
-    _print_summary(summary, results_md, details_json)
+
+def _sweep_values(text: str) -> list[int]:
+    try:
+        values = [int(v) for v in text.split(",") if v.strip()]
+    except ValueError:
+        raise argparse.ArgumentTypeError("use comma-separated whole numbers, e.g. 30,25,20,15") from None
+    if not values or min(values) < 1 or len(set(values)) != len(values):
+        raise argparse.ArgumentTypeError("use distinct numbers of at least 1, e.g. 30,25,20,15")
+    return values
 
 
 def main():
@@ -673,12 +710,15 @@ def main():
     p.add_argument("--mode", choices=sorted(MODES), default=PRIVATE,
                    help="private: local models (default); cloud-rerank / cloud-prejudge: Gemini + DeepSeek via "
                         "OpenRouter with the local reranker / the Flash-Lite pre-judge (sends the papers)")
+    p.add_argument("--sweep", type=_sweep_values, metavar="N,M,...",
+                   help="ingest once, then evaluate BM25 top N + vector top N for each value (one row each, "
+                        "run IDs <run-id>-bNvN), e.g. 30,25,20,15")
     args = p.parse_args()
     if not RUN_ID_RE.match(args.run_id):
         p.error("--run-id may only contain letters, digits, '.', '_' and '-' (max 64 chars)")
     if args.papers < 1:
         p.error("--papers must be at least 1")
-    run(args.run_id, args.papers, args.seed, args.split, args.mode)
+    run(args.run_id, args.papers, args.seed, args.split, args.mode, args.sweep)
 
 
 if __name__ == "__main__":
