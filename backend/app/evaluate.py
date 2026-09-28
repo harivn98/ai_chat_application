@@ -19,7 +19,7 @@ Metrics:
 Each run writes to <EVAL_DIR> (evaluation_metrics/):
   <run_id>.json  complete details: metrics, timings, environment variables, and every question's
                  answer, references, scores and judge output
-  results.md     one row per run, for side-by-side comparison
+  result_40.md   one row per run, for side-by-side comparison
 """
 import argparse
 import dataclasses
@@ -93,13 +93,18 @@ RESULTS_HEADER = (
     "of those an annotator also marked unanswerable. "
     "Answer F1 and Evidence F1 are the official QASPER metrics (evidence = paragraphs in the passages the "
     "answer cites). Retrieval recall@k = share of gold evidence paragraphs present in the top-k chunks. "
-    "Judge correct = the judge model says the answer matches a reference answer. All scores are 0-100.\n\n"
+    "Judge correct = the judge model says the answer matches a reference answer. All scores are 0-100. "
+    "BM25 chunks = chunks BM25 returned per question, vector chunks = chunks vector search returned at or above "
+    "the minimum score per question (both as average (fewest–most)); vector score range = lowest–highest cosine "
+    "similarity of those vector chunks over the whole run, and in brackets the average of each question's "
+    "lowest and highest.\n\n"
     "| Run ID | Date (UTC) | Split · papers · questions | LLM / judge | Retrieval config "
+    "| BM25 chunks (per q) | Vector chunks ≥ min score (per q) | Vector score range "
     "| Contextualization (s/paper) | Embedding (s/paper) "
     "| Retrieval (s/q) | Rerank (s/q) | Pre-judge (s/q) | Generation (s/q) | Judging (s/q) | Total (min) | Answer F1 "
     "| F1 extractive / abstractive / yes-no / unanswerable | Evidence F1 | Retrieval recall@k "
     "| Judge correct | Pre-judge rejected | Errors |\n"
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
 )
 
 
@@ -270,12 +275,22 @@ def _retrieve_all(questions: list[tuple[str, dict]], doc_ids: dict[str, str], fa
 def _retrieve_and_prejudge(doc_id: str, qa: dict, mode: Mode, indent: str) -> dict:
     question = qa["question"].strip()
     t0 = time.perf_counter()
+    rankings = retrieval.candidate_rankings(doc_id, question, mode)
     if mode.reranker:
-        candidates = retrieval.hybrid_search(doc_id, question, mode, mode.rerank_candidates)
+        candidates = retrieval.hybrid_search(doc_id, question, mode, mode.rerank_candidates, rankings)
     else:
-        candidates = passages = retrieval.hybrid_search(doc_id, question, mode)
+        candidates = passages = retrieval.hybrid_search(doc_id, question, mode, rankings=rankings)
     retrieval_s = time.perf_counter() - t0
-    _say(f"{indent}retrieval: {len(candidates)} chunks in {retrieval_s:.2f}s")
+    vector_scores = [score for _, score in rankings["vector"]]
+    hits = {
+        "bm25_hits": len(rankings["bm25"]),  # chunks BM25 returned (at most BM25_CANDIDATES)
+        "vector_hits": len(vector_scores),  # vector hits at or above the minimum score (at most VECTOR_CANDIDATES)
+        "vector_score_min": min(vector_scores, default=None),  # cosine range of those hits
+        "vector_score_max": max(vector_scores, default=None),
+    }
+    score_range = f" {hits['vector_score_min']:.3f}–{hits['vector_score_max']:.3f}" if vector_scores else ""
+    _say(f"{indent}retrieval: {len(candidates)} chunks in {retrieval_s:.2f}s "
+         f"(BM25 {hits['bm25_hits']} · vector {hits['vector_hits']} ≥ {mode.vector_min_score}{score_range})")
 
     rerank_s = None
     if mode.reranker:
@@ -294,7 +309,7 @@ def _retrieve_and_prejudge(doc_id: str, qa: dict, mode: Mode, indent: str) -> di
         st.done(f"{indent}pre-judge: {VERDICT_TEXT[verdict]} ({_fmt_secs(prejudge_s)})")
     return {"question": question, "passages": passages, "candidates": candidates, "retrieval_s": retrieval_s,
             "rerank_s": rerank_s, "verdict": verdict, "can_answer": verdict != prejudge.NONE,
-            "prejudge_s": prejudge_s}
+            "prejudge_s": prejudge_s, **hits}
 
 
 # ------------------------------------------------------------------ phase 3: answer + score
@@ -383,6 +398,10 @@ def _answer_and_score(step: dict, qa: dict, paragraphs: list[str], mode: Mode, i
         "references": refs,
         "response": response,
         "predicted_answer": predicted_answer,
+        "bm25_hits": step["bm25_hits"],
+        "vector_hits": step["vector_hits"],
+        "vector_score_min": step["vector_score_min"],
+        "vector_score_max": step["vector_score_max"],
         "retrieved_chunks": [p["index"] for p in passages],
         "fused_ranks": [p.get("fused_rank") for p in passages],  # where the kept chunks were before reranking
         "cited_passages": cited,
@@ -441,6 +460,11 @@ def _mean(vals: list) -> float | None:
     return sum(vals) / len(vals) if vals else None
 
 
+def _spread(vals: list) -> dict | None:
+    vals = [v for v in vals if v is not None]
+    return {"mean": sum(vals) / len(vals), "min": min(vals), "max": max(vals)} if vals else None
+
+
 def _secs(v: float | None) -> str:
     return "–" if v is None else f"{v:.2f}"
 
@@ -491,6 +515,11 @@ def _summary(run_id: str, split: str, seed: int, papers: int, rows: list[dict], 
         "rerank_candidates": mode.rerank_candidates if mode.reranker else None,
         "contextualization_s_per_paper": _mean(ingested.context_times),
         "embedding_s_per_paper": _mean(ingested.embedding_times),
+        # per question: chunks BM25 returned, vector hits at or above vector_min_score, and their cosine range
+        "bm25_hits": _spread([r["bm25_hits"] for r in ok]),
+        "vector_hits": _spread([r["vector_hits"] for r in ok]),
+        "vector_score_min": _spread([r["vector_score_min"] for r in ok]),
+        "vector_score_max": _spread([r["vector_score_max"] for r in ok]),
         "retrieval_s_per_question": _mean([r["retrieval_s"] for r in ok]),
         "rerank_s_per_question": _mean([r.get("rerank_s") for r in ok]),
         # recall over the chunks the reranker chose from: the most reranking can put into the top k
@@ -523,8 +552,19 @@ def _prejudge_rejected(s: dict) -> str:
     return f"{s['prejudge_rejected']}/{answered} ({s['prejudge_rejected_unanswerable']} gold unanswerable){partial}"
 
 
+def _hit_counts(spread: dict | None) -> str:
+    return "–" if spread is None else f"{spread['mean']:.1f} ({spread['min']}–{spread['max']})"
+
+
+def _score_range(s: dict) -> str:
+    lo, hi = s["vector_score_min"], s["vector_score_max"]
+    if lo is None or hi is None:
+        return "–"
+    return f"{lo['min']:.3f}–{hi['max']:.3f} (avg {lo['mean']:.3f}–{hi['mean']:.3f})"
+
+
 def _results_row(s: dict) -> str:
-    """The run's row in results.md (columns as in RESULTS_HEADER)."""
+    """The run's row in result_40.md (columns as in RESULTS_HEADER)."""
     by_type = " / ".join(_pct(s["answer_f1_by_type"][t]) for t in ANSWER_TYPES)
     local = s["mode"] == PRIVATE
     cloud = "" if local else f"cloud · emb {s['embed_model']} · vec top {s['vector_candidates']} · "
@@ -537,6 +577,7 @@ def _results_row(s: dict) -> str:
         f"| {s['llm_model']} / {s['judge_model']} "
         f"| {cloud}top {s['top_k']} · BM25 {s['bm25_candidates']} · vec ≥ {s['vector_min_score']} "
         f"· chunk {s['chunk_size']}/{s['chunk_overlap']} · {ctx} · {pj} · {rr} "
+        f"| {_hit_counts(s['bm25_hits'])} | {_hit_counts(s['vector_hits'])} | {_score_range(s)} "
         f"| {_secs(s['contextualization_s_per_paper'])} "
         f"| {_secs(s['embedding_s_per_paper'])} | {_secs(s['retrieval_s_per_question'])} "
         f"| {_secs(s['rerank_s_per_question'])} "
@@ -565,6 +606,9 @@ def _print_summary(s: dict, results_md: Path, details_json: Path) -> None:
     for name, key in [(f"retrieval recall@{s['top_k']}", "retrieval_recall"), ("evidence F1", "evidence_f1"),
                       ("answer F1", "answer_f1"), ("judge correct", "judge_correct")]:
         _say(f"  {name:<21}{_pct(s[key])}")
+    _say(f"  {'BM25 chunks/q':<21}{_hit_counts(s['bm25_hits'])}")
+    _say(f"  {'vector chunks/q':<21}{_hit_counts(s['vector_hits'])}  (at or above {s['vector_min_score']})")
+    _say(f"  {'vector score range':<21}{_score_range(s)}")
     if s["reranker_enabled"]:
         _say(f"  {'candidate recall@' + str(s['rerank_candidates']):<21}{_pct(s['candidate_recall'])}"
              f"  (evidence among the chunks the reranker chose from)")
@@ -578,7 +622,7 @@ def run(run_id: str, num_papers: int, seed: int, split: str, mode_name: str = PR
     mode = MODES[mode_name]
     if mode.missing_keys():
         raise SystemExit(f"{mode.label} needs {' and '.join(mode.missing_keys())} (see README).")
-    results_md = settings.eval_dir / "results.md"
+    results_md = settings.eval_dir / "result_40.md"
     details_json = settings.eval_dir / f"{run_id}.json"
     if run_id in _existing_run_ids(results_md) or details_json.exists():
         raise SystemExit(f"Run ID '{run_id}' already exists in {settings.eval_dir}; choose another.")

@@ -94,7 +94,7 @@ services:
       EVAL_DIR: /evaluation_metrics
     volumes:
       - app_data:/data
-      - ./evaluation_metrics:/evaluation_metrics   # QASPER evaluation: <run-id>.json, results.md
+      - ./evaluation_metrics:/evaluation_metrics   # QASPER evaluation: <run-id>.json, result_40.md
     ports:
       - "8000:8000"              # optional: FastAPI docs at http://localhost:8000/docs
     depends_on:

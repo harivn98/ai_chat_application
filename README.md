@@ -270,7 +270,7 @@ Low recall means the answer never reached the LLM: tune `TOP_K`, `BM25_CANDIDATE
 **Output**, in `evaluation_metrics/`:
 
 - `<run-id>.json`: the complete details. It holds the metrics, timings, all the environment variables the run used (MongoDB password masked), and every question's answer, references, retrieved and cited chunks, scores and judge output.
-- `results.md`: one row per run, for comparing runs side by side.
+- `result_40.md`: one row per run, for comparing runs side by side. Besides the timings and scores, it shows per question how many chunks BM25 returned and how many vector hits reached `VECTOR_MIN_SCORE` (average and fewest–most), and the cosine range of those vector hits (lowest–highest over the run, plus the average of each question's lowest and highest). `<run-id>.json` has the same counts and range for every question. (`results.md` holds the runs from before this file existed.)
 
 **Comparing settings.** Change one value in `.env`, apply it with `.\start.ps1` (or `./start.sh`), then rerun with a new run ID and the same seed:
 

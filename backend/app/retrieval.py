@@ -137,12 +137,21 @@ def rrf_fuse(rankings: dict[str, list[tuple[int, float]]], k: int, rrf_k: int) -
     return sorted(fused.values(), key=lambda e: e["rrf"], reverse=True)[:k]
 
 
-def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None) -> list[dict]:
-    """BM25 + vector search fused with RRF; the top k (default: the mode's top_k) chunks."""
-    rankings = {
+def candidate_rankings(doc_id: str, query: str, mode: Mode) -> dict[str, list[tuple[int, float]]]:
+    """Each search's (chunk index, score) hits before fusion: the BM25 top bm25_candidates, and the vector top
+    vector_candidates at or above vector_min_score."""
+    return {
         "bm25": bm25_search(doc_id, query, mode.bm25_candidates),
         "vector": vector_search(doc_id, query, mode.vector_candidates, mode),
     }
+
+
+def hybrid_search(doc_id: str, query: str, mode: Mode, k: int | None = None,
+                  rankings: dict[str, list[tuple[int, float]]] | None = None) -> list[dict]:
+    """BM25 + vector search fused with RRF; the top k (default: the mode's top_k) chunks. Pass rankings (from
+    candidate_rankings) to fuse searches that already ran."""
+    if rankings is None:
+        rankings = candidate_rankings(doc_id, query, mode)
     fused = rrf_fuse(rankings, k or mode.top_k, settings.rrf_k)
     _, rows = bm25_cache.get(doc_id)
     by_index = {r["index"]: r for r in rows}
