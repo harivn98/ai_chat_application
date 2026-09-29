@@ -74,6 +74,23 @@ export interface ChatTurn {
   content: string;
 }
 
+/** A chat about a document, as the chat list shows it. `title` is its first question ("" while it is empty). */
+export interface ChatInfo {
+  chat_id: string;
+  doc_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+/** A question or an answer as a chat keeps it. */
+export interface StoredMessage extends ChatTurn {
+  sources?: Source[];
+  verdict?: Verdict;
+  error?: string;
+}
+
 type StreamEvent =
   | { type: "sources"; sources: Source[] }
   | { type: "prejudge"; verdict: Verdict }
@@ -129,6 +146,42 @@ export async function getMarkdown(docId: string): Promise<string> {
 
 export async function deleteDocument(docId: string): Promise<void> {
   await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+}
+
+/** The document's chats, most recently used first, and how many a document can have. */
+export async function listChats(docId: string): Promise<{ chats: ChatInfo[]; max_chats: number }> {
+  const res = await fetch(`/api/documents/${docId}/chats`, { cache: "no-store" });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
+/** A new empty chat about the document (or its existing empty chat: there is never more than one). */
+export async function createChat(docId: string): Promise<ChatInfo> {
+  const res = await fetch(`/api/documents/${docId}/chats`, { method: "POST" });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
+export async function getChat(chatId: string): Promise<ChatInfo & { messages: StoredMessage[] }> {
+  const res = await fetch(`/api/chats/${chatId}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
+/** Save a question and its answer at the end of the chat. */
+export async function saveMessages(chatId: string, messages: StoredMessage[]): Promise<ChatInfo> {
+  const res = await fetch(`/api/chats/${chatId}/messages`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messages }),
+  });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
+export async function deleteChat(chatId: string): Promise<void> {
+  const res = await fetch(`/api/chats/${chatId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await errorText(res));
 }
 
 export async function streamChat(

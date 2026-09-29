@@ -34,6 +34,8 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 5. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 8 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
 6. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank. Clicking a citation opens the document in a side panel, scrolled to the cited passage, which is highlighted (uploads from before this feature fall back to the passage list; re-upload them to get highlighting).
 
+**Chats:** a document can have up to `MAX_CHATS_PER_DOCUMENT` (10) chats. **New chat** starts an empty one about the same document, with its own first question and follow-ups; the chat list next to the conversation reopens or deletes earlier chats. Every question and its answer (with its passages and pre-judge verdict) is saved in MongoDB `ragdb.chats` once the answer ends, so chats survive a page refresh. **New document** deletes the document together with all its chats.
+
 **GPU use:** all models run on the GPU, one at a time. `qwen3:4b-instruct` is used only to write chunk contexts during an upload. Because a new session starts with an upload, the backend preloads `qwen3:4b-instruct` at startup; a later upload starts loading it the moment the file arrives, while the PDF is still converted and chunked. (With `CONTEXTUAL_EMBEDDING=false`, Qwen3 8B is preloaded at startup instead.) As soon as contextualizing finishes, it is unloaded and Qwen3 8B starts loading in the background, while the upload is still embedding and indexing, so it is usually ready before the first question. Qwen3 8B then rewrites follow-up questions, does the pre-judge and writes the answer, so chatting never swaps models. Loading takes about 45 s for Qwen3 8B and 25 s for `qwen3:4b-instruct` on an RTX 4070 laptop GPU; unloading is instant. While Qwen3 8B loads (after an upload, or when a question arrives after Ollama unloaded it following `LLM_KEEP_ALIVE` idle), the private-mode chat shows a *Loading the answering model* bar. Ollama doesn't report load progress, so the bar compares the seconds so far with how long the model's last load took (saved in `DATA_DIR/model_load_times.json`); until one load was measured, it only shows that loading is under way.
 
 ## Run it
@@ -173,6 +175,7 @@ reasoning tokens against it.
 | `RRF_K` | `60` | Reciprocal Rank Fusion constant (higher = flatter blend of the two rankings) |
 | `RERANKER_ENABLED` | `true` | `true` / `false`: rerank the fused candidates with the cross-encoder before taking the top `TOP_K` |
 | `RERANKER_MODEL` | `BAAI/bge-reranker-base` | Which reranker runs: `BAAI/bge-reranker-base` (more accurate, ~6–9 s for 30 chunks on 4 CPU cores) or `cross-encoder/ms-marco-MiniLM-L6-v2` (~1 s, weaker on large candidate pools). Both are baked into the image |
+| `MAX_CHATS_PER_DOCUMENT` | `10` | Chats a document can have (**New chat**) |
 | `HISTORY_TURNS` | `6` | Previous chat messages sent with each question (and read by the follow-up rewrite) |
 | `QUERY_REWRITE_ENABLED` | `true` | `true` / `false`: the answering model rewrites follow-up questions into standalone ones before retrieval and the pre-judge |
 | `CONTEXTUAL_EMBEDDING` | `true` | `true` / `false`: add an LLM-written context to every chunk before embedding + BM25. Affects newly uploaded documents |
@@ -200,7 +203,12 @@ Changing chunking settings only affects newly uploaded documents.
 | `POST` | `/documents` | multipart `file` + `mode` (`private` / `cloud`) + for cloud `reranker` and `prejudge` (`true` / `false`, at least one `true`) → `{doc_id, status}` (202) |
 | `GET` | `/documents/{id}` | status: `queued → converting → chunking → contextualizing → embedding → storing → indexing → ready` (or `failed` + `error`) |
 | `GET` | `/documents/{id}/markdown` | the converted Markdown |
-| `DELETE` | `/documents/{id}` | removes doc, chunks and files |
+| `DELETE` | `/documents/{id}` | removes doc, chunks, chats and files |
+| `GET` | `/documents/{id}/chats` | `{chats, max_chats}`: the document's chats (`chat_id`, `title`, `message_count`, …), most recently used first |
+| `POST` | `/documents/{id}/chats` | a new empty chat, or the document's existing empty chat; 409 at `MAX_CHATS_PER_DOCUMENT` |
+| `GET` | `/chats/{id}` | the chat with its `messages` (`role`, `content`, and for answers `sources`, `verdict`, `error`) |
+| `POST` | `/chats/{id}/messages` | `{messages: [question, answer]}` → saves them; the first question becomes the chat's title |
+| `DELETE` | `/chats/{id}` | deletes the chat |
 | `POST` | `/chat` | `{doc_id, question, history}` → NDJSON: `sources`, `prejudge` (`all` / `partial` / `none`, pre-judge modes only), `token`…, `done` / `error` |
 
 ## Project layout

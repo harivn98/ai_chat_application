@@ -12,7 +12,7 @@ export default function Home() {
     // a failed document has nothing worth keeping, so no confirmation
     const ok =
       doc.status === "failed" ||
-      confirm("Start over with a new document? The current document will be removed from the index.");
+      confirm("Start over with a new document? The current document and all its chats will be removed.");
     if (ok) discard();
   }
 

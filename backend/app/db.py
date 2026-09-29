@@ -1,8 +1,9 @@
 """MongoDB: the only module that reads or writes it.
 
-Two collections: `documents` (one record per upload: status, progress, Markdown) and `chunks` (one record per
-chunk, with its vectors in the embedding field of the mode the document was uploaded in). Each mode has an Atlas
-Vector Search index over its embedding field.
+Three collections: `documents` (one record per upload: status, progress, Markdown), `chunks` (one record per
+chunk, with its vectors in the embedding field of the mode the document was uploaded in) and `chats` (the chats
+about a document, each with its questions and answers). Each mode has an Atlas Vector Search index over its
+embedding field.
 """
 import logging
 import time
@@ -10,7 +11,7 @@ from collections.abc import Iterable
 from functools import lru_cache
 
 import numpy as np
-from pymongo import ASCENDING, MongoClient
+from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.errors import OperationFailure
 from pymongo.operations import SearchIndexModel
 
@@ -41,6 +42,10 @@ def _chunks():
     return _database()["chunks"]
 
 
+def _chats():
+    return _database()["chats"]
+
+
 def ping() -> None:
     """Raises if MongoDB can't be reached."""
     client().admin.command("ping")
@@ -66,9 +71,40 @@ def update_document(doc_id: str, **fields) -> None:
 
 
 def delete_document(doc_id: str) -> None:
-    """The document's record and all its chunks."""
+    """The document's record, all its chunks and all its chats."""
     delete_chunks(doc_id)
+    _chats().delete_many({"doc_id": doc_id})
     _documents().delete_one({"_id": doc_id})
+
+
+# ------------------------------------------------------------------ chats
+_CHAT_SUMMARY = {"doc_id": 1, "title": 1, "created_at": 1, "updated_at": 1, "message_count": {"$size": "$messages"}}
+
+
+def insert_chat(chat: dict) -> None:
+    _chats().insert_one(chat)
+
+
+def list_chats(doc_id: str) -> list[dict]:
+    """The document's chats without their messages (with message_count), most recently used first."""
+    return list(_chats().find({"doc_id": doc_id}, _CHAT_SUMMARY).sort("updated_at", DESCENDING))
+
+
+def get_chat(chat_id: str) -> dict | None:
+    return _chats().find_one({"_id": chat_id})
+
+
+def get_chat_summary(chat_id: str) -> dict | None:
+    return _chats().find_one({"_id": chat_id}, _CHAT_SUMMARY)
+
+
+def append_messages(chat_id: str, messages: list[dict], **fields) -> None:
+    """Add messages at the end of the chat and set `fields` (e.g. updated_at, title)."""
+    _chats().update_one({"_id": chat_id}, {"$push": {"messages": {"$each": messages}}, "$set": fields})
+
+
+def delete_chat(chat_id: str) -> None:
+    _chats().delete_one({"_id": chat_id})
 
 
 # ------------------------------------------------------------------ chunks
@@ -129,7 +165,8 @@ def _find_vector_index(name: str) -> dict | None:
 
 
 def ensure_indexes(timeout_s: int = 180) -> bool:
-    """Create the chunks collection and its indexes if missing: (doc_id, index), and each mode's vector index.
+    """Create the chunks collection and its indexes if missing: (doc_id, index), and each mode's vector index
+    (and the chats' (doc_id, updated_at) index).
     Then wait until the vector indexes are queryable.
 
     Returns False (and retrieval falls back to in-process cosine search) when the
@@ -139,6 +176,7 @@ def ensure_indexes(timeout_s: int = 180) -> bool:
     if "chunks" not in _database().list_collection_names():
         _database().create_collection("chunks")
     _chunks().create_index([("doc_id", ASCENDING), ("index", ASCENDING)])
+    _chats().create_index([("doc_id", ASCENDING), ("updated_at", DESCENDING)])
 
     deadline = time.time() + timeout_s
     while True:

@@ -23,6 +23,7 @@ class Settings:
     llm_timeout: int = int(os.getenv("LLM_TIMEOUT", "600"))             # max seconds without output from Ollama
     llm_load_timeout: int = int(os.getenv("LLM_LOAD_TIMEOUT", "1800"))  # max seconds to load the model
     history_turns: int = int(os.getenv("HISTORY_TURNS", "6"))           # previous chat messages sent with a question
+    max_chats_per_document: int = int(os.getenv("MAX_CHATS_PER_DOCUMENT", "10"))
 
     embed_model: str = os.getenv("EMBED_MODEL", "BAAI/bge-small-en-v1.5")
     embed_dim: int = int(os.getenv("EMBED_DIM", "384"))

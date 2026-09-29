@@ -3,6 +3,7 @@ import json
 import logging
 import uuid
 from collections.abc import Iterator
+from typing import Literal
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -54,6 +55,19 @@ class ChatRequest(BaseModel):
     history: list[ChatTurn] = []
 
 
+class StoredMessage(BaseModel):
+    """A question or an answer as a chat keeps it (the UI shows it again when the chat is reopened)."""
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=100_000)
+    sources: list[dict] | None = None
+    verdict: str | None = None
+    error: str | None = None
+
+
+class NewMessages(BaseModel):
+    messages: list[StoredMessage] = Field(min_length=1, max_length=2)  # a question and its answer
+
+
 def _new_document(doc_id: str, filename: str, size: int, mode: Mode) -> dict:
     """A document's record at upload, before ingestion starts."""
     now = datetime.now(timezone.utc)
@@ -91,6 +105,34 @@ def _doc_info(doc: dict) -> dict:
         "error": doc.get("error"),
         "failed_stage": doc.get("failed_stage"),
     }
+
+
+TITLE_CHARS = 60
+
+
+def _chat_title(question: str) -> str:
+    """A chat is named after its first question."""
+    title = " ".join(question.split())
+    return title if len(title) <= TITLE_CHARS else title[:TITLE_CHARS - 1].rstrip() + "…"
+
+
+def _chat_info(chat: dict) -> dict:
+    """What the chat list shows about a chat (ChatInfo in frontend/lib/api.ts)."""
+    return {
+        "chat_id": chat["_id"],
+        "doc_id": chat["doc_id"],
+        "title": chat["title"],
+        "created_at": chat["created_at"],
+        "updated_at": chat["updated_at"],
+        "message_count": chat["message_count"] if "message_count" in chat else len(chat.get("messages", [])),
+    }
+
+
+def _require_chat(chat_id: str) -> dict:
+    chat = db.get_chat(chat_id)
+    if not chat:
+        raise HTTPException(404, "Chat not found.")
+    return chat
 
 
 def _source(number: int, passage: dict) -> dict:
@@ -240,6 +282,55 @@ def delete_document(doc_id: str):
     retrieval.drop_document(doc_id)
     for upload in UPLOAD_DIR.glob(f"{doc_id}.*"):
         upload.unlink(missing_ok=True)
+
+
+@app.get("/documents/{doc_id}/chats")
+def list_chats(doc_id: str):
+    """The document's chats, most recently used first, and how many a document can have."""
+    if not db.get_document(doc_id):
+        raise HTTPException(404, "Document not found.")
+    return {"chats": [_chat_info(c) for c in db.list_chats(doc_id)], "max_chats": settings.max_chats_per_document}
+
+
+@app.post("/documents/{doc_id}/chats")
+def new_chat(doc_id: str):
+    """A new, empty chat about the document. If the document already has an empty chat, that one is returned
+    instead, so there is never more than one empty chat."""
+    if not db.get_document(doc_id):
+        raise HTTPException(404, "Document not found.")
+    chats = db.list_chats(doc_id)
+    if empty := next((c for c in chats if not c["message_count"]), None):
+        return _chat_info(empty)
+    if len(chats) >= settings.max_chats_per_document:
+        raise HTTPException(409, f"A document can have at most {settings.max_chats_per_document} chats. "
+                                 "Delete one to start a new chat.")
+    now = datetime.now(timezone.utc)
+    chat = {"_id": uuid.uuid4().hex, "doc_id": doc_id, "title": "", "messages": [], "created_at": now, "updated_at": now}
+    db.insert_chat(chat)
+    return _chat_info(chat)
+
+
+@app.get("/chats/{chat_id}")
+def get_chat(chat_id: str):
+    chat = _require_chat(chat_id)
+    return {**_chat_info(chat), "messages": chat["messages"]}
+
+
+@app.post("/chats/{chat_id}/messages")
+def add_messages(chat_id: str, req: NewMessages):
+    """Save a question and its answer (once the answer has ended) at the end of the chat."""
+    chat = _require_chat(chat_id)
+    messages = [m.model_dump(exclude_none=True) for m in req.messages]
+    fields = {"updated_at": datetime.now(timezone.utc)}
+    if not chat["title"] and messages[0]["role"] == "user":
+        fields["title"] = _chat_title(messages[0]["content"])
+    db.append_messages(chat_id, messages, **fields)
+    return _chat_info(db.get_chat_summary(chat_id))
+
+
+@app.delete("/chats/{chat_id}", status_code=204)
+def delete_chat(chat_id: str):
+    db.delete_chat(chat_id)
 
 
 @app.post("/chat")

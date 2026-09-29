@@ -3,6 +3,7 @@
 import { CloudOptions, ModeId } from "@/lib/api";
 
 const DOC_KEY = "AI_chat_application.doc_id";
+const CHAT_KEY = "AI_chat_application.chat_id";
 const MODE_KEY = "AI_chat_application.mode";
 const CLOUD_KEY = "AI_chat_application.cloud";
 
@@ -28,6 +29,12 @@ const local = () => localStorage;
 export const openDocId = {
   get: () => read(session, DOC_KEY),
   set: (docId: string | null) => write(session, DOC_KEY, docId),
+};
+
+/** The chat open in this tab for a document, so a refresh reopens it; null clears it. */
+export const openChatId = {
+  get: (docId: string) => read(session, `${CHAT_KEY}.${docId}`),
+  set: (docId: string, chatId: string | null) => write(session, `${CHAT_KEY}.${docId}`, chatId),
 };
 
 /** The mode last picked for an upload, remembered in this browser. */
