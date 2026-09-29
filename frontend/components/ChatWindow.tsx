@@ -97,7 +97,7 @@ export default function ChatWindow({
             className="btn btn-ghost"
             onClick={onNewDocument}
             disabled={locked}
-            title="Upload another document. This one and its chats stay saved under Your documents."
+            title="Upload another document. This one and its chats stay saved under Previous docs & chats."
           >
             New document
           </button>

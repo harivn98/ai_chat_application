@@ -5,14 +5,27 @@ import ChatWindow from "@/components/ChatWindow";
 import DocumentList from "@/components/DocumentList";
 import Uploader from "@/components/Uploader";
 import { useCurrentDocument } from "@/hooks/useCurrentDocument";
-import { deleteAllDocuments } from "@/lib/api";
+import { deleteAllDocuments, DocInfo } from "@/lib/api";
+import { openChatId } from "@/lib/remembered";
 
 export default function Home() {
   const { doc, restored, open, close } = useCurrentDocument();
   const [chatLocked, setChatLocked] = useState(false); // an answer is streaming or questions wait to be sent
   const [clearing, setClearing] = useState(false);
-  const [listKey, setListKey] = useState(0); // bumped to reload the documents list
+  const [history, setHistory] = useState(false); // the Previous docs & chats page instead of the upload page
   const [error, setError] = useState<string | null>(null);
+
+  /** Open a document, at `chatId` if given (else at the chat this tab last had open, or its most recent). */
+  function openDocument(d: DocInfo, chatId?: string) {
+    if (chatId) openChatId.set(d.doc_id, chatId);
+    setHistory(false);
+    open(d);
+  }
+
+  function showHistory() {
+    close();
+    setHistory(true);
+  }
 
   /** New session: delete every document with its chats, then show the empty upload page. */
   async function newSession() {
@@ -22,7 +35,7 @@ export default function Home() {
     try {
       await deleteAllDocuments();
       close();
-      setListKey((k) => k + 1);
+      setHistory(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -48,6 +61,14 @@ export default function Home() {
           )}
           <button
             className="btn btn-ghost"
+            onClick={showHistory}
+            disabled={(!doc && history) || (!!doc && chatLocked)}
+            title="Your earlier documents and their chats"
+          >
+            Previous docs & chats
+          </button>
+          <button
+            className="btn btn-ghost"
             onClick={newSession}
             disabled={clearing || (!!doc && chatLocked)}
             title="Delete all documents and chats"
@@ -61,11 +82,10 @@ export default function Home() {
 
       {!restored ? null : doc ? (
         <ChatWindow key={doc.doc_id} doc={doc} onNewDocument={close} onLockedChange={setChatLocked} />
+      ) : history ? (
+        <DocumentList onOpen={openDocument} onUpload={() => setHistory(false)} />
       ) : (
-        <>
-          <Uploader onUploaded={open} />
-          <DocumentList onOpen={open} refreshKey={listKey} />
-        </>
+        <Uploader onUploaded={openDocument} />
       )}
     </main>
   );

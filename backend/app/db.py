@@ -57,8 +57,10 @@ def insert_document(doc: dict) -> None:
 
 
 def list_documents() -> list[dict]:
-    """Every document's record without its Markdown, newest first, each with its number of chats (chat_count)."""
-    counts = {r["_id"]: r["n"] for r in _chats().aggregate([{"$group": {"_id": "$doc_id", "n": {"$sum": 1}}}])}
+    """Every document's record without its Markdown, newest first, each with its number of chats that have
+    messages (chat_count; an empty chat doesn't count)."""
+    has_messages = {"$cond": [{"$gt": [{"$size": "$messages"}, 0]}, 1, 0]}
+    counts = {r["_id"]: r["n"] for r in _chats().aggregate([{"$group": {"_id": "$doc_id", "n": {"$sum": has_messages}}}])}
     docs = list(_documents().find({}, {"markdown": 0}).sort("created_at", DESCENDING))
     return [{**d, "chat_count": counts.get(d["_id"], 0)} for d in docs]
 
