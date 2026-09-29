@@ -60,6 +60,15 @@ export interface Source {
   fused_rank: number | null; // position after BM25 + vector fusion, before reranking
 }
 
+/** Private mode's answering model in Ollama. Ollama doesn't report how far a load is, so the UI compares
+ * elapsed_s with expected_s, the seconds its last load took (null until one was measured). */
+export interface ModelStatus {
+  model: string;
+  state: "loaded" | "loading" | "not_loaded";
+  elapsed_s: number | null; // while loading
+  expected_s: number | null;
+}
+
 export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
@@ -83,6 +92,12 @@ async function errorText(res: Response): Promise<string> {
 
 export async function getModes(): Promise<ModeInfo[]> {
   const res = await fetch("/api/modes", { cache: "no-store" });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
+export async function getAnsweringModel(): Promise<ModelStatus> {
+  const res = await fetch("/api/answering-model", { cache: "no-store" });
   if (!res.ok) throw new Error(await errorText(res));
   return res.json();
 }

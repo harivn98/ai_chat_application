@@ -5,13 +5,16 @@ import AssistantMessage from "@/components/AssistantMessage";
 import Composer from "@/components/Composer";
 import DocumentViewer, { Highlight } from "@/components/DocumentViewer";
 import IngestProgress from "@/components/IngestProgress";
+import ModelLoading from "@/components/ModelLoading";
 import { useChat } from "@/hooks/useChat";
+import { useModelStatus } from "@/hooks/useModelStatus";
 import { DocInfo, Source } from "@/lib/api";
 
 export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNewDocument: () => void }) {
   const ready = doc.status === "ready";
   const failed = doc.status === "failed";
   const { messages, busy, ask, stop } = useChat(doc);
+  const model = useModelStatus(doc.mode === "private", busy);
   const endRef = useRef<HTMLDivElement>(null);
   // Source document panel: null = closed; highlight null = whole document without a highlight
   const [viewer, setViewer] = useState<{ highlight: Highlight | null } | null>(null);
@@ -59,6 +62,7 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
       </header>
 
       {!ready && <IngestProgress doc={doc} onRetry={onNewDocument} />}
+      {model?.state === "loading" && <ModelLoading status={model} />}
 
       <div className="messages">
         {messages.length === 0 && (

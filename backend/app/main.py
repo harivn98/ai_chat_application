@@ -116,11 +116,23 @@ def _require_keys(mode: Mode) -> None:
         raise HTTPException(400, error)
 
 
-def _answer_events(question: str, search_question: str, passages: list[dict], history: list[dict],
-                   mode: Mode) -> Iterator[str]:
+def _answer_events(doc_id: str, question: str, history: list[dict], mode: Mode) -> Iterator[str]:
     """The chat reply as NDJSON: one "sources" event, a "prejudge" event (if the mode pre-judges), many "token"
-    events, then "done" (or "error"). `search_question` is the standalone question the passages were retrieved
-    for; the answering model gets `question` as asked, with the history."""
+    events, then "done" (or "error").
+
+    Private mode first loads the answering model if it isn't in memory (the UI shows the load through
+    GET /answering-model). That happens inside the stream, so the response starts right away however long the
+    load takes. Retrieval and the pre-judge use the standalone version of a follow-up; the answering model gets
+    `question` as asked, with the history."""
+    try:
+        if mode.local:
+            ollama.ensure_loaded(settings.llm_model, settings.llm_num_ctx)
+        search_question = rewrite.standalone_question(question, history, mode)  # follow-ups: resolve "it", "that"
+        passages = retrieval.search(doc_id, search_question, mode)
+    except Exception as e:  # noqa: BLE001
+        log.exception("could not prepare the answer")
+        yield _ndjson({"type": "error", "message": str(e)})
+        return
     yield _ndjson({"type": "sources", "sources": [_source(n, p) for n, p in enumerate(passages, start=1)]})
 
     # Pre-judge: skip the answering LLM when the passages hold none of the answer
@@ -158,6 +170,13 @@ def health():
         "context_model": settings.context_model if settings.contextual_embedding else None,
         "prejudge_model": settings.llm_model if settings.prejudge_enabled else None,  # private mode
     }
+
+
+@app.get("/answering-model")
+def answering_model():
+    """Private mode's answering model: loaded, loading (seconds so far, and how long its last load took) or
+    not_loaded. The UI polls it to show the load."""
+    return ollama.load_status(settings.llm_model)
 
 
 @app.get("/modes")
@@ -234,10 +253,8 @@ def chat(req: ChatRequest):
     _require_keys(mode)
 
     history = [h.model_dump() for h in req.history]
-    search_question = rewrite.standalone_question(req.question, history, mode)  # follow-ups: resolve "it", "that"
-    passages = retrieval.search(req.doc_id, search_question, mode)
     return StreamingResponse(
-        _answer_events(req.question, search_question, passages, history, mode),
+        _answer_events(req.doc_id, req.question, history, mode),
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

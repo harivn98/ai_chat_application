@@ -121,6 +121,12 @@ h2 { font-size: 22px; }
 .step-error .dot { background: var(--danger); border-color: var(--danger); }
 @keyframes pulse { 50% { box-shadow: 0 0 0 5px var(--accent-soft); } }
 
+/* ---------- private mode: the answering model is loading */
+.model-loading .muted { margin: 0 0 12px; }
+.bar-indeterminate span { width: 30%; animation: indeterminate 1.4s ease-in-out infinite; }
+@keyframes indeterminate { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .bar-indeterminate span { width: 100%; opacity: 0.4; animation: none; } }
+
 /* ---------- chat */
 .chat { flex: 1; display: flex; flex-direction: column; min-height: 0; height: calc(100dvh - 90px); overflow: hidden; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }

@@ -32,6 +32,29 @@ def _post(path: str, payload: dict, read_timeout: float) -> dict:
 
 
 # ------------------------------------------------------------------ model loading
+# Loads in progress, so the UI can show them (private mode): model -> [start time, callers waiting on the load].
+# Ollama doesn't report how far a load is, so the UI compares the time so far with the model's last load.
+_loading: dict[str, list] = {}
+_loading_lock = threading.Lock()
+LOAD_TIMES_FILE = settings.data_dir / "model_load_times.json"  # seconds each model's last load took
+
+
+def _load_times() -> dict[str, float]:
+    try:
+        return json.loads(LOAD_TIMES_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _record_load_time(model: str, seconds: float) -> None:
+    times = _load_times()
+    times[model] = round(seconds, 1)
+    try:
+        LOAD_TIMES_FILE.write_text(json.dumps(times))
+    except OSError as e:
+        log.warning("Could not save the load time of %s: %s", model, e)
+
+
 def load(model: str, num_ctx: int) -> None:
     """Load a model into Ollama's memory without generating anything.
 
@@ -41,7 +64,61 @@ def load(model: str, num_ctx: int) -> None:
     generous timeout, avoids that loop.
     """
     payload = {"model": model, "keep_alive": settings.llm_keep_alive, "options": {"num_ctx": num_ctx}}
-    _post("/api/generate", payload, settings.llm_load_timeout)
+    with _loading_lock:
+        entry = _loading.setdefault(model, [time.time(), 0])
+        entry[1] += 1
+        first = entry[1] == 1  # the caller that started the load times it; the others joined it midway
+    try:
+        _post("/api/generate", payload, settings.llm_load_timeout)
+    finally:
+        with _loading_lock:
+            entry[1] -= 1
+            if not entry[1]:
+                del _loading[model]
+    took = time.time() - entry[0]
+    if first and took >= 1:  # quicker: the model was already loaded
+        _record_load_time(model, took)
+
+
+def _is_running(model: str) -> bool:
+    """Whether Ollama has the model in memory."""
+    r = httpx.get(f"{settings.ollama_url}/api/ps", timeout=3)
+    r.raise_for_status()
+    names = {m.get("name") for m in r.json().get("models", [])}
+    return model in names or f"{model}:latest" in names
+
+
+def ensure_loaded(model: str, num_ctx: int) -> None:
+    """Load the model if it isn't in memory, or wait for its load in progress. Loading it here, rather than
+    letting the first request load it, is what lets load_status() show the load."""
+    with _loading_lock:
+        loading = model in _loading
+    try:
+        running = not loading and _is_running(model)
+    except Exception:  # noqa: BLE001
+        running = False
+    if not running:
+        load(model, num_ctx)
+
+
+def load_status(model: str) -> dict:
+    """loaded, loading or not_loaded; while loading, the seconds so far and the seconds the last load took
+    (expected_s, None if it was never measured)."""
+    with _loading_lock:
+        started = _loading[model][0] if model in _loading else None
+    if started is not None:
+        state = "loading"
+    else:
+        try:
+            state = "loaded" if _is_running(model) else "not_loaded"
+        except Exception:  # noqa: BLE001
+            state = "not_loaded"
+    return {
+        "model": model,
+        "state": state,
+        "elapsed_s": round(time.time() - started, 1) if started is not None else None,
+        "expected_s": _load_times().get(model),
+    }
 
 
 def load_in_background(model: str, num_ctx: int, reason: str) -> None:
