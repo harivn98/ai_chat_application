@@ -11,7 +11,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadF
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import db, embeddings, modes, ollama, prejudge, reranker, retrieval
+from . import db, embeddings, modes, ollama, prejudge, reranker, retrieval, rewrite
 from .answer_prompt import build_messages
 from .config import ALLOWED_EXTENSIONS, UPLOAD_DIR, settings
 from .ingest import ingest
@@ -116,16 +116,18 @@ def _require_keys(mode: Mode) -> None:
         raise HTTPException(400, error)
 
 
-def _answer_events(question: str, passages: list[dict], history: list[dict], mode: Mode) -> Iterator[str]:
+def _answer_events(question: str, search_question: str, passages: list[dict], history: list[dict],
+                   mode: Mode) -> Iterator[str]:
     """The chat reply as NDJSON: one "sources" event, a "prejudge" event (if the mode pre-judges), many "token"
-    events, then "done" (or "error")."""
+    events, then "done" (or "error"). `search_question` is the standalone question the passages were retrieved
+    for; the answering model gets `question` as asked, with the history."""
     yield _ndjson({"type": "sources", "sources": [_source(n, p) for n, p in enumerate(passages, start=1)]})
 
     # Pre-judge: skip the answering LLM when the passages hold none of the answer
     verdict = prejudge.ALL
     if mode.prejudge:
         try:
-            verdict = prejudge.verdict(question, passages, mode)
+            verdict = prejudge.verdict(search_question, passages, mode)
             yield _ndjson({"type": "prejudge", "verdict": verdict})
         except Exception:  # noqa: BLE001
             log.exception("pre-judge failed; answering anyway")
@@ -231,10 +233,11 @@ def chat(req: ChatRequest):
     mode = modes.for_document(doc)  # a document is answered in the mode (and with the switches) it was uploaded in
     _require_keys(mode)
 
-    passages = retrieval.search(req.doc_id, req.question, mode)
     history = [h.model_dump() for h in req.history]
+    search_question = rewrite.standalone_question(req.question, history, mode)  # follow-ups: resolve "it", "that"
+    passages = retrieval.search(req.doc_id, search_question, mode)
     return StreamingResponse(
-        _answer_events(req.question, passages, history, mode),
+        _answer_events(req.question, search_question, passages, history, mode),
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

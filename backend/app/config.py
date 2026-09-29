@@ -36,6 +36,9 @@ class Settings:
     context_model: str = os.getenv("CONTEXT_MODEL", "qwen3:4b-instruct")  # non-thinking; plain qwen3:4b is thinking-only
     context_num_ctx: int = int(os.getenv("CONTEXT_NUM_CTX", "16384"))  # tokens of document the model reads
 
+    # Follow-up rewriting: the answering model rewrites a follow-up into a standalone question before retrieval
+    query_rewrite_enabled: bool = _bool("QUERY_REWRITE_ENABLED", True)
+
     # Pre-judge: before answering, the answering model (LLM_MODEL) checks whether the passages can answer the question
     prejudge_enabled: bool = _bool("PREJUDGE_ENABLED", True)
 

@@ -94,6 +94,14 @@ class Mode:
         return openrouter.complete(settings.cloud_context_model, prompt, max_tokens=400,
                                    reasoning=openrouter.MINIMAL_REASONING)
 
+    def rewrite_question(self, prompt: str) -> str:
+        """The answering model's standalone version of a follow-up question."""
+        if self.local:
+            # num_ctx must match answer generation (ollama.stream_chat), or Ollama reloads it
+            return ollama.complete(settings.llm_model, prompt, settings.llm_num_ctx,
+                                   read_timeout=settings.llm_timeout, num_predict=150)
+        return openrouter.complete(settings.cloud_llm_model, prompt, max_tokens=150, reasoning={"enabled": False})
+
     def judge_passages(self, prompt: str) -> str:
         """The pre-judge model's one-word reply to a pre-judge prompt."""
         if self.local:

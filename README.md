@@ -26,6 +26,7 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 
 **Query** (`POST /chat`, streamed as NDJSON)
 
+0. **Rewrite follow-ups** (`QUERY_REWRITE_ENABLED=true`, only when the chat has history) — Qwen3 8B, the answering model, reads the last `HISTORY_TURNS` messages and rewrites the question so it stands on its own (*"What about its limitations?"* → *"What are the limitations of the proposed method?"*). Retrieval and the pre-judge use the rewritten question; Qwen3 8B still gets the question as asked, with the history. If the rewrite fails, the original question is used.
 1. **BM25** (rank-bm25, BM25+ variant, Snowball-stemmed tokens) over the document's chunks → top 10.
 2. **Dense** — query embedded with the bge query instruction, `$vectorSearch` → top 20 by similarity, with no score cutoff.
 3. **Reciprocal Rank Fusion** (k=60) → all the BM25 and vector hits, merged by rank (top 8 when the reranker is off).
@@ -33,7 +34,7 @@ Everything (UI, API, vector DB, LLM) runs in Docker on your machine.
 5. **Pre-judge** (`PREJUDGE_ENABLED=true`) — Qwen3 8B, the answering model, reads the 8 passages and the question and answers YES or NO: do the passages contain the specific information the question asks for? It is strict: passages that are only on the same topic get NO, so questions the document doesn't actually answer are caught. Answers that follow clearly from stated facts (e.g. settling a yes/no question) still get YES. On **NO**, answer generation is skipped and the reply is *"There isn't enough content in the document to answer this question."*, with the passages still shown.
 6. **Qwen3 8B** (Ollama, on the GPU, `think: false`, `num_ctx` 8192) answers only from the passages, citing them as `[1]`, `[2]`. The UI shows each passage with its BM25/vector rank. Clicking a citation opens the document in a side panel, scrolled to the cited passage, which is highlighted (uploads from before this feature fall back to the passage list; re-upload them to get highlighting).
 
-**GPU use:** all models run on the GPU, one at a time. `qwen3:4b-instruct` is used only to write chunk contexts during an upload. Because a new session starts with an upload, the backend preloads `qwen3:4b-instruct` at startup; a later upload starts loading it the moment the file arrives, while the PDF is still converted and chunked. (With `CONTEXTUAL_EMBEDDING=false`, Qwen3 8B is preloaded at startup instead.) As soon as contextualizing finishes, it is unloaded and Qwen3 8B starts loading in the background, while the upload is still embedding and indexing, so it is usually ready before the first question. Qwen3 8B then does both the pre-judge and the answer, so chatting never swaps models. Loading takes about 45 s for Qwen3 8B and 25 s for `qwen3:4b-instruct` on an RTX 4070 laptop GPU; unloading is instant.
+**GPU use:** all models run on the GPU, one at a time. `qwen3:4b-instruct` is used only to write chunk contexts during an upload. Because a new session starts with an upload, the backend preloads `qwen3:4b-instruct` at startup; a later upload starts loading it the moment the file arrives, while the PDF is still converted and chunked. (With `CONTEXTUAL_EMBEDDING=false`, Qwen3 8B is preloaded at startup instead.) As soon as contextualizing finishes, it is unloaded and Qwen3 8B starts loading in the background, while the upload is still embedding and indexing, so it is usually ready before the first question. Qwen3 8B then rewrites follow-up questions, does the pre-judge and writes the answer, so chatting never swaps models. Loading takes about 45 s for Qwen3 8B and 25 s for `qwen3:4b-instruct` on an RTX 4070 laptop GPU; unloading is instant.
 
 ## Run it
 
@@ -80,6 +81,7 @@ Before each upload you pick **Private** or **Cloud**. Cloud mode has two switche
 | Retrieval | BM25 top 10 + vector top 20, fused | BM25 top 20 + vector top 30, fused (`CLOUD_BM25_CANDIDATES` / `CLOUD_VECTOR_CANDIDATES`) |
 | Reranking | local cross-encoder, top 8 of all fused candidates, if `RERANKER_ENABLED` | **Reranker** switch: local cross-encoder (`RERANKER_MODEL`), top 8 of all fused candidates; off: the top 8 by fused rank |
 | Passages sent to the LLMs | 8 (`TOP_K`) | 8 (`TOP_K`) |
+| Follow-up rewriting | `qwen3:8b` if `QUERY_REWRITE_ENABLED` | DeepSeek V4.1 Flash (`CLOUD_LLM_MODEL`, reasoning off) if `QUERY_REWRITE_ENABLED` |
 | Pre-judge | YES / NO by `qwen3:8b` if `PREJUDGE_ENABLED` | **Pre-judge** switch: ALL / PARTIAL / NONE by Gemini Flash-Lite (`CLOUD_PREJUDGE_MODEL`) on the 8 passages |
 | BM25, MongoDB | this machine | this machine (same MongoDB) |
 | Data leaving the machine | none | the document text and your questions with the retrieved passages, to OpenRouter and on to Google and DeepSeek |
@@ -171,7 +173,8 @@ reasoning tokens against it.
 | `RRF_K` | `60` | Reciprocal Rank Fusion constant (higher = flatter blend of the two rankings) |
 | `RERANKER_ENABLED` | `true` | `true` / `false`: rerank the fused candidates with the cross-encoder before taking the top `TOP_K` |
 | `RERANKER_MODEL` | `BAAI/bge-reranker-base` | Which reranker runs: `BAAI/bge-reranker-base` (more accurate, ~6–9 s for 30 chunks on 4 CPU cores) or `cross-encoder/ms-marco-MiniLM-L6-v2` (~1 s, weaker on large candidate pools). Both are baked into the image |
-| `HISTORY_TURNS` | `6` | Previous chat messages sent with each question |
+| `HISTORY_TURNS` | `6` | Previous chat messages sent with each question (and read by the follow-up rewrite) |
+| `QUERY_REWRITE_ENABLED` | `true` | `true` / `false`: the answering model rewrites follow-up questions into standalone ones before retrieval and the pre-judge |
 | `CONTEXTUAL_EMBEDDING` | `true` | `true` / `false`: add an LLM-written context to every chunk before embedding + BM25. Affects newly uploaded documents |
 | `CONTEXT_MODEL` | `qwen3:4b-instruct` | Ollama model that writes the contexts. Use a non-thinking model: plain `qwen3:4b` is thinking-only and writes its reasoning instead |
 | `CONTEXT_NUM_CTX` | `16384` | Tokens of the document the context model reads at once. Longer documents are split into windows |
@@ -180,7 +183,7 @@ reasoning tokens against it.
 | `CLOUD_EMBED_MODEL` / `CLOUD_EMBED_DIM` | `google/gemini-embedding-2` / `768` | Cloud embeddings. Changing the dimension needs the `chunk_vector_index_cloud` index to be dropped so it is recreated |
 | `CLOUD_VECTOR_MIN_SCORE` | `0` | Minimum cosine similarity for cloud embedding hits; `0` = no cutoff. Not tuned yet: measure it with `--mode cloud-rerank` / `cloud-prejudge` / `cloud-rerank-prejudge` |
 | `CLOUD_CONTEXT_MODEL` | `google/gemini-3.5-flash-lite` | Writes the chunk contexts in cloud mode, with minimal reasoning |
-| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers in cloud mode (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
+| `CLOUD_LLM_MODEL` | `deepseek/deepseek-v4.1-flash` | Answers and rewrites follow-up questions in cloud mode (`LLM_THINK` and `LLM_TEMPERATURE` apply to it too). Must be a model whose reasoning can be switched off |
 | `CLOUD_PREJUDGE_MODEL` | `google/gemini-3.5-flash-lite` | Says ALL / PARTIAL / NONE when cloud mode's **Pre-judge** switch is on, with minimal reasoning |
 | `CLOUD_BM25_CANDIDATES` / `CLOUD_VECTOR_CANDIDATES` | `20` / `30` | Chunks BM25 and vector search contribute to the fusion in cloud mode, whatever the switches |
 | `OPENROUTER_API_KEY` | – | From your environment, not `.env` (see [Private and cloud modes](#private-and-cloud-modes)). Cloud model IDs are OpenRouter's |

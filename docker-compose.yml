@@ -76,6 +76,7 @@ services:
       RERANKER_ENABLED: ${RERANKER_ENABLED:-true}
       RERANKER_MODEL: ${RERANKER_MODEL:-BAAI/bge-reranker-base}
       HISTORY_TURNS: ${HISTORY_TURNS:-6}
+      QUERY_REWRITE_ENABLED: ${QUERY_REWRITE_ENABLED:-true}
       # Cloud mode (OpenRouter): the key comes from the environment of the shell that starts compose (not from .env)
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       CLOUD_EMBED_MODEL: ${CLOUD_EMBED_MODEL:-google/gemini-embedding-2}
