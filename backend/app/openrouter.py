@@ -32,7 +32,7 @@ def missing_keys() -> list[str]:
 
 
 def _headers() -> dict:
-    return {"Authorization": f"Bearer {settings.openrouter_api_key}", "X-Title": "AI_chat_application"}
+    return {"Authorization": f"Bearer {settings.openrouter_api_key}", "X-Title": "AI Chat Application (ACAP)"}
 
 
 def _post(path: str, payload: dict) -> dict:

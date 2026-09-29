@@ -1,4 +1,4 @@
-# AI_chat_application — local RAG over your documents
+# AI Chat Application (ACAP) — local RAG over your documents
 
 Upload a PDF, TXT or Markdown file, wait for it to be indexed, then chat with it.
 Everything (UI, API, vector DB, LLM) runs in Docker on your machine.

@@ -48,7 +48,7 @@ export default function Home() {
       <header className="topbar">
         <div className="brand">
           <span className="logo" aria-hidden />
-          AI_chat_application
+          AI Chat Application <span className="brand-short">ACAP</span>
         </div>
         <div className="topbar-right">
           {doc && (

@@ -3,7 +3,7 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI_chat_application",
+  title: "AI Chat Application (ACAP)",
   description: "Chat with your documents — hybrid BM25 + vector retrieval, Qwen3 via Ollama",
 };
 
