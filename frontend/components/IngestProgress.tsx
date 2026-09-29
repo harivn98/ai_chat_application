@@ -10,12 +10,34 @@ const STEPS: { key: DocStatus; label: string }[] = [
   { key: "storing", label: "Storing in MongoDB" },
   { key: "indexing", label: "Syncing vector index" },
 ];
-const ORDER: DocStatus[] = ["queued", ...STEPS.map((s) => s.key), "ready"];
 
-/** Ingestion progress for a document that is still being indexed (or failed). */
+/** The model and chunk count shown after a step's label, if it has them. */
+function detail(doc: DocInfo, step: DocStatus): string {
+  const parts: string[] = [];
+  if (step === "contextualizing" && doc.context_model) {
+    parts.push(doc.context_model);
+    if (doc.num_chunks) parts.push(`${doc.context_done ?? 0}/${doc.num_chunks} chunks`);
+  } else if (step === "embedding") {
+    parts.push(doc.embed_model);
+    if (doc.num_chunks) parts.push(`${doc.num_chunks} chunks`);
+  }
+  return parts.map((p) => ` · ${p}`).join("");
+}
+
+/** Ingestion progress for a document that is still being indexed (or failed): the bar, and one line saying which
+ * step is running (or failed). */
 export default function IngestProgress({ doc, onRetry }: { doc: DocInfo; onRetry: () => void }) {
   const failed = doc.status === "failed";
-  const current = Math.max(1, ORDER.indexOf(failed ? doc.failed_stage ?? "converting" : doc.status));
+  const steps = STEPS.filter((s) => s.key !== "contextualizing" || doc.contextual);
+  const current = failed ? (doc.failed_stage ?? "converting") : doc.status;
+  const index = steps.findIndex((s) => s.key === current);
+  const step = index < 0 ? null : `step ${index + 1} of ${steps.length}: ${steps[index].label}`;
+  const line = failed
+    ? `Failed${step ? ` at ${step}` : ""}`
+    : step
+      ? `${step[0].toUpperCase()}${step.slice(1)}${detail(doc, current)}`
+      : "Waiting to start";
+
   return (
     <div className="ingest" aria-live="polite">
       <p className="eyebrow">
@@ -24,32 +46,7 @@ export default function IngestProgress({ doc, onRetry }: { doc: DocInfo; onRetry
       <div className={`bar ${failed ? "bar-failed" : ""}`}>
         <span style={{ width: `${Math.max(4, doc.progress)}%` }} />
       </div>
-      <ol className="steps steps-compact">
-        {STEPS.filter((s) => s.key !== "contextualizing" || doc.contextual).map((s) => {
-          const idx = ORDER.indexOf(s.key);
-          const state = idx < current ? "done" : idx === current ? (failed ? "error" : "active") : "todo";
-          return (
-            <li key={s.key} className={`step step-${state}`}>
-              <span className="dot" aria-hidden />
-              {s.label}
-              {s.key === "contextualizing" && doc.context_model ? (
-                <span className="muted">
-                  {" "}
-                  · {doc.context_model}
-                  {doc.num_chunks ? ` · ${doc.context_done ?? 0}/${doc.num_chunks} chunks` : ""}
-                </span>
-              ) : null}
-              {s.key === "embedding" ? (
-                <span className="muted">
-                  {" "}
-                  · {doc.embed_model}
-                  {doc.num_chunks ? ` · ${doc.num_chunks} chunks` : ""}
-                </span>
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
+      <p className={`ingest-step ${failed ? "ingest-step-failed" : ""}`}>{line}</p>
       {failed && (
         <>
           <p className="error">{doc.error}</p>
