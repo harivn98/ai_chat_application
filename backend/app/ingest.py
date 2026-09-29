@@ -15,8 +15,20 @@ log = logging.getLogger("ingest")
 EMBED_BATCH = 64  # chunks embedded between two progress updates
 
 
+class DocumentDeleted(Exception):
+    """The document was deleted while it was being ingested."""
+
+
 def _set_status(doc_id: str, status: str, progress: int, **extra) -> None:
-    db.update_document(doc_id, status=status, progress=progress, updated_at=datetime.now(timezone.utc), **extra)
+    """Raises DocumentDeleted if the document no longer exists, so its ingestion stops."""
+    if not db.update_document(doc_id, status=status, progress=progress, updated_at=datetime.now(timezone.utc), **extra):
+        raise DocumentDeleted
+
+
+def _set_failed(doc_id: str, error: str, stage: str) -> None:
+    """Mark the document failed (nothing to do if it was deleted meanwhile)."""
+    db.update_document(doc_id, status="failed", progress=100, error=error, failed_stage=stage,
+                       updated_at=datetime.now(timezone.utc))
 
 
 def _switch_to_answering_model() -> None:
@@ -35,7 +47,8 @@ def ingest(doc_id: str, path: Path, original_name: str, mode: Mode) -> None:
     try:
         _set_status(doc_id, stage, 10)
         markdown = to_markdown(path, original_name)
-        db.update_document(doc_id, markdown=markdown)
+        if not db.update_document(doc_id, markdown=markdown):
+            raise DocumentDeleted
 
         stage = "chunking"
         _set_status(doc_id, stage, 20)
@@ -77,8 +90,13 @@ def ingest(doc_id: str, path: Path, original_name: str, mode: Mode) -> None:
 
         _set_status(doc_id, "ready", 100)
         log.info("Ingested %s (%d chunks)", original_name, len(chunks))
+    except DocumentDeleted:
+        # deleted mid-way (New session, or deleted from the documents list): drop anything stored since
+        log.info("%s was deleted while it was being ingested; stopped at %s", original_name, stage)
+        db.delete_chunks(doc_id)
+        retrieval.drop_document(doc_id)
     except (ConversionError, ContextError) as e:
-        _set_status(doc_id, "failed", 100, error=str(e), failed_stage=stage)
+        _set_failed(doc_id, str(e), stage)
     except Exception as e:  # noqa: BLE001
         log.exception("Ingestion failed for %s", doc_id)
-        _set_status(doc_id, "failed", 100, error=f"Ingestion failed: {e}", failed_stage=stage)
+        _set_failed(doc_id, f"Ingestion failed: {e}", stage)

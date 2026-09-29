@@ -104,6 +104,7 @@ def _doc_info(doc: dict) -> dict:
         "context_done": doc.get("context_done"),
         "error": doc.get("error"),
         "failed_stage": doc.get("failed_stage"),
+        "created_at": doc.get("created_at"),
     }
 
 
@@ -258,6 +259,21 @@ async def upload_document(
     db.insert_document(doc)
     background.add_task(ingest, doc_id, path, name, mode)  # sync fn -> runs in threadpool
     return _doc_info(doc)
+
+
+@app.get("/documents")
+def list_documents():
+    """Every uploaded document, newest first, with its number of chats."""
+    return [{**_doc_info(d), "chat_count": d["chat_count"]} for d in db.list_documents()]
+
+
+@app.delete("/documents", status_code=204)
+def delete_all_documents():
+    """New session: every document, with its chunks, chats and uploaded file. Uploads still being ingested stop."""
+    for doc_id in db.delete_all_documents():
+        for upload in UPLOAD_DIR.glob(f"{doc_id}.*"):
+            upload.unlink(missing_ok=True)
+    retrieval.drop_all_documents()
 
 
 @app.get("/documents/{doc_id}")

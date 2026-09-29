@@ -76,6 +76,10 @@ class _ChunkCache:
         with self._lock:
             self._data.pop(doc_id, None)
 
+    def clear(self) -> None:
+        with self._lock:
+            self._data.clear()
+
 
 _cache = _ChunkCache()
 
@@ -83,6 +87,11 @@ _cache = _ChunkCache()
 def drop_document(doc_id: str) -> None:
     """Forget a document's cached chunks and BM25 index (after its chunks are deleted)."""
     _cache.drop(doc_id)
+
+
+def drop_all_documents() -> None:
+    """Forget every cached document (after all documents are deleted)."""
+    _cache.clear()
 
 
 def preload_document(doc_id: str) -> None:

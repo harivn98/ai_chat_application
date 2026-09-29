@@ -12,7 +12,17 @@ import { useChats } from "@/hooks/useChats";
 import { useModelStatus } from "@/hooks/useModelStatus";
 import { ChatInfo, DocInfo, Source } from "@/lib/api";
 
-export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNewDocument: () => void }) {
+/** The chats about one document. `onNewDocument` goes back to the upload page (the document stays saved);
+ * `onLockedChange` says whether an answer is streaming or questions wait to be sent. */
+export default function ChatWindow({
+  doc,
+  onNewDocument,
+  onLockedChange,
+}: {
+  doc: DocInfo;
+  onNewDocument: () => void;
+  onLockedChange: (locked: boolean) => void;
+}) {
   const ready = doc.status === "ready";
   const failed = doc.status === "failed";
   const chats = useChats(doc.doc_id);
@@ -31,6 +41,11 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
+
+  useEffect(() => {
+    onLockedChange(locked);
+  }, [locked, onLockedChange]);
+  useEffect(() => () => onLockedChange(false), [onLockedChange]);
 
   function deleteChat(chat: ChatInfo) {
     // an empty chat has nothing worth keeping, so no confirmation
@@ -78,7 +93,12 @@ export default function ChatWindow({ doc, onNewDocument }: { doc: DocInfo; onNew
               View document
             </button>
           )}
-          <button className="btn btn-ghost" onClick={onNewDocument} disabled={locked}>
+          <button
+            className="btn btn-ghost"
+            onClick={onNewDocument}
+            disabled={locked}
+            title="Upload another document. This one and its chats stay saved under Your documents."
+          >
             New document
           </button>
         </div>

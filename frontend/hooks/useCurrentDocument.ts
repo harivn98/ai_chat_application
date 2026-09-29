@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DocInfo, deleteDocument, getDocument } from "@/lib/api";
+import { DocInfo, getDocument } from "@/lib/api";
 import { openDocId } from "@/lib/remembered";
 
 const POLL_MS = 800;
 
-/** The document this tab works on: reopened after a page refresh, polled while it is being indexed (the chat is
- * usable meanwhile), and removed from the backend when the user starts over. `restored` turns true once the
+/** The document this tab works on: reopened after a page refresh, and polled while it is being indexed (the chat
+ * is usable meanwhile). Closing it keeps it, with its chats, in the documents list. `restored` turns true once the
  * attempt to reopen the last document has finished. */
 export function useCurrentDocument() {
   const [doc, setDoc] = useState<DocInfo | null>(null);
@@ -47,19 +47,17 @@ export function useCurrentDocument() {
     };
   }, [indexing, docId]);
 
-  /** Make a freshly uploaded document the current one. */
+  /** Make a document (freshly uploaded, or picked from the list) the current one. */
   const open = useCallback((d: DocInfo) => {
     openDocId.set(d.doc_id);
     setDoc(d);
   }, []);
 
-  /** Delete the current document (chunks and file too) and go back to the upload step. */
-  function discard() {
-    if (!doc) return;
-    deleteDocument(doc.doc_id);
+  /** Go back to the upload page. The document and its chats stay saved (and keep indexing if not done). */
+  const close = useCallback(() => {
     openDocId.set(null);
     setDoc(null);
-  }
+  }, []);
 
-  return { doc, restored, open, discard };
+  return { doc, restored, open, close };
 }

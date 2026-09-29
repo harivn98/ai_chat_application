@@ -46,6 +46,12 @@ export interface DocInfo {
   context_done: number | null;
   error: string | null;
   failed_stage: DocStatus | null;
+  created_at: string | null; // ISO date of the upload
+}
+
+/** A document in the "Your documents" list */
+export interface ListedDocument extends DocInfo {
+  chat_count: number;
 }
 
 /** A retrieved passage; `id` is the number the answer cites it with, e.g. [1]. */
@@ -144,8 +150,21 @@ export async function getMarkdown(docId: string): Promise<string> {
   return res.text();
 }
 
+export async function listDocuments(): Promise<ListedDocument[]> {
+  const res = await fetch("/api/documents", { cache: "no-store" });
+  if (!res.ok) throw new Error(await errorText(res));
+  return res.json();
+}
+
 export async function deleteDocument(docId: string): Promise<void> {
-  await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+  const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await errorText(res));
+}
+
+/** New session: every document with its chats. */
+export async function deleteAllDocuments(): Promise<void> {
+  const res = await fetch("/api/documents", { method: "DELETE" });
+  if (!res.ok) throw new Error(await errorText(res));
 }
 
 /** The document's chats, most recently used first, and how many a document can have. */

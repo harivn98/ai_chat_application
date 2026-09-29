@@ -56,6 +56,13 @@ def insert_document(doc: dict) -> None:
     _documents().insert_one(doc)
 
 
+def list_documents() -> list[dict]:
+    """Every document's record without its Markdown, newest first, each with its number of chats (chat_count)."""
+    counts = {r["_id"]: r["n"] for r in _chats().aggregate([{"$group": {"_id": "$doc_id", "n": {"$sum": 1}}}])}
+    docs = list(_documents().find({}, {"markdown": 0}).sort("created_at", DESCENDING))
+    return [{**d, "chat_count": counts.get(d["_id"], 0)} for d in docs]
+
+
 def get_document(doc_id: str) -> dict | None:
     """The document's record without its Markdown (which can be large)."""
     return _documents().find_one({"_id": doc_id}, {"markdown": 0})
@@ -66,8 +73,9 @@ def get_markdown(doc_id: str) -> str | None:
     return doc.get("markdown") if doc else None
 
 
-def update_document(doc_id: str, **fields) -> None:
-    _documents().update_one({"_id": doc_id}, {"$set": fields})
+def update_document(doc_id: str, **fields) -> bool:
+    """False if the document no longer exists (it was deleted)."""
+    return _documents().update_one({"_id": doc_id}, {"$set": fields}).matched_count > 0
 
 
 def delete_document(doc_id: str) -> None:
@@ -75,6 +83,16 @@ def delete_document(doc_id: str) -> None:
     delete_chunks(doc_id)
     _chats().delete_many({"doc_id": doc_id})
     _documents().delete_one({"_id": doc_id})
+
+
+def delete_all_documents() -> list[str]:
+    """Every document with its chunks and chats; returns their ids. Chunks without a document record (the
+    evaluation's) are kept, so a running evaluation isn't affected."""
+    ids = [d["_id"] for d in _documents().find({}, {"_id": 1})]
+    _chunks().delete_many({"doc_id": {"$in": ids}})
+    _chats().delete_many({})
+    _documents().delete_many({"_id": {"$in": ids}})
+    return ids
 
 
 # ------------------------------------------------------------------ chats
