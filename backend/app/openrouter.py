@@ -1,4 +1,5 @@
-"""Cloud mode client: every cloud model (Gemini embeddings and contexts, DeepSeek answers) runs through OpenRouter.
+"""OpenRouter client for cloud mode: every cloud model (Gemini embeddings and contexts, DeepSeek answers) runs
+through it.
 
 Everything passed to these functions leaves this machine: it goes to OpenRouter and on to the model providers.
 """
@@ -12,7 +13,7 @@ import numpy as np
 
 from .config import settings
 
-log = logging.getLogger("cloud")
+log = logging.getLogger("openrouter")
 
 EMBED_BATCH = 100      # texts per embeddings request
 RETRIES = 5            # on rate limits (429) and overload (5xx), waiting 2, 4, 8, 16, 32 s
@@ -21,7 +22,7 @@ TIMEOUT = httpx.Timeout(connect=10, read=120, write=60, pool=10)
 MINIMAL_REASONING = {"effort": "minimal", "exclude": True}
 
 
-class CloudError(RuntimeError):
+class OpenRouterError(RuntimeError):
     pass
 
 
@@ -40,10 +41,10 @@ def _post(path: str, payload: dict) -> dict:
         if r.status_code == 200:
             reply = r.json()
             if "error" in reply:
-                raise CloudError(f"OpenRouter error: {reply['error']}")
+                raise OpenRouterError(f"OpenRouter error: {reply['error']}")
             return reply
         if r.status_code not in (429, 500, 502, 503, 504) or attempt == RETRIES:
-            raise CloudError(f"OpenRouter error {r.status_code} for {payload['model']}: {r.text[:300]}")
+            raise OpenRouterError(f"OpenRouter error {r.status_code} for {payload['model']}: {r.text[:300]}")
         wait = 2 ** (attempt + 1)
         log.warning("OpenRouter answered %s for %s; retrying in %ss", r.status_code, payload["model"], wait)
         time.sleep(wait)
@@ -65,7 +66,7 @@ def embed(texts: list[str], kind: str) -> np.ndarray:
         vectors.extend(e["embedding"] for e in sorted(reply["data"], key=lambda e: e["index"]))
     vecs = np.asarray(vectors, dtype=np.float32)
     if vecs.shape[1] < settings.cloud_embed_dim:
-        raise CloudError(f"{settings.cloud_embed_model} returned {vecs.shape[1]} values, "
+        raise OpenRouterError(f"{settings.cloud_embed_model} returned {vecs.shape[1]} values, "
                          f"fewer than CLOUD_EMBED_DIM={settings.cloud_embed_dim}")
     vecs = vecs[:, :settings.cloud_embed_dim]
     return vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
@@ -92,7 +93,7 @@ def complete(model: str, prompt: str, max_tokens: int, reasoning: dict | None = 
                                                     temperature=0, reasoning=reasoning, max_tokens=max_tokens))
     text = reply["choices"][0]["message"].get("content") or ""
     if not text:
-        raise CloudError(f"{model} returned no text (finish reason: {reply['choices'][0].get('finish_reason')})")
+        raise OpenRouterError(f"{model} returned no text (finish reason: {reply['choices'][0].get('finish_reason')})")
     return text
 
 
@@ -102,7 +103,7 @@ def stream_chat(messages: list[dict]) -> Iterator[str]:
     with httpx.stream("POST", f"{settings.openrouter_url}/chat/completions", json=payload, headers=_headers(),
                       timeout=TIMEOUT) as r:
         if r.status_code != 200:
-            raise CloudError(f"OpenRouter error {r.status_code}: {r.read().decode(errors='ignore')[:300]}")
+            raise OpenRouterError(f"OpenRouter error {r.status_code}: {r.read().decode(errors='ignore')[:300]}")
         for line in r.iter_lines():
             if not line.startswith("data:"):
                 continue  # blank lines and ": OPENROUTER PROCESSING" keep-alive comments
@@ -111,7 +112,7 @@ def stream_chat(messages: list[dict]) -> Iterator[str]:
                 break
             event = json.loads(data)
             if "error" in event:
-                raise CloudError(f"OpenRouter error: {event['error']}")
+                raise OpenRouterError(f"OpenRouter error: {event['error']}")
             choices = event.get("choices") or []
             piece = (choices[0].get("delta") or {}).get("content") if choices else None
             if piece:

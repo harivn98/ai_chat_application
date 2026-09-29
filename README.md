@@ -151,7 +151,7 @@ retried up to 5 times, 2-32 s apart.
 **Reasoning.** DeepSeek runs with reasoning off (`"reasoning": {"enabled": false}`, or on with `LLM_THINK=true`).
 Gemini 3.5 Flash-Lite doesn't allow that on OpenRouter ("Reasoning is mandatory for this endpoint"), so the context
 model is asked for the lowest effort instead (`{"effort": "minimal", "exclude": true}`, `MINIMAL_REASONING` in
-`cloud.py`); in practice it then uses no reasoning tokens. Its output limit is 400 tokens, since OpenRouter counts
+`openrouter.py`); in practice it then uses no reasoning tokens. Its output limit is 400 tokens, since OpenRouter counts
 reasoning tokens against it.
 
 ## Configuration (`.env`)
@@ -203,32 +203,44 @@ Changing chunking settings only affects newly uploaded documents.
 
 ```
 backend/app/
-  main.py        FastAPI routes
-  config.py      settings, read from environment variables
-  db.py          MongoDB, vector index creation and sync
-  ingest.py      ingestion pipeline + status updates
-  converter.py   PDF/TXT/MD → Markdown
-  chunker.py     heading-aware chunking (each chunk keeps its position in the Markdown)
-  contextual.py  Contextual Retrieval (per-chunk context from a small LLM)
-  embeddings.py  bge-small-en-v1.5
-  retrieval.py   BM25 + $vectorSearch + RRF
-  reranker.py    cross-encoder reranking of the fused candidates
-  prejudge.py    pre-judge: do the retrieved passages hold all, part or none of the answer?
-  llm.py         Ollama client (load/unload, completions, streaming) + answering prompt
-  modes.py       private / cloud (with reranker and pre-judge switches): models, retrieval sizes, embedding field and index
-  cloud.py       OpenRouter client for cloud mode (Gemini embeddings and contexts, DeepSeek answers)
-  evaluate.py    QASPER evaluation (CLI)
-  qasper.py      QASPER dataset download, papers as Markdown, official scoring
+  main.py           FastAPI routes
+  config.py         settings, read from environment variables
+  modes.py          private / cloud (with reranker and pre-judge switches): models, retrieval sizes, embedding field and index
+  db.py             MongoDB (the only module that talks to it): documents, chunks, vector indexes and $vectorSearch
+  ingest.py         ingestion pipeline + status updates
+  converter.py      PDF/TXT/MD → Markdown
+  chunker.py        heading-aware chunking (each chunk keeps its position in the Markdown)
+  contextual.py     Contextual Retrieval (per-chunk context from a small LLM)
+  embeddings.py     bge-small-en-v1.5 (private mode)
+  retrieval.py      BM25 + vector search → RRF fusion → reranking, as separate stages
+  reranker.py       cross-encoder reranking of the fused candidates
+  prejudge.py       pre-judge: do the retrieved passages hold all, part or none of the answer?
+  answer_prompt.py  the answering prompt, shared by both modes
+  ollama.py         Ollama client for private mode (load/unload, completions, streaming)
+  openrouter.py     OpenRouter client for cloud mode (Gemini embeddings and contexts, DeepSeek answers)
+  evaluate/         QASPER evaluation (python -m app.evaluate)
+    __main__.py     command-line arguments
+    run.py          one run: sample papers, ingest once, run phases 2-4 per variant, clean up
+    phases.py       the four phases: ingest, retrieve + pre-judge, answer + score, judge
+    scoring.py      answer and evidence F1, retrieval recall, the judge's prompt and verdict
+    report.py       run summary, result_40.md row, <run-id>.json
+    console.py      terminal status lines
+    qasper.py       QASPER dataset download, papers as Markdown, official scoring
 frontend/
   app/page.tsx                     upload → chat flow
   app/api/[...path]/route.ts       proxy to the backend (single exposed origin)
-  components/Uploader.tsx          file picker + upload
+  hooks/useCurrentDocument.ts      the open document: reopened after a refresh, polled while indexing, discarded
+  hooks/useChat.ts                 chat state: question queue, streaming answers, stop
+  components/Uploader.tsx          mode choice + file + upload
+  components/FileDropzone.tsx      drag-and-drop / click-to-browse file picker
   components/ModePicker.tsx        mode choice for the upload (private, cloud · reranker, cloud · pre-judge)
   components/IngestProgress.tsx    indexing progress, shown in the chat
-  components/ChatWindow.tsx        chat state: question queue, streaming, composer
+  components/ChatWindow.tsx        the chat: header, messages, composer, document panel
+  components/Composer.tsx          question box with Send / Stop
   components/AssistantMessage.tsx  answer with Markdown, KaTeX math, code highlighting, citation chips and sources
   components/DocumentViewer.tsx    source document panel with the cited passage highlighted
   lib/api.ts                       backend API types and calls
+  lib/remembered.ts                what the browser remembers (open document, last mode and cloud switches)
   lib/answerMarkdown.ts            prepares the answer's Markdown (math delimiters, citation links)
   lib/markRange.ts                 rehype plugin that highlights a range of the Markdown source
 ```

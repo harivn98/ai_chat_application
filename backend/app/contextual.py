@@ -15,11 +15,11 @@ from collections.abc import Callable
 
 import httpx
 
-from . import llm
+from . import ollama
 from .chunker import Chunk
-from .cloud import CloudError
 from .config import settings
 from .modes import Mode
+from .openrouter import OpenRouterError
 
 log = logging.getLogger("contextual")
 
@@ -71,9 +71,9 @@ def _generate(document: str, chunk: str, mode: Mode) -> str:
         reply = mode.write_context(PROMPT.format(document=document, chunk=chunk))
     except httpx.HTTPError as e:
         raise ContextError(f"Could not reach the context model {mode.context_model}: {e}") from e
-    except CloudError as e:
+    except OpenRouterError as e:
         raise ContextError(f"Context model {mode.context_model} failed: {e}") from e
-    except llm.OllamaError as e:
+    except ollama.OllamaError as e:
         if e.status == 404:
             raise ContextError(
                 f"Context model {settings.context_model} is not installed. Pull it with "
@@ -110,12 +110,12 @@ def contextualize(
             _active -= mode.local
 
 
-def hand_over() -> str | None:
+def release_context_model() -> str | None:
     """After contextualizing locally, unload the context model so the GPU is free for the answering model.
 
     Nothing else uses the context model (the answering model also does the pre-judge). The caller then
     loads the answering model right away, so it is ready before the first question arrives.
-    Returns what was done, or None if another upload is still contextualizing (it hands over when it ends).
+    Returns what was done, or None if another upload is still contextualizing (it releases the model when it ends).
     """
     with _active_lock:
         if _active:
@@ -123,7 +123,7 @@ def hand_over() -> str | None:
         if settings.context_model == settings.llm_model:
             return f"kept {settings.context_model} (it is also the answering model)"
         try:
-            llm.unload(settings.context_model)
+            ollama.unload(settings.context_model)
         except Exception as e:  # noqa: BLE001
             log.warning("Could not unload %s: %s", settings.context_model, e)
             return None

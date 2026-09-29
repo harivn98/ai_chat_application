@@ -17,7 +17,7 @@ from dataclasses import dataclass, replace
 
 import numpy as np
 
-from . import cloud, embeddings, llm
+from . import embeddings, ollama, openrouter
 from .config import settings
 
 PRIVATE, CLOUD = "private", "cloud"
@@ -64,7 +64,12 @@ class Mode:
         return self.bm25_candidates + self.vector_candidates
 
     def missing_keys(self) -> list[str]:
-        return [] if self.local else cloud.missing_keys()
+        return [] if self.local else openrouter.missing_keys()
+
+    def missing_keys_error(self) -> str | None:
+        """Why the mode can't be used yet (the API keys it still needs), or None when it can."""
+        missing = self.missing_keys()
+        return f"{self.label} needs {' and '.join(missing)} (see README)." if missing else None
 
     def info(self) -> dict:
         """What the upload page shows about the mode (ModeInfo in frontend/lib/api.ts)."""
@@ -76,43 +81,31 @@ class Mode:
         }
 
     def embed_passages(self, texts: list[str]) -> np.ndarray:
-        return embeddings.embed_passages(texts) if self.local else cloud.embed(texts, "document")
+        return embeddings.embed_passages(texts) if self.local else openrouter.embed(texts, "document")
 
     def embed_query(self, query: str) -> np.ndarray:
-        return embeddings.embed_query(query) if self.local else cloud.embed([query], "query")[0]
+        return embeddings.embed_query(query) if self.local else openrouter.embed([query], "query")[0]
 
     def write_context(self, prompt: str) -> str:
         """The context model's reply to a Contextual Retrieval prompt."""
         if self.local:
-            return llm.complete(settings.context_model, prompt, settings.context_num_ctx,
-                                read_timeout=settings.llm_load_timeout, num_predict=120)
-        return cloud.complete(settings.cloud_context_model, prompt, max_tokens=400,
-                              reasoning=cloud.MINIMAL_REASONING)
+            return ollama.complete(settings.context_model, prompt, settings.context_num_ctx,
+                                   read_timeout=settings.llm_load_timeout, num_predict=120)
+        return openrouter.complete(settings.cloud_context_model, prompt, max_tokens=400,
+                                   reasoning=openrouter.MINIMAL_REASONING)
 
     def judge_passages(self, prompt: str) -> str:
         """The pre-judge model's one-word reply to a pre-judge prompt."""
         if self.local:
-            # the answering model; num_ctx must match answer generation (llm.stream_chat), or Ollama reloads it
-            return llm.complete(settings.llm_model, prompt, settings.llm_num_ctx,
-                                read_timeout=settings.llm_timeout, num_predict=3)
-        return cloud.complete(self.prejudge_model, prompt, max_tokens=50, reasoning=cloud.MINIMAL_REASONING)
+            # the answering model; num_ctx must match answer generation (ollama.stream_chat), or Ollama reloads it
+            return ollama.complete(settings.llm_model, prompt, settings.llm_num_ctx,
+                                   read_timeout=settings.llm_timeout, num_predict=3)
+        return openrouter.complete(self.prejudge_model, prompt, max_tokens=50,
+                                   reasoning=openrouter.MINIMAL_REASONING)
 
     def stream_answer(self, messages: list[dict]) -> Iterator[str]:
-        return llm.stream_chat(messages) if self.local else cloud.stream_chat(messages)
+        return ollama.stream_chat(messages) if self.local else openrouter.stream_chat(messages)
 
-
-_CLOUD = dict(
-    local=False,
-    embed_model=settings.cloud_embed_model,
-    context_model=settings.cloud_context_model,
-    llm_model=settings.cloud_llm_model,
-    prejudge_model=settings.cloud_prejudge_model,
-    embedding_field="embedding_cloud",  # every cloud variant shares the embeddings and their index
-    vector_index=f"{settings.vector_index}_cloud",
-    embed_dim=settings.cloud_embed_dim,
-    vector_min_score=settings.cloud_vector_min_score,
-    context_num_ctx=settings.context_num_ctx,  # same windows as private mode, so the modes stay comparable
-)
 
 MODES = {
     PRIVATE: Mode(
@@ -139,12 +132,21 @@ MODES = {
         name=CLOUD,
         label="Cloud mode",
         description="Cloud models via OpenRouter. The document text and your questions leave this machine.",
-        reranker=True,
+        local=False,
+        embed_model=settings.cloud_embed_model,
+        context_model=settings.cloud_context_model,
+        llm_model=settings.cloud_llm_model,
+        reranker=True,  # the switches are chosen per upload (cloud_mode)
         prejudge=True,
+        prejudge_model=settings.cloud_prejudge_model,
         top_k=settings.top_k,
         bm25_candidates=settings.cloud_bm25_candidates,
         vector_candidates=settings.cloud_vector_candidates,
-        **_CLOUD,
+        embedding_field="embedding_cloud",  # every cloud variant shares the embeddings and their index
+        vector_index=f"{settings.vector_index}_cloud",
+        embed_dim=settings.cloud_embed_dim,
+        vector_min_score=settings.cloud_vector_min_score,
+        context_num_ctx=settings.context_num_ctx,  # same windows as private mode, so the modes stay comparable
     ),
 }
 
@@ -162,6 +164,14 @@ def cloud_mode(reranker: bool, prejudge: bool) -> Mode:
 def by_variant(name: str) -> Mode:
     """private, or a cloud variant from CLOUD_VARIANTS."""
     return MODES[PRIVATE] if name == PRIVATE else cloud_mode(*CLOUD_VARIANTS[name])
+
+
+def for_upload(name: str, reranker: bool, prejudge: bool) -> Mode:
+    """The mode picked for an upload. The switches apply to cloud mode only; private mode follows .env.
+    Raises ValueError for an unknown mode, or for cloud mode with both switches off."""
+    if name not in MODES:
+        raise ValueError(f"Unknown mode {name!r}.")
+    return cloud_mode(reranker, prejudge) if name == CLOUD else MODES[name]
 
 
 def for_document(doc: dict) -> Mode:

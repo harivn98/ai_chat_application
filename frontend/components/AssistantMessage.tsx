@@ -6,6 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { ChatMessage } from "@/hooks/useChat";
 import { citedPassage, prepareAnswerMarkdown } from "@/lib/answerMarkdown";
 import { Source, Verdict } from "@/lib/api";
 
@@ -19,33 +20,29 @@ const VERDICT_TEXT: Record<Verdict, string> = {
   none: "Pre-judge: the passages don't hold the information asked for",
 };
 
-type Reply = {
-  id: string;
-  content: string;
-  sources?: Source[];
-  verdict?: Verdict; // set in the cloud pre-judge mode
-  streaming?: boolean;
-  queued?: boolean; // asked while the document was still being indexed; sent once it is ready
-  error?: string;
-};
-
 type ShowSource = (s: Source) => void;
+
+const sourceElementId = (messageId: string, sourceId: number) => `${messageId}-src-${sourceId}`;
 
 function SourceList({
   sources,
   active,
-  id,
+  messageId,
   onShow,
 }: {
   sources: Source[];
   active: number | null;
-  id: string;
+  messageId: string;
   onShow: ShowSource;
 }) {
   return (
     <ol className="sources">
       {sources.map((s) => (
-        <li key={s.id} id={`${id}-src-${s.id}`} className={active === s.id ? "source active" : "source"}>
+        <li
+          key={s.id}
+          id={sourceElementId(messageId, s.id)}
+          className={active === s.id ? "source active" : "source"}
+        >
           <div className="source-head">
             <span className="source-num">{s.id}</span>
             <span className="source-section">{s.section || "Untitled section"}</span>
@@ -72,23 +69,23 @@ function SourceList({
 }
 
 /** An answer with its citation chips and the passages it was generated from. */
-export default function AssistantMessage({ msg, onShowSource }: { msg: Reply; onShowSource: ShowSource }) {
+export default function AssistantMessage({ msg, onShowSource }: { msg: ChatMessage; onShowSource: ShowSource }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<number | null>(null);
 
   // A citation opens the document at the cited passage; uploads indexed before positions were stored
   // fall back to the passage list
-  function cite(n: number) {
+  function openCitation(n: number) {
     const source = msg.sources?.find((s) => s.id === n);
     if (source?.start != null) return onShowSource(source);
     setOpen(true);
     setActive(n);
     requestAnimationFrame(() =>
-      document.getElementById(`${msg.id}-src-${n}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      document.getElementById(sourceElementId(msg.id, n))?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
     );
   }
 
-  const thinking = msg.streaming && !msg.content;
+  const awaitingFirstToken = msg.streaming && !msg.content;
   return (
     <div className="msg msg-assistant">
       <div className="avatar" aria-hidden>
@@ -97,7 +94,7 @@ export default function AssistantMessage({ msg, onShowSource }: { msg: Reply; on
       <div className="msg-body">
         {msg.queued ? (
           <p className="queued muted">Waiting for the document to finish indexing. This question is sent automatically.</p>
-        ) : thinking ? (
+        ) : awaitingFirstToken ? (
           <div className="typing" aria-label="Generating">
             <span />
             <span />
@@ -113,7 +110,7 @@ export default function AssistantMessage({ msg, onShowSource }: { msg: Reply; on
                   const n = citedPassage(href);
                   if (n !== null) {
                     return (
-                      <button className="cite" onClick={() => cite(n)} title={`Show source ${n}`}>
+                      <button className="cite" onClick={() => openCitation(n)} title={`Show source ${n}`}>
                         {n}
                       </button>
                     );
@@ -137,7 +134,7 @@ export default function AssistantMessage({ msg, onShowSource }: { msg: Reply; on
             <button className="sources-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
               {open ? "Hide" : "Show"} {msg.sources.length} retrieved passages
             </button>
-            {open && <SourceList sources={msg.sources} active={active} id={msg.id} onShow={onShowSource} />}
+            {open && <SourceList sources={msg.sources} active={active} messageId={msg.id} onShow={onShowSource} />}
           </div>
         )}
       </div>

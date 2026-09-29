@@ -8,7 +8,7 @@ from collections import Counter
 
 import httpx
 
-from .config import settings
+from ..config import settings
 
 S3 = "https://qasper-dataset.s3.us-west-2.amazonaws.com"
 SPLITS = {
