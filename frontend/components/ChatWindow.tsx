@@ -12,15 +12,15 @@ import { useChats } from "@/hooks/useChats";
 import { useModelStatus } from "@/hooks/useModelStatus";
 import { ChatInfo, DocInfo, Source } from "@/lib/api";
 
-/** The chats about one document. `onNewDocument` goes back to the upload page (the document stays saved);
+/** The chats about one document. `onHome` goes back to the upload page after a failed upload (the document stays saved);
  * `onLockedChange` says whether an answer is streaming or questions wait to be sent. */
 export default function ChatWindow({
   doc,
-  onNewDocument,
+  onHome,
   onLockedChange,
 }: {
   doc: DocInfo;
-  onNewDocument: () => void;
+  onHome: () => void;
   onLockedChange: (locked: boolean) => void;
 }) {
   const ready = doc.status === "ready";
@@ -32,6 +32,7 @@ export default function ChatWindow({
   // Source document panel: null = closed; highlight null = whole document without a highlight
   const [viewer, setViewer] = useState<{ highlight: Highlight | null } | null>(null);
   const closeViewer = useCallback(() => setViewer(null), []);
+  const [showChats, setShowChats] = useState(false); // the chat list is hidden until the Chats button opens it
 
   function showSource(s: Source) {
     const label = `passage ${s.id} · ${s.section || "Untitled section"}`;
@@ -63,6 +64,21 @@ export default function ChatWindow({
     <section className="chat card">
       <header className="chat-head">
         <div className="doc-meta">
+          <button
+            className="btn btn-ghost chats-toggle"
+            onClick={() => setShowChats((s) => !s)}
+            aria-expanded={showChats}
+            aria-controls="chat-list"
+            title={showChats ? "Hide the chats" : "Show the chats about this document"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Chats
+            <span className="chats-count">
+              {chats.chats.length}/{chats.maxChats}
+            </span>
+          </button>
           <span className="doc-icon" aria-hidden>
             {doc.filename.split(".").pop()?.toUpperCase()}
           </span>
@@ -93,29 +109,23 @@ export default function ChatWindow({
               View document
             </button>
           )}
-          <button
-            className="btn btn-ghost"
-            onClick={onNewDocument}
-            disabled={locked}
-            title="Upload another document. This one and its chats stay saved under Previous docs & chats."
-          >
-            New document
-          </button>
         </div>
       </header>
 
-      {!ready && <IngestProgress doc={doc} onRetry={onNewDocument} />}
+      {!ready && <IngestProgress doc={doc} onRetry={onHome} />}
       {model?.state === "loading" && <ModelLoading status={model} />}
 
       <div className="chat-body">
-        <ChatList
-          chats={chats.chats}
-          currentId={chats.currentId}
-          maxChats={chats.maxChats}
-          locked={locked}
-          onOpen={chats.open}
-          onDelete={deleteChat}
-        />
+        {showChats && (
+          <ChatList
+            chats={chats.chats}
+            currentId={chats.currentId}
+            maxChats={chats.maxChats}
+            locked={locked}
+            onOpen={chats.open}
+            onDelete={deleteChat}
+          />
+        )}
         <div className="conversation">
           {(chats.error || loadError) && <p className="error chat-error">{chats.error || loadError}</p>}
           <div className="messages">

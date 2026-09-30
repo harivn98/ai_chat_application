@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ChatWindow from "@/components/ChatWindow";
 import DocumentList from "@/components/DocumentList";
+import Logo from "@/components/Logo";
 import Uploader from "@/components/Uploader";
 import { useCurrentDocument } from "@/hooks/useCurrentDocument";
 import { deleteAllDocuments, DocInfo } from "@/lib/api";
@@ -12,7 +13,7 @@ export default function Home() {
   const { doc, restored, open, close } = useCurrentDocument();
   const [chatLocked, setChatLocked] = useState(false); // an answer is streaming or questions wait to be sent
   const [clearing, setClearing] = useState(false);
-  const [history, setHistory] = useState(false); // the Previous docs & chats page instead of the upload page
+  const [history, setHistory] = useState(false); // the Chat history page instead of the upload page
   const [error, setError] = useState<string | null>(null);
 
   /** Open a document, at `chatId` if given (else at the chat this tab last had open, or its most recent). */
@@ -20,6 +21,14 @@ export default function Home() {
     if (chatId) openChatId.set(d.doc_id, chatId);
     setHistory(false);
     open(d);
+  }
+
+  const onHome = restored && !doc && !history; // the upload page is showing
+  const locked = !!doc && chatLocked; // don't leave the chat while an answer streams or questions wait
+
+  function goHome() {
+    close();
+    setHistory(false);
   }
 
   function showHistory() {
@@ -44,33 +53,36 @@ export default function Home() {
   }
 
   return (
-    <main className="shell">
+    <main className={doc ? "shell shell-chat" : "shell"}>
       <header className="topbar">
-        <div className="brand">
-          <span className="logo" aria-hidden />
-          AI Chat Application <span className="brand-short">ACAP</span>
+        <div>
+          <div className="brand">
+            <Logo />
+            AI Chat Application <span className="brand-short">ACAP</span>
+          </div>
+          {restored && <p className="page-label">{doc ? "Current chat" : history ? "Chat history" : "Home"}</p>}
         </div>
         <div className="topbar-right">
-          {doc && (
-            <div className="pipeline">
-              <span className={`mode-tag ${doc.mode === "private" ? "" : "mode-cloud"}`}>{doc.mode_label}</span>
-              <span>{doc.embed_model}</span>
-              <span>BM25 + vector · RRF</span>
-              <span>{doc.llm_model}</span>
-            </div>
-          )}
+          <button
+            className="btn btn-ghost"
+            onClick={goHome}
+            disabled={onHome || locked}
+            title="The upload page. Documents and their chats stay saved under Chat history."
+          >
+            Home
+          </button>
           <button
             className="btn btn-ghost"
             onClick={showHistory}
-            disabled={(!doc && history) || (!!doc && chatLocked)}
+            disabled={(!doc && history) || locked}
             title="Your earlier documents and their chats"
           >
-            Previous docs & chats
+            Chat history
           </button>
           <button
             className="btn btn-ghost"
             onClick={newSession}
-            disabled={clearing || (!!doc && chatLocked)}
+            disabled={clearing || locked}
             title="Delete all documents and chats"
           >
             {clearing ? "Clearing…" : "New session"}
@@ -81,9 +93,9 @@ export default function Home() {
       {error && <p className="error">{error}</p>}
 
       {!restored ? null : doc ? (
-        <ChatWindow key={doc.doc_id} doc={doc} onNewDocument={close} onLockedChange={setChatLocked} />
+        <ChatWindow key={doc.doc_id} doc={doc} onHome={close} onLockedChange={setChatLocked} />
       ) : history ? (
-        <DocumentList onOpen={openDocument} onUpload={() => setHistory(false)} />
+        <DocumentList onOpen={openDocument} onHome={() => setHistory(false)} />
       ) : (
         <Uploader onUploaded={openDocument} />
       )}

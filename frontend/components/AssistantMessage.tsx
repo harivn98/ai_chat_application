@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { ComponentProps, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import CopyButton from "@/components/CopyButton";
 import { ChatMessage } from "@/hooks/useChat";
 import { citedPassage, prepareAnswerMarkdown } from "@/lib/answerMarkdown";
 import { Source, Verdict } from "@/lib/api";
@@ -21,6 +22,51 @@ const VERDICT_TEXT: Record<Verdict, string> = {
 };
 
 type ShowSource = (s: Source) => void;
+
+// The part of a rendered HTML (hast) node the copy buttons read
+type HastNode = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };
+
+const hastText = (n: HastNode): string => (n.type === "text" ? n.value ?? "" : (n.children ?? []).map(hastText).join(""));
+
+/** The LaTeX source of a KaTeX-rendered formula, which KaTeX keeps in its MathML annotation. */
+function texSource(n: HastNode): string | null {
+  if (n.tagName === "annotation" && n.properties?.encoding === "application/x-tex") return hastText(n).trim();
+  for (const c of n.children ?? []) {
+    const tex = texSource(c);
+    if (tex) return tex;
+  }
+  return null;
+}
+
+/** A fenced code block with its language and a copy button. */
+function CodeBlock({ node, children, ...props }: ComponentProps<"pre"> & { node?: HastNode }) {
+  const code = node?.children?.find((c) => c.tagName === "code");
+  const classes = code?.properties?.className;
+  const lang = (Array.isArray(classes) ? classes.map(String) : [])
+    .find((c) => c.startsWith("language-"))
+    ?.slice("language-".length);
+  return (
+    <div className="code-block">
+      <div className="code-head">
+        <span>{lang || "code"}</span>
+        {node && <CopyButton text={hastText(node).replace(/\n$/, "")} label="Copy code" />}
+      </div>
+      <pre {...props}>{children}</pre>
+    </div>
+  );
+}
+
+/** Display math (a KaTeX block) gets a button that copies its LaTeX source; every other span renders as is. */
+function MathSpan({ node, ...props }: ComponentProps<"span"> & { node?: HastNode }) {
+  if (!String(props.className ?? "").split(" ").includes("katex-display")) return <span {...props} />;
+  const tex = node && texSource(node);
+  return (
+    <div className="math-block">
+      <span {...props} />
+      {tex && <CopyButton text={tex} label="Copy formula (LaTeX)" />}
+    </div>
+  );
+}
 
 const sourceElementId = (messageId: string, sourceId: number) => `${messageId}-src-${sourceId}`;
 
@@ -121,6 +167,8 @@ export default function AssistantMessage({ msg, onShowSource }: { msg: ChatMessa
                     </a>
                   );
                 },
+                pre: CodeBlock,
+                span: MathSpan,
               }}
             >
               {prepareAnswerMarkdown(msg.content)}
@@ -129,6 +177,11 @@ export default function AssistantMessage({ msg, onShowSource }: { msg: ChatMessa
         )}
         {msg.error && <p className="error">{msg.error}</p>}
         {msg.verdict && <p className={`verdict verdict-${msg.verdict}`}>{VERDICT_TEXT[msg.verdict]}</p>}
+        {!msg.streaming && msg.content && (
+          <div className="msg-actions">
+            <CopyButton text={msg.content} label="Copy answer" />
+          </div>
+        )}
         {msg.sources && msg.sources.length > 0 && (
           <div className="sources-wrap">
             <button className="sources-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>

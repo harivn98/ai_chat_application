@@ -46,14 +46,14 @@ function DocumentChats({ doc, onOpen }: { doc: ListedDocument; onOpen: (doc: Doc
   );
 }
 
-/** Previous docs & chats: the documents uploaded earlier, newest first. Clicking a document reopens it at its last chat;
+/** Chat history: the documents uploaded earlier, newest first. Clicking a document reopens it at its last chat;
  * the arrow shows its chats, each of which can be opened directly; the bin deletes the document with its chats. */
 export default function DocumentList({
   onOpen,
-  onUpload,
+  onHome,
 }: {
   onOpen: (doc: DocInfo, chatId?: string) => void;
-  onUpload: () => void;
+  onHome: () => void;
 }) {
   const [docs, setDocs] = useState<ListedDocument[] | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -93,11 +93,11 @@ export default function DocumentList({
     <section className="card doc-list">
       <div className="doc-list-head">
         <div>
-          <p className="eyebrow">Previous docs & chats</p>
+          <p className="eyebrow">Chat history</p>
           <h2>Your documents</h2>
         </div>
-        <button className="btn btn-ghost" onClick={onUpload}>
-          Upload a document
+        <button className="btn btn-ghost" onClick={onHome}>
+          Home
         </button>
       </div>
       {error && <p className="error">{error}</p>}

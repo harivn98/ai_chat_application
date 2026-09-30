@@ -24,7 +24,7 @@ export default function ChatList({
   onDelete: (chat: ChatInfo) => void;
 }) {
   return (
-    <aside className="chat-list" aria-label="Chats about this document">
+    <aside id="chat-list" className="chat-list" aria-label="Chats about this document">
       <p className="eyebrow">
         Chats · {chats.length}/{maxChats}
       </p>

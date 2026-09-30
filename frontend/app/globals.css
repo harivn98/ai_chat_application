@@ -40,15 +40,16 @@ h2 { font-size: 22px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---------- shell */
-.shell { max-width: 1120px; margin: 0 auto; padding: 18px 16px 24px; min-height: 100dvh; display: flex; flex-direction: column; gap: 18px; }
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.shell { max-width: 1120px; margin: 0 auto; padding: 0 16px 24px; min-height: 100dvh; display: flex; flex-direction: column; gap: 18px; }
+/* a chat fills exactly the screen: the page never grows, only the messages scroll */
+.shell-chat { height: 100dvh; min-height: 0; }
+/* the top bar stays at the top of the window on every page, also while the page scrolls */
+.topbar { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 18px 0 12px; box-shadow: 0 1px 0 var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .brand-short { font: 600 11px var(--mono); letter-spacing: 0.06em; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 2px 6px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 17px; letter-spacing: -0.01em; }
-.logo { width: 22px; height: 22px; border-radius: 7px; background: var(--accent); position: relative; }
-.logo::after { content: ""; position: absolute; inset: 6px 5px; border-top: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); }
-.pipeline { display: flex; gap: 6px; flex-wrap: wrap; }
-.pipeline span { font: 12px var(--mono); color: var(--ink-2); border: 1px solid var(--border); background: var(--surface); padding: 3px 8px; border-radius: 999px; }
+.page-label { margin: 2px 0 0 36px; font: 12px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+.logo { flex: none; display: block; }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 
@@ -129,8 +130,6 @@ h2 { font-size: 22px; }
 .limits-list dt { font-weight: 600; }
 .limits-list dd { margin: 0; color: var(--ink-2); }
 .cloud-warning { margin: 10px 0 0; padding: 8px 12px; border-radius: 10px; font-size: 13px; color: var(--warning); background: var(--warning-soft); }
-.pipeline .mode-tag { font-weight: 600; color: var(--accent); border-color: var(--accent); }
-.pipeline .mode-cloud { color: var(--warning); border-color: var(--warning); }
 
 /* ---------- indexing progress, shown inside the chat while the document is still being processed */
 .ingest { padding: 12px 16px 4px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
@@ -151,12 +150,15 @@ h2 { font-size: 22px; }
 @media (prefers-reduced-motion: reduce) { .bar-indeterminate span { width: 100%; opacity: 0.4; animation: none; } }
 
 /* ---------- chat */
-.chat { flex: 1; display: flex; flex-direction: column; min-height: 0; height: calc(100dvh - 90px); overflow: hidden; }
+.chat { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .doc-meta { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .doc-icon { font: 600 11px var(--mono); background: var(--accent-soft); color: var(--accent); border-radius: 8px; padding: 8px 7px; flex: none; }
 .doc-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
 .head-actions { display: flex; gap: 8px; }
+.chats-toggle { flex: none; }
+.chats-toggle[aria-expanded="true"] { background: var(--surface-2); }
+.chats-count { font: 12px var(--mono); color: var(--ink-3); }
 
 /* chat list (left) and the open chat (right) */
 .chat-body { flex: 1; display: flex; min-height: 0; }
@@ -206,6 +208,18 @@ h2 { font-size: 22px; }
 .markdown .katex-display { margin: 0 0 10px; padding: 4px 0; overflow-x: auto; overflow-y: hidden; }
 .markdown.streaming > :last-child::after { content: "▍"; color: var(--accent); animation: blink 1s steps(2) infinite; margin-left: 1px; }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* copy buttons: the whole answer, a code block, a formula */
+.copy-btn { display: inline-flex; align-items: center; gap: 5px; border: none; background: none; color: var(--ink-3); font-size: 12px; padding: 3px 7px; border-radius: 6px; cursor: pointer; }
+.copy-btn:hover { color: var(--ink); background: var(--surface-2); }
+.msg-actions { display: flex; gap: 6px; margin: 6px 0 0 -7px; }
+.code-block { margin: 0 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+.code-head { display: flex; justify-content: space-between; align-items: center; padding: 3px 4px 3px 12px; border-bottom: 1px solid var(--border); font: 12px var(--mono); color: var(--ink-3); }
+.code-head .copy-btn:hover { background: var(--surface); }
+.markdown .code-block pre { margin: 0; border: none; border-radius: 0; }
+.math-block { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; }
+.math-block .katex-display { flex: 1; min-width: 0; margin: 0; }
+.math-block .copy-btn { flex: none; margin-top: 4px; }
 
 /* Syntax highlighting (rehype-highlight / highlight.js classes), tuned to the white and blue theme */
 .hljs-comment, .hljs-quote { color: #7a869a; font-style: italic; }
@@ -262,17 +276,16 @@ h2 { font-size: 22px; }
 @keyframes slide-in { from { transform: translateX(24px); opacity: 0; } }
 
 @media (max-width: 600px) {
-  .shell { padding: 12px 12px 12px; gap: 12px; }
+  .shell { padding: 0 12px 12px; gap: 12px; }
+  .topbar { padding-top: 12px; }
   .upload-card { padding: 20px; margin-top: 2vh; }
   .limits-list div { grid-template-columns: 1fr; gap: 0; }
   .doc-chats { margin-left: 18px; }
   .doc-chats-note { margin-left: 28px; }
-  .chat { height: calc(100dvh - 76px); }
   .doc-name { max-width: 24ch; }
   .head-actions { width: 100%; }
   .head-actions .btn { flex: 1; }
   .chat-body { flex-direction: column; }
   .chat-list { width: auto; max-height: 132px; border-right: none; border-bottom: 1px solid var(--border); padding: 10px; }
-  .pipeline { display: none; }
   .viewer-body { padding: 16px 16px 40vh; }
 }
