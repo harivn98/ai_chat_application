@@ -12,14 +12,8 @@ export type DocStatus =
   | "failed";
 
 /** private: everything runs on this machine; cloud: cloud models via OpenRouter (the document leaves this machine),
- * with the reranker and/or the pre-judge switched on per upload */
+ * with the pre-judge always on */
 export type ModeId = "private" | "cloud";
-
-/** Cloud mode's switches; at least one must be on */
-export interface CloudOptions {
-  reranker: boolean;
-  prejudge: boolean;
-}
 
 /** The pre-judge's finding: the passages hold all, part or none of the answer */
 export type Verdict = "all" | "partial" | "none";
@@ -35,7 +29,7 @@ export interface DocInfo {
   doc_id: string;
   filename: string;
   mode: ModeId; // chosen at upload; the document is answered in this mode
-  mode_label: string; // e.g. "Cloud · reranker + pre-judge"
+  mode_label: string; // e.g. "Cloud · pre-judge"
   embed_model: string;
   llm_model: string;
   status: DocStatus;
@@ -125,14 +119,10 @@ export async function getAnsweringModel(): Promise<ModelStatus> {
   return res.json();
 }
 
-export async function uploadDocument(file: File, mode: ModeId, cloud: CloudOptions): Promise<DocInfo> {
+export async function uploadDocument(file: File, mode: ModeId): Promise<DocInfo> {
   const form = new FormData();
   form.append("file", file);
   form.append("mode", mode);
-  if (mode === "cloud") {
-    form.append("reranker", String(cloud.reranker));
-    form.append("prejudge", String(cloud.prejudge));
-  }
   const res = await fetch("/api/documents", { method: "POST", body: form });
   if (!res.ok) throw new Error(await errorText(res));
   return res.json();

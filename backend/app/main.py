@@ -233,11 +233,9 @@ async def upload_document(
     background: BackgroundTasks,
     file: UploadFile = File(...),
     mode_name: str = Form(modes.PRIVATE, alias="mode"),
-    use_reranker: bool = Form(True, alias="reranker"),  # cloud mode only; private mode follows .env
-    use_prejudge: bool = Form(True, alias="prejudge"),
 ):
     try:
-        mode = modes.for_upload(mode_name, use_reranker, use_prejudge)
+        mode = modes.for_upload(mode_name)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     _require_keys(mode)

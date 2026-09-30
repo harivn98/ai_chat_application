@@ -1,40 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CloudOptions, ModeId, ModeInfo } from "@/lib/api";
-
-const CLOUD_SWITCHES: { key: keyof CloudOptions; label: string; hint: string }[] = [
-  { key: "reranker", label: "Reranker", hint: "re-orders the retrieved passages on this machine" },
-  { key: "prejudge", label: "Pre-judge", hint: "checks the passages hold the answer before replying" },
-];
-
-/** Cloud mode's switches. The last one that is on can't be turned off, so at least one always runs. */
-function CloudSwitches({ value, onChange }: { value: CloudOptions; onChange: (cloud: CloudOptions) => void }) {
-  return (
-    <div className="mode-switches">
-      {CLOUD_SWITCHES.map(({ key, label, hint }) => {
-        const lastOneOn = value[key] && CLOUD_SWITCHES.every((s) => s.key === key || !value[s.key]);
-        return (
-          <label key={key} className={`switch ${lastOneOn ? "locked" : ""}`}>
-            <input
-              type="checkbox"
-              role="switch"
-              checked={value[key]}
-              disabled={lastOneOn}
-              onChange={(e) => onChange({ ...value, [key]: e.target.checked })}
-            />
-            <span className="switch-track" aria-hidden />
-            <span className="switch-text">
-              <span className="switch-label">{label}</span>
-              <span className="switch-hint">{hint}</span>
-            </span>
-          </label>
-        );
-      })}
-      <span className="switch-note">At least one must be on.</span>
-    </div>
-  );
-}
+import { ModeId, ModeInfo } from "@/lib/api";
 
 // The main limitations of private mode, in plain words
 const PRIVATE_LIMITATIONS: { topic: string; text: string }[] = [
@@ -91,14 +58,10 @@ export default function ModePicker({
   modes,
   value,
   onChange,
-  cloud,
-  onCloudChange,
 }: {
   modes: ModeInfo[];
   value: ModeId;
   onChange: (mode: ModeId) => void;
-  cloud: CloudOptions;
-  onCloudChange: (cloud: CloudOptions) => void;
 }) {
   return (
     <fieldset className="modes">
@@ -122,7 +85,6 @@ export default function ModePicker({
             </label>
             {disabled && <span className="mode-missing">Needs {m.missing_keys.join(" and ")} (see README)</span>}
             {m.id === "private" && <PrivateLimitations />}
-            {m.id === "cloud" && selected && <CloudSwitches value={cloud} onChange={onCloudChange} />}
           </div>
         );
       })}

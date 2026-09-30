@@ -3,10 +3,10 @@
 private   everything runs on this machine: bge-small embeddings, Ollama models, the local reranker and
           pre-judge as RERANKER_ENABLED / PREJUDGE_ENABLED say (the default).
 cloud     document text and questions go through OpenRouter to Google (Gemini embeddings and chunk contexts) and
-          DeepSeek (answers). Each upload switches on the reranker, the pre-judge or both:
-            reranker   the local cross-encoder reranks all the fused candidates down to TOP_K
-            pre-judge  Gemini Flash-Lite checks whether the TOP_K passages hold all, part or none of the answer
-          (both: rerank first, then pre-judge the reranked passages).
+          DeepSeek (answers). New uploads take the top TOP_K fused passages (no reranker) and Gemini Flash-Lite
+          pre-judges whether they hold all, part or none of the answer. Documents uploaded earlier may have the
+          local cross-encoder reranker on as well, or instead (the old per-upload switches); the evaluation can
+          still run all three settings (CLOUD_VARIANTS).
 
 All modes use the same MongoDB and BM25. Embeddings of different models can't be compared, so cloud mode stores
 its vectors in their own chunk field with their own vector index, and a document is answered in the mode (and
@@ -139,12 +139,12 @@ MODES = {
     CLOUD: Mode(
         name=CLOUD,
         label="Cloud mode",
-        description="Cloud models via OpenRouter. The document text and your questions leave this machine.",
+        description="Runs on Google Gemini and DeepSeek models via OpenRouter.",  # the upload page adds the data warning
         local=False,
         embed_model=settings.cloud_embed_model,
         context_model=settings.cloud_context_model,
         llm_model=settings.cloud_llm_model,
-        reranker=True,  # the switches are chosen per upload (cloud_mode)
+        reranker=False,  # new uploads: pre-judge only (older documents keep their switches, see for_document)
         prejudge=True,
         prejudge_model=settings.cloud_prejudge_model,
         top_k=settings.top_k,
@@ -174,12 +174,12 @@ def by_variant(name: str) -> Mode:
     return MODES[PRIVATE] if name == PRIVATE else cloud_mode(*CLOUD_VARIANTS[name])
 
 
-def for_upload(name: str, reranker: bool, prejudge: bool) -> Mode:
-    """The mode picked for an upload. The switches apply to cloud mode only; private mode follows .env.
-    Raises ValueError for an unknown mode, or for cloud mode with both switches off."""
+def for_upload(name: str) -> Mode:
+    """The mode picked for an upload: private mode follows .env, cloud mode always pre-judges without the reranker.
+    Raises ValueError for an unknown mode."""
     if name not in MODES:
         raise ValueError(f"Unknown mode {name!r}.")
-    return cloud_mode(reranker, prejudge) if name == CLOUD else MODES[name]
+    return by_variant("cloud-prejudge") if name == CLOUD else MODES[name]
 
 
 def for_document(doc: dict) -> Mode:

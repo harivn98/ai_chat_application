@@ -46,8 +46,8 @@ class Settings:
     chunk_size: int = int(os.getenv("CHUNK_SIZE", "1000"))        # characters
     chunk_overlap: int = int(os.getenv("CHUNK_OVERLAP", "150"))   # characters
     top_k: int = int(os.getenv("TOP_K", "8"))                     # chunks sent to the LLM
-    bm25_candidates: int = int(os.getenv("BM25_CANDIDATES", "10"))
-    vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "20"))  # private mode: no score cutoff
+    bm25_candidates: int = int(os.getenv("BM25_CANDIDATES", "30"))
+    vector_candidates: int = int(os.getenv("VECTOR_CANDIDATES", "30"))  # private mode: no score cutoff
     rrf_k: int = int(os.getenv("RRF_K", "60"))
 
     # Reranker: a cross-encoder re-scores every fused BM25 + vector chunk and keeps the best TOP_K
@@ -66,7 +66,7 @@ class Settings:
     cloud_prejudge_model: str = os.getenv("CLOUD_PREJUDGE_MODEL", "google/gemini-3.5-flash-lite")
     # Cloud retrieval (every variant): BM25 top N + vector top N are fused; the reranker scores all of them, or
     # without it the top TOP_K by fused rank are kept
-    cloud_bm25_candidates: int = int(os.getenv("CLOUD_BM25_CANDIDATES", "20"))
+    cloud_bm25_candidates: int = int(os.getenv("CLOUD_BM25_CANDIDATES", "30"))
     cloud_vector_candidates: int = int(os.getenv("CLOUD_VECTOR_CANDIDATES", "30"))
 
     max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "25"))

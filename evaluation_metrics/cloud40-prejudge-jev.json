@@ -1,0 +1,3025 @@
+{
+  "summary": {
+    "run_id": "cloud40-prejudge-jev",
+    "date_utc": "2026-09-30 15:56",
+    "split": "test",
+    "seed": 0,
+    "papers": 40,
+    "questions": 135,
+    "mode": "cloud-prejudge",
+    "embed_model": "google/gemini-embedding-2",
+    "llm_model": "deepseek/deepseek-v4.1-flash",
+    "judge_model": "qwen3:8b",
+    "top_k": 8,
+    "bm25_candidates": 20,
+    "vector_candidates": 30,
+    "vector_min_score": 0.0,
+    "chunk_size": 1000,
+    "chunk_overlap": 150,
+    "contextual_embedding": true,
+    "context_model": "google/gemini-3.5-flash-lite",
+    "prejudge_enabled": true,
+    "prejudge_model": "typesafe/jev-router",
+    "reranker_enabled": false,
+    "reranker_model": null,
+    "contextualization_s_per_paper": 65.21149006817578,
+    "embedding_s_per_paper": 1.4017085632454838,
+    "bm25_hits": {
+      "mean": 16.03030303030303,
+      "min": 2,
+      "max": 20
+    },
+    "vector_hits": {
+      "mean": 26.21212121212121,
+      "min": 14,
+      "max": 30
+    },
+    "vector_score_min": {
+      "mean": 0.6047033721750433,
+      "min": 0.5158299207687378,
+      "max": 0.724271297454834
+    },
+    "vector_score_max": {
+      "mean": 0.7308929977994977,
+      "min": 0.6351178884506226,
+      "max": 0.8268622159957886
+    },
+    "retrieval_s_per_question": 0.27793429527347063,
+    "rerank_s_per_question": null,
+    "candidate_recall": null,
+    "prejudge_s_per_question": 2.045647710581155,
+    "generation_s_per_question": 1.3237133719717507,
+    "prejudge_rejected": 4,
+    "prejudge_rejected_unanswerable": 3,
+    "prejudge_partial": 1,
+    "judging_s_per_question": 0.9401493652399178,
+    "total_minutes": 51.67098677736649,
+    "answer_f1": 0.38131626555127324,
+    "answer_f1_by_type": {
+      "extractive": 0.37119528657014683,
+      "abstractive": 0.2721588062231337,
+      "boolean": 0.051794302626711065,
+      "none": 1.0
+    },
+    "evidence_f1": 0.6757390757390758,
+    "retrieval_recall": 1.0,
+    "judge_correct": 0.9696969696969697,
+    "errors": 102,
+    "judge_errors": 0,
+    "environment": {
+      "MONGO_URI": "mongodb://admin:***@mongodb:27017/?directConnection=true",
+      "MONGO_DB": "ragdb",
+      "VECTOR_INDEX": "chunk_vector_index",
+      "OLLAMA_URL": "http://ollama:11434",
+      "LLM_MODEL": "qwen3:8b",
+      "LLM_NUM_CTX": "8192",
+      "LLM_TEMPERATURE": "0.0",
+      "LLM_THINK": "False",
+      "LLM_KEEP_ALIVE": "30m",
+      "LLM_TIMEOUT": "600",
+      "LLM_LOAD_TIMEOUT": "1800",
+      "HISTORY_TURNS": "6",
+      "MAX_CHATS_PER_DOCUMENT": "10",
+      "EMBED_MODEL": "BAAI/bge-small-en-v1.5",
+      "EMBED_DIM": "384",
+      "QUERY_INSTRUCTION": "Represent this sentence for searching relevant passages: ",
+      "CONTEXTUAL_EMBEDDING": "True",
+      "CONTEXT_MODEL": "qwen3:4b-instruct",
+      "CONTEXT_NUM_CTX": "16384",
+      "QUERY_REWRITE_ENABLED": "True",
+      "PREJUDGE_ENABLED": "False",
+      "CHUNK_SIZE": "1000",
+      "CHUNK_OVERLAP": "150",
+      "TOP_K": "8",
+      "BM25_CANDIDATES": "10",
+      "VECTOR_CANDIDATES": "20",
+      "RRF_K": "60",
+      "RERANKER_ENABLED": "True",
+      "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L6-v2",
+      "OPENROUTER_API_KEY": "***",
+      "OPENROUTER_URL": "https://openrouter.ai/api/v1",
+      "CLOUD_EMBED_MODEL": "google/gemini-embedding-2",
+      "CLOUD_EMBED_DIM": "768",
+      "CLOUD_VECTOR_MIN_SCORE": "0.0",
+      "CLOUD_CONTEXT_MODEL": "google/gemini-3.5-flash-lite",
+      "CLOUD_LLM_MODEL": "deepseek/deepseek-v4.1-flash",
+      "CLOUD_PREJUDGE_MODEL": "typesafe/jev-router",
+      "CLOUD_BM25_CANDIDATES": "20",
+      "CLOUD_VECTOR_CANDIDATES": "30",
+      "MAX_UPLOAD_MB": "25",
+      "DATA_DIR": "/data",
+      "JUDGE_MODEL": "qwen3:8b",
+      "EVAL_DIR": "/evaluation_metrics"
+    }
+  },
+  "questions": [
+    {
+      "paper_id": "1606.02892",
+      "question_id": "2686e8d51caff9a19684e0c9984bcb5a1937d08d",
+      "question": "What morphological features are considered?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1606.02892",
+      "question_id": "df623717255ea2c9e0f846859d8a9ef51dc1102b",
+      "question": "What type of attention do they use in the decoder?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1611.01884",
+      "question_id": "05118578b46e9d93052e8a760019ca735d6513ab",
+      "question": "How do they perform semi-supervised learning?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1611.01884",
+      "question_id": "31b9337fdfbbc33fc456552ad8c355d836d690ff",
+      "question": "What are the five evaluated tasks?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1612.09535",
+      "question_id": "f1f7a040545c9501215d3391e267c7874f9a6004",
+      "question": "what dataset was used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1612.09535",
+      "question_id": "b6f4fd6bc76bfcbc15724a546445908afa6d922c",
+      "question": "by how much did their model improve over current alternatives?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1612.09535",
+      "question_id": "3614c1f1435b7c1fd1f7f0041219eebf5bcff473",
+      "question": "did they experiment with other languages besides portuguese?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1612.09535",
+      "question_id": "c316d7d0c80b8f720ff90a8bb84a8b879a3ef7ea",
+      "question": "how many rules did they use?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02367",
+      "question_id": "97ff88c31dac9a3e8041a77fa7e34ce54eef5a76",
+      "question": "How well does their model perform on the recommendation task?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02367",
+      "question_id": "272defe245d1c5c091d3bc51399181da2da5e5f0",
+      "question": "Which knowledge base do they use to retrieve facts?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02367",
+      "question_id": "860257956b83099cccf1359e5d960289d7d50265",
+      "question": "Which neural network architecture do they use?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02584",
+      "question_id": "a82a12a22a45d9507bc359635ffe9574f15e0810",
+      "question": "What linguistic model does the conventional method use?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02584",
+      "question_id": "355cf303ba61f84b580e2016fcb24e438abeafa7",
+      "question": "What is novel about the newly emerging CNN method, in comparison to well-established conventional method?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02584",
+      "question_id": "88757bc49ccab76e587fba7521f0981d6a1af2f7",
+      "question": "What lexical cues are used for humor recogition?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02584",
+      "question_id": "2f9a31f5a2b668acf3bce8958f5daa67ab8b2c83",
+      "question": "Do they evaluate only on English data?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02584",
+      "question_id": "4830459e3d1d204e431025ce7e596ef3f8d757d2",
+      "question": "How many speakers are included in the dataset?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1702.02584",
+      "question_id": "74ebfba06f37cc95dfe59c3790ebe6165e6be19c",
+      "question": "How are the positive instances annotated? e.g. by annotators, or by laughter from the audience?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1706.08568",
+      "question_id": "a526c63fc8dc1b79702b481b77e3922d7002d973",
+      "question": "Are answers in this dataset guaranteed to be substrings of the text? If not, what is the coverage of answers being substrings?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1706.08568",
+      "question_id": "0f9678e11079ee9ea1a1ce693f017177dd495ee5",
+      "question": "How much is the gap between pretraining on SQuAD and not pretraining on SQuAD?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1707.06875",
+      "question_id": "97708d93bccc832ea671dc31a76dad6a121fcd60",
+      "question": "Which metrics were considered?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1707.06875",
+      "question_id": "f11856814a57b86667179e1e275e4f99ff1bcad8",
+      "question": "What NLG tasks were considered?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1801.04433",
+      "question_id": "1c8958ec50976a9b1088c51e8f73a767fb3973fa",
+      "question": "what rnn classifiers were used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1801.04433",
+      "question_id": "363d0cb0cd5c9a0b0364d61d95f2eff7347d5a36",
+      "question": "what results did their system obtain?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1801.04433",
+      "question_id": "cf0b7d8a2449d04078f69ec9717a547adfb67d17",
+      "question": "what are the existing approaches?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1804.00982",
+      "question_id": "5da9e2eef741bd7efccec8e441b8e52e906b2d2d",
+      "question": "do they compare their system with other systems?",
+      "references": [
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We train a Bidirectional Encoding model BIBREF2 , which has achieved state-of-the-art results for Twitter stance detection on our dataset. The model encodes the entity using a bidirectional LSTM (BiLSTM), which is then used to initialize a BiLSTM that encodes the article and produces a prediction. To reduce the sequence length, we use the same context window that was presented to annotators for training the LSTM. We use pretrained GloVe embeddings BIBREF13 and tune hyperparameters on a validation set. The best model achieves a test accuracy of INLINEFORM0 and a macro-averaged test F1 score of INLINEFORM1 . It significantly outperforms baselines such as a bag-of-n-grams (accuracy: INLINEFORM2 ; F1: INLINEFORM3 )."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We train a Bidirectional Encoding model BIBREF2 , which has achieved state-of-the-art results for Twitter stance detection on our dataset. The model encodes the entity using a bidirectional LSTM (BiLSTM), which is then used to initialize a BiLSTM that encodes the article and produces a prediction. To reduce the sequence length, we use the same context window that was presented to annotators for training the LSTM. We use pretrained GloVe embeddings BIBREF13 and tune hyperparameters on a validation set. The best model achieves a test accuracy of INLINEFORM0 and a macro-averaged test F1 score of INLINEFORM1 . It significantly outperforms baselines such as a bag-of-n-grams (accuracy: INLINEFORM2 ; F1: INLINEFORM3 )."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "Yes. The document reports that their model \"significantly outperforms baselines such as a bag-of-n-grams (accuracy: INLINEFORM2 ; F1: INLINEFORM3 )\" [1].",
+      "predicted_answer": "Yes. The document reports that their model \"significantly outperforms baselines such as a bag-of-n-grams (accuracy: INLINEFORM2 ; F1: INLINEFORM3 )\" .",
+      "bm25_hits": 2,
+      "vector_hits": 18,
+      "vector_score_min": 0.5770070552825928,
+      "vector_score_max": 0.646237850189209,
+      "retrieved_chunks": [
+        12,
+        7,
+        2,
+        4,
+        5,
+        1,
+        15,
+        0
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.11764705882352941,
+      "answer_type": "boolean",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.21143129200208932,
+      "rerank_s": null,
+      "prejudge_s": 2.712030235968996,
+      "generation_s": 0.5464345440268517,
+      "judging_s": 3.011975627974607,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1804.00982",
+      "question_id": "77bc886478925c8e9fb369b1ba5d05c42b3cd79a",
+      "question": "what is the architecture of their model?",
+      "references": [
+        {
+          "answer": "bidirectional LSTM",
+          "evidence": [
+            "We train a Bidirectional Encoding model BIBREF2 , which has achieved state-of-the-art results for Twitter stance detection on our dataset. The model encodes the entity using a bidirectional LSTM (BiLSTM), which is then used to initialize a BiLSTM that encodes the article and produces a prediction. To reduce the sequence length, we use the same context window that was presented to annotators for training the LSTM. We use pretrained GloVe embeddings BIBREF13 and tune hyperparameters on a validation set. The best model achieves a test accuracy of INLINEFORM0 and a macro-averaged test F1 score of INLINEFORM1 . It significantly outperforms baselines such as a bag-of-n-grams (accuracy: INLINEFORM2 ; F1: INLINEFORM3 )."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "a Bidirectional Encoding model BIBREF2",
+          "evidence": [
+            "We train a Bidirectional Encoding model BIBREF2 , which has achieved state-of-the-art results for Twitter stance detection on our dataset. The model encodes the entity using a bidirectional LSTM (BiLSTM), which is then used to initialize a BiLSTM that encodes the article and produces a prediction. To reduce the sequence length, we use the same context window that was presented to annotators for training the LSTM. We use pretrained GloVe embeddings BIBREF13 and tune hyperparameters on a validation set. The best model achieves a test accuracy of INLINEFORM0 and a macro-averaged test F1 score of INLINEFORM1 . It significantly outperforms baselines such as a bag-of-n-grams (accuracy: INLINEFORM2 ; F1: INLINEFORM3 )."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The model is a **Bidirectional Encoding model** that uses a bidirectional LSTM (BiLSTM) to encode the entity, which is then used to initialize a second BiLSTM that encodes the article and produces a prediction [1]. To reduce sequence length, the same context window presented to annotators is used for training the LSTM, and pretrained GloVe embeddings are used [1].",
+      "predicted_answer": "The model is a **Bidirectional Encoding model** that uses a bidirectional LSTM (BiLSTM) to encode the entity, which is then used to initialize a second BiLSTM that encodes the article and produces a prediction . To reduce sequence length, the same context window presented to annotators is used for training the LSTM, and pretrained GloVe embeddings are used .",
+      "bm25_hits": 3,
+      "vector_hits": 18,
+      "vector_score_min": 0.6000107526779175,
+      "vector_score_max": 0.7018336057662964,
+      "retrieved_chunks": [
+        12,
+        13,
+        3,
+        2,
+        0,
+        6,
+        11,
+        10
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.11538461538461539,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.21209548495244235,
+      "rerank_s": null,
+      "prejudge_s": 2.190697945014108,
+      "generation_s": 1.794740476005245,
+      "judging_s": 1.631572377984412,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1804.00982",
+      "question_id": "f15bc40960bd3f81bc791f43ab5c94c52378692d",
+      "question": "what dataset did they use for this tool?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1804.05306",
+      "question_id": "2a9c7243744b42f1e9fed9ff2ab17c6f156b1ba4",
+      "question": "What was the baseline?",
+      "references": [
+        {
+          "answer": "Model A, which was trained on LibriSpeech data with SAT, together with the language model also trained with LibriSpeech.",
+          "evidence": [
+            "Row(1) is for Model A in Fig. FIGREF5 taken as the baseline, which was trained on LibriSpeech data with SAT, together with the language model also trained with LibriSpeech. The extremely high WER (96.21%) indicated the wide mismatch between speech and song audio, and the high difficulties in transcribing song audio. This is taken as the baseline of this work. After going through the series of Alignments a, b, c, d and training the series of Models B, C, D, we finally obtained the best GMM-HMM model, Model E-4 in Model E with fMLLR on the fragment level, as explained in section SECREF3 and shown in Fig. FIGREF5 . As shown in row(2) of Table. TABREF14 , with the same LibriSpeech LM, Model E-4 reduced WER to 88.26%, and brought an absolute improvement of 7.95% (rows (2) vs. (1)), which shows the achievements by the series of GMM-HMM alone. When we replaced the LibriSpeech language model with Lyrics language model but with the same Model E-4, we obtained an WER of 80.40% or an absolute improvement of 7.86% (rows (3) vs. (2)). This shows the achievement by the Lyrics language model alone."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "a model trained on LibriSpeech data with SAT and a with a LM also trained with LibriSpeech",
+          "evidence": [
+            "Row(1) is for Model A in Fig. FIGREF5 taken as the baseline, which was trained on LibriSpeech data with SAT, together with the language model also trained with LibriSpeech. The extremely high WER (96.21%) indicated the wide mismatch between speech and song audio, and the high difficulties in transcribing song audio. This is taken as the baseline of this work. After going through the series of Alignments a, b, c, d and training the series of Models B, C, D, we finally obtained the best GMM-HMM model, Model E-4 in Model E with fMLLR on the fragment level, as explained in section SECREF3 and shown in Fig. FIGREF5 . As shown in row(2) of Table. TABREF14 , with the same LibriSpeech LM, Model E-4 reduced WER to 88.26%, and brought an absolute improvement of 7.95% (rows (2) vs. (1)), which shows the achievements by the series of GMM-HMM alone. When we replaced the LibriSpeech language model with Lyrics language model but with the same Model E-4, we obtained an WER of 80.40% or an absolute improvement of 7.86% (rows (3) vs. (2)). This shows the achievement by the Lyrics language model alone."
+          ],
+          "type": "abstractive"
+        }
+      ],
+      "response": "The baseline was **Model A**, which was trained on LibriSpeech data with SAT, together with a language model also trained on LibriSpeech [1]. It achieved an extremely high WER of **96.21%**, indicating a wide mismatch between speech and song audio and the high difficulty of transcribing song audio; this is taken as the baseline of the work [1].",
+      "predicted_answer": "The baseline was **Model A**, which was trained on LibriSpeech data with SAT, together with a language model also trained on LibriSpeech . It achieved an extremely high WER of **96.21%**, indicating a wide mismatch between speech and song audio and the high difficulty of transcribing song audio; this is taken as the baseline of the work .",
+      "bm25_hits": 2,
+      "vector_hits": 28,
+      "vector_score_min": 0.5512652397155762,
+      "vector_score_max": 0.7047151327133179,
+      "retrieved_chunks": [
+        20,
+        0,
+        21,
+        24,
+        7,
+        19,
+        6,
+        25
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.49230769230769234,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.3117930220323615,
+      "rerank_s": null,
+      "prejudge_s": 2.173839522001799,
+      "generation_s": 1.7541176240192726,
+      "judging_s": 1.610996693954803,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1804.05306",
+      "question_id": "f8f64da7172e72e684f0e024a19411b43629ff55",
+      "question": "How many songs were collected?",
+      "references": [
+        {
+          "answer": "110 pieces of music-removed version of commercial English popular songs",
+          "evidence": [
+            "To make our work easier and compatible to more available singing content, we collected 130 music-removed (or vocal-only) English songs from www.youtube.com so as to consider only the vocal line.The music-removing processes are conducted by the video owners, containing the original vocal recordings by the singers and vocal elements for remix purpose.",
+            "After initial test by speech recognition system trained with LibriSpeech BIBREF20 , we dropped 20 songs, with WERs exceeding 95%. The remaining 110 pieces of music-removed version of commercial English popular songs were produced by 15 male singers, 28 female singers and 19 groups. The term group means by more than one person. No any further preprocessing was performed on the data, so the data preserves many characteristics of the vocal extracted from commercial polyphonic music, such as harmony, scat, and silent parts. Some pieces also contain overlapping verses and residual background music, and some frequency components may be truncated. Below this database is called vocal data here."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "130 ",
+          "evidence": [
+            "To make our work easier and compatible to more available singing content, we collected 130 music-removed (or vocal-only) English songs from www.youtube.com so as to consider only the vocal line.The music-removing processes are conducted by the video owners, containing the original vocal recordings by the singers and vocal elements for remix purpose."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "130 music-removed (or vocal-only) English songs were collected from www.youtube.com [3].",
+      "predicted_answer": "130 music-removed (or vocal-only) English songs were collected from www.youtube.com .",
+      "bm25_hits": 20,
+      "vector_hits": 28,
+      "vector_score_min": 0.5965065956115723,
+      "vector_score_max": 0.7348222732543945,
+      "retrieved_chunks": [
+        8,
+        6,
+        7,
+        11,
+        0,
+        4,
+        1,
+        27
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        3
+      ],
+      "answer_f1": 0.3,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.18797323998296633,
+      "rerank_s": null,
+      "prejudge_s": 2.2429260539938696,
+      "generation_s": 0.3981895270408131,
+      "judging_s": 1.1012421500054188,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1805.11598",
+      "question_id": "475e698a801be0ad9e4f74756d1fff4fe0728009",
+      "question": "what resources are combined to build the labeler?",
+      "references": [
+        {
+          "answer": "multilingual word vectors, training data across languages",
+          "evidence": [
+            "In this work, we have explored a straightforward method for polyglot training in SRL: use multilingual word vectors and combine training data across languages. This allows sharing without crosslingual alignments, shared annotation, or parallel data. We demonstrate that a polyglot model can outperform a monolingual one for semantic analysis, particularly for languages with less data."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "a sequence of pretrained embeddings for the surface forms of the sentence tokens, annotations for a single predicate, CoNLL 2009 dataset",
+          "evidence": [
+            "The input to the model consists of a sequence of pretrained embeddings for the surface forms of the sentence tokens. Each token embedding is also concatenated with a vector indicating whether the word is a predicate or not. Since the part-of-speech tags in the CoNLL 2009 dataset are based on a different tagset for each language, we do not use these. Each training instance consists of the annotations for a single predicate. These representations are then passed through a deep, multi-layer bidirectional LSTM BIBREF4 , BIBREF5 with highway connections BIBREF6 ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "multilingual word vectors, concatenate a language ID vector to each multilingual word embedding",
+          "evidence": [
+            "The basis of our polyglot training is the use of pretrained multilingual word vectors, which allow representing entirely distinct vocabularies (such as the tokens of different languages) in a shared representation space, allowing crosslingual learning BIBREF9 . We produced multilingual embeddings from the monolingual embeddings using the method of ammar2016massively: for each non-English language, a small crosslingual dictionary and canonical correlation analysis was used to find a transformation of the non-English vectors into the English vector space BIBREF10 .",
+            "In the second variant, we concatenate a language ID vector to each multilingual word embedding and predicate indicator feature in the input representation. This vector is randomly initialized and updated in training. These additional parameters provide a small degree of language-specificity in the model, while still sharing most parameters."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The labeler is built by combining resources from a **pair of languages** in the CoNLL 2009 shared task [1].",
+      "predicted_answer": "The labeler is built by combining resources from a **pair of languages** in the CoNLL 2009 shared task .",
+      "bm25_hits": 20,
+      "vector_hits": 22,
+      "vector_score_min": 0.5784902572631836,
+      "vector_score_max": 0.6946614980697632,
+      "retrieved_chunks": [
+        0,
+        9,
+        2,
+        21,
+        8,
+        12,
+        20,
+        4
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.18750000000000003,
+      "answer_type": "extractive",
+      "evidence_f1": 0.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.44242621801095083,
+      "rerank_s": null,
+      "prejudge_s": 1.7300848540035076,
+      "generation_s": 0.406359828019049,
+      "judging_s": 0.96546977001708,
+      "judge_correct": false,
+      "judge_output": "INCORRECT"
+    },
+    {
+      "paper_id": "1805.11598",
+      "question_id": "8246d1eee1482555d075127ac84f2e1d0781a446",
+      "question": "what datasets were used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1805.11598",
+      "question_id": "1ec0be667a6594eb2e07c50258b120e693e040a8",
+      "question": "what is the monolingual baseline?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1805.11598",
+      "question_id": "e3bafa432cd3e1225170ff04de2fdf1ede38c6ef",
+      "question": "what languages are explored in this paper?",
+      "references": [
+        {
+          "answer": "Catalan, Chinese, Czech, English, German, Japanese, Spanish",
+          "evidence": [
+            "We evaluate our system on the semantic role labeling portion of the CoNLL-2009 shared task BIBREF0 , on all seven languages, namely Catalan, Chinese, Czech, English, German, Japanese and Spanish. For each language, certain tokens in each sentence in the dataset are marked as predicates. Each predicate takes as arguments other words in the same sentence, their relationship marked by labeled dependency arcs. Sentences may contain no predicates."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Catalan, Chinese, Czech, English, German, Japanese, Spanish",
+          "evidence": [
+            "We evaluate our system on the semantic role labeling portion of the CoNLL-2009 shared task BIBREF0 , on all seven languages, namely Catalan, Chinese, Czech, English, German, Japanese and Spanish. For each language, certain tokens in each sentence in the dataset are marked as predicates. Each predicate takes as arguments other words in the same sentence, their relationship marked by labeled dependency arcs. Sentences may contain no predicates."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": " Catalan, Chinese, Czech, English, German, Japanese and Spanish",
+          "evidence": [
+            "We evaluate our system on the semantic role labeling portion of the CoNLL-2009 shared task BIBREF0 , on all seven languages, namely Catalan, Chinese, Czech, English, German, Japanese and Spanish. For each language, certain tokens in each sentence in the dataset are marked as predicates. Each predicate takes as arguments other words in the same sentence, their relationship marked by labeled dependency arcs. Sentences may contain no predicates."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The paper evaluates on all seven languages of the CoNLL-2009 shared task: Catalan, Chinese, Czech, English, German, Japanese and Spanish [3].",
+      "predicted_answer": "The paper evaluates on all seven languages of the CoNLL-2009 shared task: Catalan, Chinese, Czech, English, German, Japanese and Spanish .",
+      "bm25_hits": 19,
+      "vector_hits": 22,
+      "vector_score_min": 0.6416146755218506,
+      "vector_score_max": 0.7334263324737549,
+      "retrieved_chunks": [
+        2,
+        19,
+        4,
+        16,
+        14,
+        20,
+        0,
+        1
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        3
+      ],
+      "answer_f1": 0.6153846153846153,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2079288630047813,
+      "rerank_s": null,
+      "prejudge_s": 1.9459411929710768,
+      "generation_s": 1.535079538996797,
+      "judging_s": 1.35312323999824,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1808.04122",
+      "question_id": "1acfbdc34669cf19a778aceca941543f11b9a861",
+      "question": "What size filters do they use in the convolution layer?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1808.04122",
+      "question_id": "864295caceb1e15144c1746ab5671d085d7ff7a1",
+      "question": "By how much do they outperform state-of-the-art models on knowledge graph completion?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1808.09180",
+      "question_id": "e4f2d59030b17867449cf5456118ab722296bebd",
+      "question": "Who made the stated claim (that \"this is because character-level models learn morphology\")?",
+      "references": [
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Chung et al. (2016)",
+          "evidence": [
+            "The effectiveness of character-level models in morphologically-rich languages has raised a question and indeed debate about explicit modeling of morphology in NLP. BIBREF0 propose that “prior information regarding morphology ... among others, should be incorporated” into character-level models, while BIBREF6 counter that it is “unnecessary to consider these prior information” when modeling characters. Whether we need to explicitly model morphology is a question whose answer has a real cost: as ballesteros-dyer-smith:2015:EMNLP note, morphological annotation is expensive, and this expense could be reinvested elsewhere if the predictive aspects of morphology are learnable from strings."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        }
+      ],
+      "response": "There isn't enough content in the document to answer this question.",
+      "predicted_answer": "Unanswerable",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.724271297454834,
+      "vector_score_max": 0.8118240833282471,
+      "retrieved_chunks": [
+        0,
+        3,
+        13,
+        2,
+        25,
+        35,
+        21,
+        15
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [],
+      "answer_f1": 1.0,
+      "answer_type": "none",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": false,
+      "prejudge_verdict": "none",
+      "gold_unanswerable": true,
+      "retrieval_s": 0.6750979679636657,
+      "rerank_s": null,
+      "prejudge_s": 1.4025639910250902,
+      "generation_s": null,
+      "judging_s": 0.7667420079815201,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1808.09180",
+      "question_id": "e664b58ea034a638e7142f8a393a88aadd1e215e",
+      "question": "Which languages do they use?",
+      "references": [
+        {
+          "answer": "Finnish, Turkish, Czech, English, German, Hindi, Portuguese, Russian, Spanish, Urdu, Arabic, and Hebrew",
+          "evidence": [],
+          "type": "abstractive"
+        },
+        {
+          "answer": "Finnish, Turkish, Czech, English, German, Hindi, Portuguese, Russian, Spanish, Urdu, Arabic, and Hebrew",
+          "evidence": [
+            "We experiment on twelve languages with varying morphological typologies (Table 1 ) in the Universal Dependencies (UD) treebanks version 2.0 BIBREF14 . Note that while Arabic and Hebrew follow a root & pattern typology, their datasets are unvocalized, which might reduce the observed effects of this typology. Following common practice, we remove language-specific dependency relations and multiword token annotations. We use gold sentence segmentation, tokenization, universal POS (UPOS), and morphological (XFEATS) annotations provided in UD."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "Finnish, Turkish, Czech, English, German, Hindi, Portuguese, Russian, Spanish, Urdu, Arabic, Hebrew",
+          "evidence": [
+            "We experiment on twelve languages with varying morphological typologies (Table 1 ) in the Universal Dependencies (UD) treebanks version 2.0 BIBREF14 . Note that while Arabic and Hebrew follow a root & pattern typology, their datasets are unvocalized, which might reduce the observed effects of this typology. Following common practice, we remove language-specific dependency relations and multiword token annotations. We use gold sentence segmentation, tokenization, universal POS (UPOS), and morphological (XFEATS) annotations provided in UD."
+          ],
+          "type": "abstractive"
+        }
+      ],
+      "response": "They experiment on **twelve languages** with varying morphological typologies, using the Universal Dependencies (UD) treebanks version 2.0 [2].\n\nThe document also names several specific languages in the analysis:\n- **Arabic** and **Hebrew** (root & pattern typology, unvocalized datasets) [2]\n- **Hindi** and **Urdu** (where char-lstm and word model results are identical) [5]\n- **Turkish** (least training data) [7]\n- **Finnish, Czech, German, and Russian** (where the oracle strongly outperforms the best character-level model) [7]\n- **Czech, German, and Russian** (fusional languages analyzed in detail) [6][8]",
+      "predicted_answer": "They experiment on **twelve languages** with varying morphological typologies, using the Universal Dependencies (UD) treebanks version 2.0 .\n\nThe document also names several specific languages in the analysis:\n- **Arabic** and **Hebrew** (root & pattern typology, unvocalized datasets) \n- **Hindi** and **Urdu** (where char-lstm and word model results are identical) \n- **Turkish** (least training data) \n- **Finnish, Czech, German, and Russian** (where the oracle strongly outperforms the best character-level model) \n- **Czech, German, and Russian** (fusional languages analyzed in detail) ",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6166089773178101,
+      "vector_score_max": 0.68359375,
+      "retrieved_chunks": [
+        1,
+        10,
+        2,
+        3,
+        12,
+        27,
+        17,
+        39
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        2,
+        5,
+        6,
+        7,
+        8
+      ],
+      "answer_f1": 0.2469135802469136,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.16666666666666669,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.260351189004723,
+      "rerank_s": null,
+      "prejudge_s": 1.4264456320088357,
+      "generation_s": 3.505198837025091,
+      "judging_s": 0.2890882450155914,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1808.09180",
+      "question_id": "c4b621f573bbb411bdaa84a7562c9c4795a7eb3a",
+      "question": "Do the character-level models perform better than models with access to morphological analyses only?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1808.09180",
+      "question_id": "3ccc4ccebc3b0de5546b1208e8094a839fd4a4ab",
+      "question": "What is case syncretism?",
+      "references": [
+        {
+          "answer": "A situation in which a noun's syntactic function is ambiguous without context.",
+          "evidence": [
+            "Our summary finding is that character-level models lag the oracle in nearly all languages (§ \"Experiments\" ). The difference is small, but suggests that there is value in modeling morphology. When we tease apart the results by part of speech and dependency type, we trace the difference back to the character-level model's inability to disambiguate words even when encoded with arbitrary context (§ \"Analysis\" ). Specifically, it struggles with case syncretism, in which noun case—and thus syntactic function—is ambiguous. We show that the oracle relies on morphological case, and that a character-level model provided only with morphological case rivals the oracle, even when case is provided by another predictive model (§ \"Characters and case syncretism\" ). Finally, we show that the crucial morphological features vary by language (§ \"Understanding head selection\" )."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "The phenomena where words that have the same form express different morphological cases",
+          "evidence": [
+            "So far, we've seen that for our three fusional languages—German, Czech, and Russian—the oracle strongly outperforms a character model on nouns with ambiguous morphological analyses, particularly on core dependencies: nominal subjects, objects and indirect objects. Since the nominative, accusative, and dative morphological cases are strongly (though not perfectly) correlated with these dependencies, it is easy to see why the morphologically-aware oracle is able to predict them so well. We hypothesized that these cases are more challenging for the character model because these languages feature a high degree of syncretism—functionally distinct words that have the same form—and in particular case syncretism. For example, referring back to examples ( UID28 ) and ( UID28 ), the character model must disambiguate pisˊmo from its context, whereas the oracle can directly disambiguate it from a feature of the word itself."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "when noun case is ambiguous",
+          "evidence": [
+            "Our summary finding is that character-level models lag the oracle in nearly all languages (§ \"Experiments\" ). The difference is small, but suggests that there is value in modeling morphology. When we tease apart the results by part of speech and dependency type, we trace the difference back to the character-level model's inability to disambiguate words even when encoded with arbitrary context (§ \"Analysis\" ). Specifically, it struggles with case syncretism, in which noun case—and thus syntactic function—is ambiguous. We show that the oracle relies on morphological case, and that a character-level model provided only with morphological case rivals the oracle, even when case is provided by another predictive model (§ \"Characters and case syncretism\" ). Finally, we show that the crucial morphological features vary by language (§ \"Understanding head selection\" )."
+          ],
+          "type": "abstractive"
+        }
+      ],
+      "response": "Based on the document, case syncretism is a phenomenon in which noun case—and thus syntactic function—is ambiguous [2]. More generally, the document describes syncretism as involving \"functionally distinct words that have the same form,\" and case syncretism specifically as a form of this in which case distinctions are not reflected in the word's form [1].",
+      "predicted_answer": "Based on the document, case syncretism is a phenomenon in which noun case—and thus syntactic function—is ambiguous . More generally, the document describes syncretism as involving \"functionally distinct words that have the same form,\" and case syncretism specifically as a form of this in which case distinctions are not reflected in the word's form .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.561535120010376,
+      "vector_score_max": 0.7220699787139893,
+      "retrieved_chunks": [
+        21,
+        4,
+        22,
+        16,
+        20,
+        36,
+        0,
+        19
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0.17543859649122806,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.21701116603799164,
+      "rerank_s": null,
+      "prejudge_s": 1.7093753360095434,
+      "generation_s": 0.5999918750021607,
+      "judging_s": 0.25988880096701905,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1808.10059",
+      "question_id": "d20fd6330cb9d03734e2632166d6c8f780359a94",
+      "question": "How large the improvement margin is?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1809.06083",
+      "question_id": "80d6b9123a10358f57f259b8996a792cac08cb88",
+      "question": "Did they build a dataset?",
+      "references": [
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We collected datasets of news articles in English and German language from the news agency Reuters (Table TABREF13 ). After a data cleaning step, which was deleting meta information like author and editor name from the article, title, body and date were stored in a local database and imported to a Pandas data frame BIBREF12 . The English corpus has a dictionary of length 106.848, the German version has a dictionary of length 163.788."
+          ],
+          "type": "boolean"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "We collected datasets of news articles in English and German language from the news agency Reuters (Table TABREF13 ). After a data cleaning step, which was deleting meta information like author and editor name from the article, title, body and date were stored in a local database and imported to a Pandas data frame BIBREF12 . The English corpus has a dictionary of length 106.848, the German version has a dictionary of length 163.788."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "Yes. The authors collected datasets of English and German news articles from the news agency Reuters, and after cleaning (removing meta information such as author and editor names), the title, body, and date were stored in a local database and imported into a Pandas data frame [2]. The English corpus has a dictionary of length 106,848 and the German version 163,788 [2].",
+      "predicted_answer": "Yes. The authors collected datasets of English and German news articles from the news agency Reuters, and after cleaning (removing meta information such as author and editor names), the title, body, and date were stored in a local database and imported into a Pandas data frame . The English corpus has a dictionary of length 106,848 and the German version 163,788 .",
+      "bm25_hits": 5,
+      "vector_hits": 14,
+      "vector_score_min": 0.6072831153869629,
+      "vector_score_max": 0.725684642791748,
+      "retrieved_chunks": [
+        9,
+        8,
+        10,
+        5,
+        6,
+        0,
+        1,
+        4
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        2
+      ],
+      "answer_f1": 0.03773584905660378,
+      "answer_type": "boolean",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2283664490096271,
+      "rerank_s": null,
+      "prejudge_s": 1.7262630959739909,
+      "generation_s": 0.5323433859739453,
+      "judging_s": 0.3925745990127325,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1809.06083",
+      "question_id": "5181aefb8a7272b4c83a1f7cb61f864ead6a1f1f",
+      "question": "Do they compare to other methods?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1809.06083",
+      "question_id": "f010f9aa4ba1b4360a78c00aa0747d7730a61805",
+      "question": "How large is the dataset?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1812.05813",
+      "question_id": "e500948fa01c74e5cb3e6774f66aaa9ad4b3e435",
+      "question": "What was the inter-annotator agreement between the expert annotators?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1812.05813",
+      "question_id": "b8b79a6123716cb9fabf751b31dff424235a2ee2",
+      "question": "How were missing hypotheses discovered?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1901.02780",
+      "question_id": "89373db8ced1fe420eae0093b2736f06b565616e",
+      "question": "Did the authors collect new data for evaluation?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "8b8adb1d5a1824c8995b3eba668745c44f61c9c6",
+      "question": "Is this analysis performed only on English data?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "88d1bd21b53b8be4f9d3cb26ecc3cbcacffcd63e",
+      "question": "Do they authors offer any hypothesis for why the parameters of Zipf's law and Heaps' law differ on Twitter?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "74cef0205e0f31d0ab28d0e4d96c1e8ef62d4cce",
+      "question": "What explanation do the authors offer for the super or sublinear urban scaling?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1903.04329",
+      "question_id": "200c37060d037dee33f3b7c8b1a2aaa58376566e",
+      "question": "Do the authors give examples of the core vocabulary which follows the scaling relationship of the bulk text?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1905.05644",
+      "question_id": "b948bb86855b2c0bfc8fad88ff1e29cd94bb6ada",
+      "question": "what are the evaluation metrics used?",
+      "references": [
+        {
+          "answer": "BLEU-4, slot error rate",
+          "evidence": [
+            "As in earlier NLG researches, we use the BLEU-4 score BIBREF26 and the slot error rate (ERR) as evaluation metrics. ERR is computed by the ratio of the sum of the number of missing and redundant slots in a generated utterance divided by the total number of slots in the DA. We randomly sampled target low-resource task five times for each experiment and reported the average score."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "informativeness , naturalness ",
+          "evidence": [
+            "Metrics: Given a DA and a reference utterance in a low-resource target domain with adaptation size 500, two responses generated by Meta-NLG and MTL-NLG were presented to three human annotators to score each of them in terms of informativeness and naturalness (rating out of 3), and also indicate their pairwise preferences (Win-Tie-Lose) on Meta-NLG against MTL-NLG. Informativeness is defined as whether the generated utterance captures all the information, including multiple slots and probably multiple DA types, specified in the DA. Naturalness measures whether the utterance is plausibly generated by a human."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "BLEU-4, slot error rate, informativeness, naturalness",
+          "evidence": [
+            "As in earlier NLG researches, we use the BLEU-4 score BIBREF26 and the slot error rate (ERR) as evaluation metrics. ERR is computed by the ratio of the sum of the number of missing and redundant slots in a generated utterance divided by the total number of slots in the DA. We randomly sampled target low-resource task five times for each experiment and reported the average score.",
+            "Metrics: Given a DA and a reference utterance in a low-resource target domain with adaptation size 500, two responses generated by Meta-NLG and MTL-NLG were presented to three human annotators to score each of them in terms of informativeness and naturalness (rating out of 3), and also indicate their pairwise preferences (Win-Tie-Lose) on Meta-NLG against MTL-NLG. Informativeness is defined as whether the generated utterance captures all the information, including multiple slots and probably multiple DA types, specified in the DA. Naturalness measures whether the utterance is plausibly generated by a human."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The evaluation metrics used are the **BLEU-4 score** and the **slot error rate (ERR)** [1]. ERR is computed as the ratio of the sum of the number of missing and redundant slots in a generated utterance divided by the total number of slots in the DA [1].\n\nIn addition, a **manual evaluation** was performed using **informativeness** and **naturalness** (each rated out of 3), as well as **pairwise preferences (Win-Tie-Lose)** [3].",
+      "predicted_answer": "The evaluation metrics used are the **BLEU-4 score** and the **slot error rate (ERR)** . ERR is computed as the ratio of the sum of the number of missing and redundant slots in a generated utterance divided by the total number of slots in the DA .\n\nIn addition, a **manual evaluation** was performed using **informativeness** and **naturalness** (each rated out of 3), as well as **pairwise preferences (Win-Tie-Lose)** .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6029541492462158,
+      "vector_score_max": 0.7799654006958008,
+      "retrieved_chunks": [
+        25,
+        34,
+        33,
+        26,
+        35,
+        27,
+        24,
+        22
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        3
+      ],
+      "answer_f1": 0.1904761904761905,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.25740870099980384,
+      "rerank_s": null,
+      "prejudge_s": 1.6868059519911185,
+      "generation_s": 1.938229147985112,
+      "judging_s": 0.3233366839704104,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1905.05644",
+      "question_id": "157284acedf13377cbc6d58c8f3648d3a62f5db5",
+      "question": "what other training procedures were explored?",
+      "references": [
+        {
+          "answer": "Scratch-NLG, MTL-NLG, Zero-NLG, Supervised-NLG",
+          "evidence": [
+            "We included different model settings as baseline:",
+            "Scratch-NLG: Train INLINEFORM0 with only low-resource target task data, ignoring all high-resource source task data.",
+            "MTL-NLG: Train INLINEFORM0 using a multi-task learning paradigm with source task data, then fine-tune on the low-resource target task.",
+            "Zero-NLG: Train INLINEFORM0 using multi-task learning (MTL) with source task data, then directly test on a target task without a fine-tuning step. This corresponds to a zero-shot learning scenario.",
+            "Supervised-NLG: Train INLINEFORM0 using MTL with full access to high-resource data from both source and target tasks. Its performance serves an upper bound using multi-task learning without the low-resource restriction."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Scratch-NLG, MTL-NLG, Zero-NLG, Supervised-NLG",
+          "evidence": [
+            "Scratch-NLG: Train INLINEFORM0 with only low-resource target task data, ignoring all high-resource source task data.",
+            "MTL-NLG: Train INLINEFORM0 using a multi-task learning paradigm with source task data, then fine-tune on the low-resource target task.",
+            "Zero-NLG: Train INLINEFORM0 using multi-task learning (MTL) with source task data, then directly test on a target task without a fine-tuning step. This corresponds to a zero-shot learning scenario.",
+            "Supervised-NLG: Train INLINEFORM0 using MTL with full access to high-resource data from both source and target tasks. Its performance serves an upper bound using multi-task learning without the low-resource restriction."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the other training procedures explored as baselines are:\n\n- **Scratch-NLG**: trains the base model with only low-resource target task data, ignoring all high-resource source task data [3].\n- **MTL-NLG**: trains the base model using a multi-task learning paradigm with source task data, then fine-tunes on the low-resource target task [3].\n- **Zero-NLG**: trains the base model using multi-task learning (MTL) with source task data, then directly tests on a target task without a fine-tuning step, corresponding to a zero-shot learning scenario [3][5].\n- **Supervised-NLG**: trains the base model using MTL with full access to high-resource data from both source and target tasks, serving as an upper bound using multi-task learning without the low-resource restriction [5].\n\nThe proposed method, **Meta-NLG**, uses Algorithm 1 to train the base model on source task data, then fine-tunes on the low-resource target task [1][5].",
+      "predicted_answer": "Based on the document, the other training procedures explored as baselines are:\n\n- **Scratch-NLG**: trains the base model with only low-resource target task data, ignoring all high-resource source task data .\n- **MTL-NLG**: trains the base model using a multi-task learning paradigm with source task data, then fine-tunes on the low-resource target task .\n- **Zero-NLG**: trains the base model using multi-task learning (MTL) with source task data, then directly tests on a target task without a fine-tuning step, corresponding to a zero-shot learning scenario .\n- **Supervised-NLG**: trains the base model using MTL with full access to high-resource data from both source and target tasks, serving as an upper bound using multi-task learning without the low-resource restriction .\n\nThe proposed method, **Meta-NLG**, uses Algorithm 1 to train the base model on source task data, then fine-tunes on the low-resource target task .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6215982437133789,
+      "vector_score_max": 0.6897470951080322,
+      "retrieved_chunks": [
+        24,
+        1,
+        22,
+        6,
+        23,
+        25,
+        30,
+        37
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        3,
+        5
+      ],
+      "answer_f1": 0.06557377049180328,
+      "answer_type": "extractive",
+      "evidence_f1": 0.7692307692307693,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.1541153709986247,
+      "rerank_s": null,
+      "prejudge_s": 1.6888057950418442,
+      "generation_s": 2.8927115249680355,
+      "judging_s": 0.9310755399637856,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "3e6b6820e7843209495b4f9a72177573afaa4bc3",
+      "question": "What conclusions do the authors draw about the aspects and mechanisms of personal recovery in bipolar disorder?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "a926d71e6e58066d279d9f7dc3210cd43f410164",
+      "question": "What languages were included in this multilingual population?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "3d547a7dda18a2dd5dc89f12d25d7fe782d66450",
+      "question": "What computational linguistic methods were used for the analysis?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "4a32adb0d54da90434d5bd1c66cc03a7956d12a0",
+      "question": "Was permission sought from the bipolar patients to use this data?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.01010",
+      "question_id": "c17ece1dad42d92c78fca2e3d8afa9a20ff19598",
+      "question": "How are the individuals with bipolar disorder identified?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.05506",
+      "question_id": "00db191facf903cef18fb1727d1cab638c277e0a",
+      "question": "What sized character n-grams do they use?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.05506",
+      "question_id": "1edfe390828f02a2db9a88454421c7f3d4cdd611",
+      "question": "Do they experiment with fine-tuning their embeddings?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.05506",
+      "question_id": "3dad6b792044018bb968ac0d0fd4628653f9e4b7",
+      "question": "Which word embeddings do they compare against?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.05506",
+      "question_id": "a28c73a6a8c46a43a1eec2b42b542dd7fde1e30e",
+      "question": "Which dataset do they evaluate on for headline generation?",
+      "references": [
+        {
+          "answer": "English Gigaword corpus",
+          "evidence": [
+            "For headline generation, we used sentence-headline pairs extracted from the annotated English Gigaword corpus BIBREF35 in the same manner as BIBREF2 . The training set contains about 3.8M sentence-headline pairs. For evaluation, we exclude the test set constructed by BIBREF2 because it contains some invalid instances, as reported in BIBREF33 . We instead used the test sets constructed by BIBREF33 and BIBREF34 ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "English Gigaword corpus BIBREF35",
+          "evidence": [
+            "For headline generation, we used sentence-headline pairs extracted from the annotated English Gigaword corpus BIBREF35 in the same manner as BIBREF2 . The training set contains about 3.8M sentence-headline pairs. For evaluation, we exclude the test set constructed by BIBREF2 because it contains some invalid instances, as reported in BIBREF33 . We instead used the test sets constructed by BIBREF33 and BIBREF34 ."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": " the annotated English Gigaword corpus",
+          "evidence": [
+            "For headline generation, we used sentence-headline pairs extracted from the annotated English Gigaword corpus BIBREF35 in the same manner as BIBREF2 . The training set contains about 3.8M sentence-headline pairs. For evaluation, we exclude the test set constructed by BIBREF2 because it contains some invalid instances, as reported in BIBREF33 . We instead used the test sets constructed by BIBREF33 and BIBREF34 ."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the passages, the document does not fully specify a single named dataset for headline generation evaluation, but it does provide the following:\n\n- For headline generation, they used sentence-headline pairs extracted from the annotated English Gigaword corpus [1].\n- The training set contains about 3.8M sentence-headline pairs [1].\n- For evaluation, they excluded the test set constructed by BIBREF2 (because it contains invalid instances) and instead used the test sets constructed by BIBREF33 and BIBREF34 [1].\n\nSo the source corpus is the annotated English Gigaword corpus [1], and the evaluation uses the test sets from BIBREF33 and BIBREF34 [1]. The document does not give the names of those test sets beyond these reference labels.",
+      "predicted_answer": "Based on the passages, the document does not fully specify a single named dataset for headline generation evaluation, but it does provide the following:\n\n- For headline generation, they used sentence-headline pairs extracted from the annotated English Gigaword corpus .\n- The training set contains about 3.8M sentence-headline pairs .\n- For evaluation, they excluded the test set constructed by BIBREF2 (because it contains invalid instances) and instead used the test sets constructed by BIBREF33 and BIBREF34 .\n\nSo the source corpus is the annotated English Gigaword corpus , and the evaluation uses the test sets from BIBREF33 and BIBREF34 . The document does not give the names of those test sets beyond these reference labels.",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.5512187480926514,
+      "vector_score_max": 0.7040008306503296,
+      "retrieved_chunks": [
+        16,
+        30,
+        5,
+        26,
+        29,
+        0,
+        28,
+        31
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.08163265306122448,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "partial",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.20933367998804897,
+      "rerank_s": null,
+      "prejudge_s": 1.6523157329647802,
+      "generation_s": 2.046527850034181,
+      "judging_s": 1.3125900140148588,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1906.05506",
+      "question_id": "5f1ffaa738fedd5b6668ec8b58a027ddea6867ce",
+      "question": "What results do their embeddings obtain on machine translation?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1906.05506",
+      "question_id": "8e26c471ca0ee1b9779da04c0b81918fd310d0f3",
+      "question": "How do they combine ordinary word embeddings and ones constructed from character n-grams?",
+      "references": [
+        {
+          "answer": "They use a sum of charn-MS-vec and the standard word embedding as an input of an RNN",
+          "evidence": [
+            "Figure FIGREF4 is the overview of the proposed method using character 3-gram embeddings (char3-MS-vec). As illustrated in this figure, our proposed method regards the sum of char3-MS-vec and the standard word embedding as an input of an RNN. In other words, let INLINEFORM0 be char INLINEFORM1 -MS-vec and we replace Equation with the following: DISPLAYFORM0"
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "Yes",
+          "evidence": [
+            "Based on their reports, in this paper, we propose a neural language model that utilizes character INLINEFORM0 -gram embeddings. Our proposed method encodes character INLINEFORM1 -gram embeddings to a word embedding with simplified Multi-dimensional Self-attention (MS) BIBREF11 . We refer to this constructed embedding as char INLINEFORM2 -MS-vec. The proposed method regards char INLINEFORM3 -MS-vec as an input in addition to a word embedding."
+          ],
+          "type": "boolean"
+        }
+      ],
+      "response": "They combine them by adding the two vectors together: the proposed method regards the sum of char n-MS-vec and the standard word embedding as an input of an RNN [1]. In the example given, the weighted sum of the character 3-gram embeddings is added to the word embedding of \"the\", and the resulting vector is input into an RNN to predict the next word [4]. The proposed method regards char n-MS-vec as an input in addition to a word embedding [2].",
+      "predicted_answer": "They combine them by adding the two vectors together: the proposed method regards the sum of char n-MS-vec and the standard word embedding as an input of an RNN . In the example given, the weighted sum of the character 3-gram embeddings is added to the word embedding of \"the\", and the resulting vector is input into an RNN to predict the next word . The proposed method regards char n-MS-vec as an input in addition to a word embedding .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6732161045074463,
+      "vector_score_max": 0.7929798364639282,
+      "retrieved_chunks": [
+        9,
+        4,
+        0,
+        12,
+        3,
+        22,
+        24,
+        10
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        2,
+        4
+      ],
+      "answer_f1": 0.29729729729729726,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.2857142857142857,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.23360873898491263,
+      "rerank_s": null,
+      "prejudge_s": 1.6091308999457397,
+      "generation_s": 1.686624153982848,
+      "judging_s": 0.9516341249691322,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1908.05925",
+      "question_id": "ff3e93b9b5f08775ebd1a7408d7f0ed2f6942dde",
+      "question": "How is the quality of the translation evaluated?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.05925",
+      "question_id": "59a3d4cdd1c3797962bf8d72c226c847e06e1d44",
+      "question": "What are the post-processing approaches applied to the output?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.05925",
+      "question_id": "49474a3047fa3f35e1bcd63991e6f15e012ac10b",
+      "question": "Is the MUSE alignment independently evaluated?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.05925",
+      "question_id": "63279ecb2ba4e51c1225e63b81cb021abc10d0d1",
+      "question": "How does byte-pair encoding work?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.06493",
+      "question_id": "2b32cf05c5e736f764ceecc08477e20ab9f2f5d7",
+      "question": "Does the paper report F1-scores with and without post-processing for the second task?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.06493",
+      "question_id": "014a3aa07686ee18a86c977bf0701db082e8480b",
+      "question": "What does post-processing do to the output?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.06493",
+      "question_id": "6e6d64e2cb7734599890fff3f10c18479756d540",
+      "question": "Do they test any neural architecture?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.06493",
+      "question_id": "8675d39f1647958faab7fa40cdaab207d4fe5a29",
+      "question": "Is the performance of a Naive Bayes approach evaluated?",
+      "references": [
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        },
+        {
+          "answer": "No",
+          "evidence": [],
+          "type": "boolean"
+        }
+      ],
+      "response": "There isn't enough content in the document to answer this question.",
+      "predicted_answer": "Unanswerable",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6190406084060669,
+      "vector_score_max": 0.6800704002380371,
+      "retrieved_chunks": [
+        18,
+        24,
+        25,
+        19,
+        5,
+        2,
+        16,
+        27
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [],
+      "answer_f1": 0,
+      "answer_type": "boolean",
+      "evidence_f1": 1.0,
+      "retrieval_recall": null,
+      "candidate_recall": null,
+      "prejudge_can_answer": false,
+      "prejudge_verdict": "none",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.19128015002934262,
+      "rerank_s": null,
+      "prejudge_s": 1.6864846480311826,
+      "generation_s": null,
+      "judging_s": 0.8949466039775871,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1908.07888",
+      "question_id": "8de0e1fdcca81b49615a6839076f8d42226bf1fe",
+      "question": "Which dataset do they use?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.07888",
+      "question_id": "909ecf675f874421eecc926a9f7486475aa1423c",
+      "question": "How do they use extracted intent to rescore?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.07888",
+      "question_id": "29477c8e28a703cacb716a272055b49e2439a695",
+      "question": "Do they evaluate by how much does ASR improve compared to state-of-the-art just by using their FST?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.10149",
+      "question_id": "d418bf6595b1b51a114f28ac8a6909c278838aeb",
+      "question": "What QA system was used in this work?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.10149",
+      "question_id": "6d6b0628d8a942c57d7af1447a563021be79bc64",
+      "question": "Is the re-ranking approach described in this paper a transductive learning technique?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.10149",
+      "question_id": "b21245212244ad7adf7d321420f2239a0f0fe56b",
+      "question": "How big is the test set used for evaluating the proposed re-ranking approach?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.11049",
+      "question_id": "ed44f7e698d6124cb86791841d02fc6f8b4d862a",
+      "question": "What is their definition of hate speech?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1908.11049",
+      "question_id": "d9e7633004ed1bc1ee45be58409bcc1fa6db59b2",
+      "question": "What languages does the new dataset contain?",
+      "references": [
+        {
+          "answer": "English, French, Arabic",
+          "evidence": [
+            "Our dataset is the first trilingual dataset comprising English, French, and Arabic tweets that encompasses various targets and hostility types. Additionally, to the best of our knowledge, this is the first work that examines how annotators react to hate speech comments."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "English, French, Arabic",
+          "evidence": [
+            "Our dataset is the first trilingual dataset comprising English, French, and Arabic tweets that encompasses various targets and hostility types. Additionally, to the best of our knowledge, this is the first work that examines how annotators react to hate speech comments."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "English, French, Arabic",
+          "evidence": [
+            "The final dataset is composed of a pilot corpus of 100 tweets per language, and comparable corpora of 5,647 English tweets, 4,014 French tweets, and 3,353 Arabic tweets. Each of the annotated aspects represents a classification task of its own, that could either be evaluated independently, or, as intended in this paper, tested on how it impacts other tasks. The different labels are designed to facilitate the study of the correlations between the explicitness of the tweet, the type of hostility it conveys, its target attribute, the group it dehumanizes, how different people react to it, and the performance of multitask learning on the five tasks. We assigned each tweet to five annotators, then applied majority voting to each of the labeling tasks. Given the numbers of annotators and labels in each annotation sub-task, we allowed multilabel annotations in the most subjective classification tasks, namely the hostility type and the annotator's sentiment labels, in order to keep the right human-like approximations. If there are two annotators agreeing on two labels respectively, we add both labels to the annotation."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "English, French, and Arabic ",
+          "evidence": [
+            "We use Amazon Mechanical Turk to label around 13,000 potentially derogatory tweets in English, French, and Arabic based on the above mentioned aspects and, regard each aspect as a prediction task. Since in natural language processing, there is a peculiar interest in multitask learning, where different tasks can be used to help each other BIBREF7, BIBREF8, BIBREF9, we use a unified model to handle the annotated data in all three languages and five tasks. We adopt BIBREF8 as a learning algorithm adapted to loosely related tasks such as our five annotated aspects and, use the Babylon cross-lingual embeddings BIBREF10 to align the three languages. We compare the multilingual multitask learning settings with monolingual multitask, multilingual single-task, and monolingual single-task learning settings respectively. Then, we report the performance results of the different settings and discuss how each task affects the remaining ones. We release our dataset and code to the community to extend research work on multilingual hate speech detection and classification."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The new dataset contains tweets in **English, French, and Arabic** [3].",
+      "predicted_answer": "The new dataset contains tweets in **English, French, and Arabic** .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6431729793548584,
+      "vector_score_max": 0.7239680290222168,
+      "retrieved_chunks": [
+        0,
+        11,
+        5,
+        20,
+        17,
+        31,
+        28,
+        16
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        3
+      ],
+      "answer_f1": 0.6153846153846153,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2711103630135767,
+      "rerank_s": null,
+      "prejudge_s": 1.7232945440337062,
+      "generation_s": 0.5099681710125878,
+      "judging_s": 0.6790392930270173,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1908.11049",
+      "question_id": "c58ef13abe5fa91a761362ca962d7290312c74e4",
+      "question": "What aspects are considered?",
+      "references": [
+        {
+          "answer": " (a) whether the text is direct or indirect; (b) if it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal; (c) the attribute based on which it discriminates against an individual or a group of people; (d) the name of this group; and (e) how the annotators feel about its content within a range of negative to neutral sentiments",
+          "evidence": [
+            "Treating hate speech classification as a binary task may not be enough to inspect the motivation and the behavior of the users promoting it and, how people would react to it. For instance, the hateful tweets presented in Figure FIGREF5 show toxicity directed towards different targets, with or without using slurs, and generating several types of reactions. We believe that, in order to balance between truth and subjectivity, there are at least five important aspects in hate speech analysis. Hence, our annotations indicate (a) whether the text is direct or indirect; (b) if it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal; (c) the attribute based on which it discriminates against an individual or a group of people; (d) the name of this group; and (e) how the annotators feel about its content within a range of negative to neutral sentiments. To the best of our knowledge there are no other hate speech datasets that attempt to capture fear out of ignorance in hateful tweets or examine how people react to hate speech. We claim that our multi-aspect annotation schema would provide a valuable insight into several linguistic and cultural differences and bias in hate speech."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "whether the text is direct or indirect, if it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal, the attribute based on which it discriminates against an individual or a group of people, the name of this group,  how the annotators feel about its content within a range of negative to neutral sentiments",
+          "evidence": [
+            "Treating hate speech classification as a binary task may not be enough to inspect the motivation and the behavior of the users promoting it and, how people would react to it. For instance, the hateful tweets presented in Figure FIGREF5 show toxicity directed towards different targets, with or without using slurs, and generating several types of reactions. We believe that, in order to balance between truth and subjectivity, there are at least five important aspects in hate speech analysis. Hence, our annotations indicate (a) whether the text is direct or indirect; (b) if it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal; (c) the attribute based on which it discriminates against an individual or a group of people; (d) the name of this group; and (e) how the annotators feel about its content within a range of negative to neutral sentiments. To the best of our knowledge there are no other hate speech datasets that attempt to capture fear out of ignorance in hateful tweets or examine how people react to hate speech. We claim that our multi-aspect annotation schema would provide a valuable insight into several linguistic and cultural differences and bias in hate speech."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "(a) whether the text is direct or indirect, (b) if it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal, (c) the attribute based on which it discriminates against an individual or a group of people, (d) the name of this group, (e) how the annotators feel about its content within a range of negative to neutral sentiments",
+          "evidence": [
+            "Treating hate speech classification as a binary task may not be enough to inspect the motivation and the behavior of the users promoting it and, how people would react to it. For instance, the hateful tweets presented in Figure FIGREF5 show toxicity directed towards different targets, with or without using slurs, and generating several types of reactions. We believe that, in order to balance between truth and subjectivity, there are at least five important aspects in hate speech analysis. Hence, our annotations indicate (a) whether the text is direct or indirect; (b) if it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal; (c) the attribute based on which it discriminates against an individual or a group of people; (d) the name of this group; and (e) how the annotators feel about its content within a range of negative to neutral sentiments. To the best of our knowledge there are no other hate speech datasets that attempt to capture fear out of ignorance in hateful tweets or examine how people react to hate speech. We claim that our multi-aspect annotation schema would provide a valuable insight into several linguistic and cultural differences and bias in hate speech."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Directness, Hostility, Target group, Target, Sentiment of the annotator",
+          "evidence": [
+            "We present the labelset the annotators refer to, and statistics of our annotated data in the following.",
+            "Dataset ::: Final Dataset ::: Directness label",
+            "Annotators determine the explicitness of the tweet by labeling it as direct or indirect speech. This should be based on whether the target is explicitly named, or less easily discernible, especially if the tweet contains humor, metaphor, or figurative speech. Table TABREF20 shows that even when partly using equivalent keywords to search for candidate tweets, there are still significant differences in the resulting data.",
+            "Dataset ::: Final Dataset ::: Hostility type",
+            "To identify the hostility type of the tweet, we stick to the following conventions: (1) if the tweet sounds dangerous, it should be labeled as abusive; (2) according to the degree to which it spreads hate and the tone its author uses, it can be hateful, offensive or disrespectful; (3) if the tweet expresses or spreads fear out of ignorance against a group of individuals, it should be labeled as fearful; (4) otherwise it should be annotated as normal. We define this task to be multilabel. Table TABREF20 shows that hostility types are relatively consistent across different languages and offensive is the most frequent label.",
+            "Dataset ::: Final Dataset ::: Target attribute",
+            "After annotating the pilot dataset, we noticed common misconceptions regarding race, ethnicity, and nationality, therefore we merged these attributes into one label origin. Then, we asked the annotators to determine whether the tweet insults or discriminates against people based on their (1) origin, (2) religious affiliation, (3) gender, (4) sexual orientation, (5) special needs or (6) other. Table TABREF20 shows there are fewer tweets targeting disability in Arabic compared to English and French and no tweets insulting people based on their sexual orientation which may be due to the fact that the labels of gender, gender identity, and sexual orientation use almost the same wording. On the other hand, French contains a small number of tweets targeting people based on their gender in comparison to English and Arabic. We have observed significant differences in terms of target attributes in the three languages. More data may help us examine the problems affecting targets of different linguistic backgrounds.",
+            "Dataset ::: Final Dataset ::: Target group",
+            "We determined 16 common target groups tagged by the annotators after the first annotation step. The annotators had to decide on whether the tweet is aimed at women, people of African descent, Hispanics, gay people, Asians, Arabs, immigrants in general, refugees; people of different religious affiliations such as Hindu, Christian, Jewish people, and Muslims; or from political ideologies socialists, and others. We also provided the annotators with a category to cover hate directed towards one individual, which cannot be generalized. In case the tweet targets more than one group of people, the annotators should choose the group which would be the most affected by it according to them. Table TABREF10 shows the counts of the five categories out of 16 that commonly occur in the three languages. In fact, most of the tweets target individuals or fall into the “other” category. In the latter case, they may target people with different political views such as liberals or conservatives in English and French, or specific ethnic groups such as Kurdish people in Arabic. English tweets tend to have more tweets targeting people with special needs, due to common language-specific demeaning terms used in conversations where people insult one another. Arabic tweets contain more hateful comments towards women for the same reason. On the other hand, the French corpus contains more tweets that are offensive towards African people, due to hateful comments generated by debates about immigrants.",
+            "Dataset ::: Final Dataset ::: Sentiment of the annotator",
+            "We claim that the choice of a suitable emotion representation model is key to this sub-task, given the subjective nature and social ground of the annotator's sentiment analysis. After collecting the annotation results of the pilot dataset regarding how people feel about the tweets, and observing the added categories, we adopted a range of sentiments that are in the negative and neutral scales of the hourglass of emotions introduced by BIBREF29. This model includes sentiments that are connected to objectively assessed natural language opinions, and excludes what is known as self-conscious or moral emotions such as shame and guilt. Our labels include shock, sadness, disgust, anger, fear, confusion in case of ambivalence, and indifference. This is the second multilabel task of our model."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the annotation schema considers five aspects [1][4]:\n\n- **(a) Directness** — whether the text is direct or indirect [1][3].\n- **(b) Hostility type** — whether it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal [1][7].\n- **(c) Target attribute** — the attribute based on which it discriminates against an individual or group [1][5].\n- **(d) Target group name** — the name of the group being targeted [1][5].\n- **(e) Annotator sentiment/reaction** — how annotators feel about the content, ranging from negative to neutral sentiments [1][2].",
+      "predicted_answer": "Based on the document, the annotation schema considers five aspects :\n\n- **(a) Directness** — whether the text is direct or indirect .\n- **(b) Hostility type** — whether it is offensive, disrespectful, hateful, fearful out of ignorance, abusive, or normal .\n- **(c) Target attribute** — the attribute based on which it discriminates against an individual or group .\n- **(d) Target group name** — the name of the group being targeted .\n- **(e) Annotator sentiment/reaction** — how annotators feel about the content, ranging from negative to neutral sentiments .",
+      "bm25_hits": 15,
+      "vector_hits": 30,
+      "vector_score_min": 0.6105493307113647,
+      "vector_score_max": 0.7038588523864746,
+      "retrieved_chunks": [
+        3,
+        4,
+        26,
+        5,
+        22,
+        29,
+        27,
+        24
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7
+      ],
+      "answer_f1": 0.7096774193548387,
+      "answer_type": "extractive",
+      "evidence_f1": 0.33333333333333337,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.1570654300157912,
+      "rerank_s": null,
+      "prejudge_s": 1.728338856017217,
+      "generation_s": 0.7226973780198023,
+      "judging_s": 1.3480127059738152,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1908.11049",
+      "question_id": "9ef0d2365bde0d18054511fbb53cec5fa2cda5ee",
+      "question": "How big is their dataset?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1909.02855",
+      "question_id": "34e9e54fa79e89ecacac35f97b33ef3ca3a00f85",
+      "question": "What are the three SOTA models evaluated?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1909.02855",
+      "question_id": "6e63db22a2a34c20ad341eb33f3422f40d0001d3",
+      "question": "What is the morphological constraint added?",
+      "references": [
+        {
+          "answer": "Aligned words must share the same morphosyntactic category",
+          "evidence": [
+            "In our final experiment we demonstrate that improving morphological generalization has the potential to improve BLI results. We show that enforcing a simple, hard morphological constraint at training time can lead to performance improvements at test time—both on the standard BLI task and the controlled for lexeme BLI. We adapt the self-learning models of BIBREF4 and BIBREF5 so that at each iteration they can align two words only if they share the same morphosyntactic category. Note that this limits the training data only to word forms present in UniMorph, as those are the only ones for which we have a gold tag. The results, a subset of which we present in Table TABREF35, show that the constraint, despite its simplicity and being trained on less data, leads to performance improvements for every Romance language pair and many of the Slavic language pairs. We take this as evidence that properly modelling morphology will have a role to play in BLI."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "each iteration they can align two words only if they share the same morphosyntactic category",
+          "evidence": [
+            "In our final experiment we demonstrate that improving morphological generalization has the potential to improve BLI results. We show that enforcing a simple, hard morphological constraint at training time can lead to performance improvements at test time—both on the standard BLI task and the controlled for lexeme BLI. We adapt the self-learning models of BIBREF4 and BIBREF5 so that at each iteration they can align two words only if they share the same morphosyntactic category. Note that this limits the training data only to word forms present in UniMorph, as those are the only ones for which we have a gold tag. The results, a subset of which we present in Table TABREF35, show that the constraint, despite its simplicity and being trained on less data, leads to performance improvements for every Romance language pair and many of the Slavic language pairs. We take this as evidence that properly modelling morphology will have a role to play in BLI."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The morphological constraint added is that, at each iteration, the self-learning models can align two words only if they share the same morphosyntactic category [1].",
+      "predicted_answer": "The morphological constraint added is that, at each iteration, the self-learning models can align two words only if they share the same morphosyntactic category .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6400003433227539,
+      "vector_score_max": 0.7596784830093384,
+      "retrieved_chunks": [
+        34,
+        5,
+        26,
+        29,
+        0,
+        9,
+        10,
+        15
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.742857142857143,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.20793220098130405,
+      "rerank_s": null,
+      "prejudge_s": 2.158037487999536,
+      "generation_s": 1.7558919080183841,
+      "judging_s": 2.590341683011502,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1909.08357",
+      "question_id": "4beb50ba020f624446ff1ef5bf4adca5ed318b98",
+      "question": "What languages are evaluated?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1909.08357",
+      "question_id": "9bf60073fbb69fbf860196513fc6fd2f466535f6",
+      "question": "Does the training of ESuLMo take longer compared to ELMo?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1909.08357",
+      "question_id": "7d503b3d4d415cf3e91ab08bd5a1a2474dd1047b",
+      "question": "How long is the vocabulary of subwords?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.01160",
+      "question_id": "0a70af6ba334dfd3574991b1dd06f54fc6a700f2",
+      "question": "What nuances between fake news and satire were discovered?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.01160",
+      "question_id": "98b97d24f31e9c535997e9b6cb126eb99fc72a90",
+      "question": "What empirical evaluation was used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.01160",
+      "question_id": "71b07d08fb6ac8732aa4060ae94ec7c0657bb1db",
+      "question": "What is the baseline?",
+      "references": [
+        {
+          "answer": "Naive Bayes Multinomial algorithm",
+          "evidence": [
+            "In their work, Golbeck et al. studied whether there are differences in the language of fake news and satirical articles on the same topic that could be utilized with a word-based classification approach. A model using the Naive Bayes Multinomial algorithm is proposed in their paper which serves as the baseline in our experiments.",
+            "We evaluate the performance of our method based on the dataset of fake news and satire articles and using the F1 score with a ten-fold cross-validation as in the baseline work BIBREF1."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "model using the Naive Bayes Multinomial algorithm",
+          "evidence": [
+            "In their work, Golbeck et al. studied whether there are differences in the language of fake news and satirical articles on the same topic that could be utilized with a word-based classification approach. A model using the Naive Bayes Multinomial algorithm is proposed in their paper which serves as the baseline in our experiments."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The baseline is a language-based model using the **Naive Bayes Multinomial algorithm**, proposed in the work of Golbeck et al. [1]. It is also referred to as the \"language-based baseline with Multinomial Naive Bayes\" [2].",
+      "predicted_answer": "The baseline is a language-based model using the **Naive Bayes Multinomial algorithm**, proposed in the work of Golbeck et al. . It is also referred to as the \"language-based baseline with Multinomial Naive Bayes\" .",
+      "bm25_hits": 6,
+      "vector_hits": 24,
+      "vector_score_min": 0.5158299207687378,
+      "vector_score_max": 0.6351178884506226,
+      "retrieved_chunks": [
+        8,
+        19,
+        16,
+        1,
+        22,
+        17,
+        15,
+        12
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0.35294117647058826,
+      "answer_type": "extractive",
+      "evidence_f1": 0.4,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.15391283598728478,
+      "rerank_s": null,
+      "prejudge_s": 1.9272735100239515,
+      "generation_s": 0.5007983230170794,
+      "judging_s": 0.6429803450009786,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1910.01160",
+      "question_id": "812c974311747f74c3aad23999bfef50539953c8",
+      "question": "Which linguistic features are used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.01160",
+      "question_id": "180c7bea8caf05ca97d9962b90eb454be4176425",
+      "question": "What contextual language model is used?",
+      "references": [
+        {
+          "answer": "BERT",
+          "evidence": [
+            "To study the semantic nuances between fake news and satire, we use BERT BIBREF8, which stands for Bidirectional Encoder Representations from Transformers, and represents a state-of-the-art contextual language model. BERT is a method for pre-training language representations, meaning that it is pre-trained on a large text corpus and then used for downstream NLP tasks. Word2Vec BIBREF9 showed that we can use vectors to properly represent words in a way that captures semantic or meaning-related relationships. While Word2Vec is a context-free model that generates a single word-embedding for each word in the vocabulary, BERT generates a representation of each word that is based on the other words in the sentence. It was built upon recent work in pre-training contextual representations, such as ELMo BIBREF10 and ULMFit BIBREF11, and is deeply bidirectional, representing each word using both its left and right context. We use the pre-trained models of BERT and fine-tune it on the dataset of fake news and satire articles using Adam optimizer with 3 types of decay and 0.01 decay rate. Our BERT-based binary classifier is created by adding a single new layer in BERT's neural network architecture that will be trained to fine-tune BERT to our task of classifying fake news and satire articles."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "BERT ",
+          "evidence": [
+            "To study the semantic nuances between fake news and satire, we use BERT BIBREF8, which stands for Bidirectional Encoder Representations from Transformers, and represents a state-of-the-art contextual language model. BERT is a method for pre-training language representations, meaning that it is pre-trained on a large text corpus and then used for downstream NLP tasks. Word2Vec BIBREF9 showed that we can use vectors to properly represent words in a way that captures semantic or meaning-related relationships. While Word2Vec is a context-free model that generates a single word-embedding for each word in the vocabulary, BERT generates a representation of each word that is based on the other words in the sentence. It was built upon recent work in pre-training contextual representations, such as ELMo BIBREF10 and ULMFit BIBREF11, and is deeply bidirectional, representing each word using both its left and right context. We use the pre-trained models of BERT and fine-tune it on the dataset of fake news and satire articles using Adam optimizer with 3 types of decay and 0.01 decay rate. Our BERT-based binary classifier is created by adding a single new layer in BERT's neural network architecture that will be trained to fine-tune BERT to our task of classifying fake news and satire articles."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "BERT (Bidirectional Encoder Representations from Transformers), a state-of-the-art contextual language model [1].",
+      "predicted_answer": "BERT (Bidirectional Encoder Representations from Transformers), a state-of-the-art contextual language model .",
+      "bm25_hits": 20,
+      "vector_hits": 24,
+      "vector_score_min": 0.5608375072479248,
+      "vector_score_max": 0.7356274127960205,
+      "retrieved_chunks": [
+        10,
+        11,
+        0,
+        1,
+        8,
+        14,
+        19,
+        17
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.18181818181818182,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.22789822798222303,
+      "rerank_s": null,
+      "prejudge_s": 2.9406991609721445,
+      "generation_s": 1.3204518900020048,
+      "judging_s": 1.0642356980242766,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1910.07973",
+      "question_id": "a17fc7b96753f85aee1d2036e2627570f4b50c30",
+      "question": "Do they report results only on English data?",
+      "references": [
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        }
+      ],
+      "response": "There isn't enough content in the document to answer this question.",
+      "predicted_answer": "Unanswerable",
+      "bm25_hits": 13,
+      "vector_hits": 19,
+      "vector_score_min": 0.5962822437286377,
+      "vector_score_max": 0.679049015045166,
+      "retrieved_chunks": [
+        1,
+        7,
+        16,
+        13,
+        15,
+        10,
+        11,
+        0
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [],
+      "answer_f1": 1.0,
+      "answer_type": "none",
+      "evidence_f1": 1.0,
+      "retrieval_recall": null,
+      "candidate_recall": null,
+      "prejudge_can_answer": false,
+      "prejudge_verdict": "none",
+      "gold_unanswerable": true,
+      "retrieval_s": 0.2644573600264266,
+      "rerank_s": null,
+      "prejudge_s": 2.0906138560385443,
+      "generation_s": null,
+      "judging_s": 1.1714105120045133,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1910.07973",
+      "question_id": "c6170bb09ba2a416f8fa9b542f0ab05a64dbf2e4",
+      "question": "What is the BM25 baseline?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.07973",
+      "question_id": "fe080c6393f126b55ae456b81133bfc8ecbe85c2",
+      "question": "Which BERT layers were combined to boost performance?",
+      "references": [
+        {
+          "answer": "Top and bottom layers",
+          "evidence": [
+            "Pre-trained vs. Fine-tuned BERT: All the models we considered in this paper benefit from supervised training on natural language inference datasets. In this section, we compare the performance of embeddings from pre-trained BERT and fine-tuned BERT. Two natural language inference datasets, MNLI BIBREF11 and SNLI, were considered in the experiment. Inspired by the fact that embeddings from different layers excel in different tasks, we also conducted experiments by concatenating embeddings from multiple layers. The results are presented in Table TABREF3, and the raw values are provided in the Appendix."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": " the top and bottom layer of the BERT fine-tuned on SNLI dataset",
+          "evidence": [
+            "As we can see from the table, embeddings from pre-trained BERT are good at capturing sentence-level syntactic information and semantic information, but poor at semantic similarity tasks and surface information tasks. Our findings are consistent with BIBREF12 work on assessing BERT's syntactic abilities. Fine-tuning on natural language inference datasets improves the quality of sentence embedding, especially on semantic similarity tasks and entailment tasks. Combining embeddings from two layers can further boost the performance on sentence surface and syntactic information probing tasks. Experiments were also conducted by combining embeddings from multiple layers. However, there is no significant and consistent improvement over pooling just from two layers. Adding multi-layer perceptron (MLP) instead of logistic regression layer on top of the embeddings also provides no significant changes in performance, which suggests that most linguistic properties can be extracted with just a linear readout of the embeddings. Our best model is the combination of embeddings from the top and bottom layer of the BERT fine-tuned on SNLI dataset."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "combining the top and bottom layer embeddings",
+          "evidence": [
+            "Results: The comparison between BERT embeddings and other models is presented in Table TABREF5. Overall, in-domain fine-tuned BERT delivers the best performance. We report new state-of-the-art results on WikiPassageQA ($33\\%$ improvement in MAP) and InsuranceQA (version 1.0) ($3.6\\%$ improvement in P@1) by supervised fine-tuning BERT using pairwise rank hinge loss. When evaluated on non-factoid QA datasets, there is a big gap between BERT embeddings and the fully fine-tuned BERT, which suggests that deep interactions between questions and answers are critical to the task. However, the gap is much smaller for factoid QA datasets. Since non-factoid QA depends more on content matching rather than vocabulary matching, the results are kind of expected. Similar to BERT for sentence embeddings, mean-pooling and combining the top and bottom layer embeddings lead to better performance, and $(u, v, u * v, |u - v|)$ shows the strongest results among other interaction schemes. Different from sentence-level embeddings, fine-tuning BERT on SNLI doesn't lead to significant improvement, which suggests possible domain mismatch between SNLI and the QA datasets. MLP layer usually provided a 1-2 percent boost in performance compared to the logistic regression layer. For WikiPassageQA, BERT embeddings perform comparably as BM25 baseline. For InsuranceQA, BERT embeddings outperform a strong representation-based matching model DSSM BIBREF18, but still far behind the state-of-the-art interaction-based model SUBMULT+NN BIBREF17 and fully fine-tuned BERT. On factoid datasets (Quasar-t and SearchQA), BERT embeddings outperform BM25 baseline significantly."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "According to the document, combining embeddings from the **top and bottom layers** of BERT (fine-tuned on SNLI) provides the best performance [2][6]. This combination is also reported to lead to better performance at the passage level [4][8].",
+      "predicted_answer": "According to the document, combining embeddings from the **top and bottom layers** of BERT (fine-tuned on SNLI) provides the best performance . This combination is also reported to lead to better performance at the passage level .",
+      "bm25_hits": 19,
+      "vector_hits": 19,
+      "vector_score_min": 0.6413134336471558,
+      "vector_score_max": 0.7736388444900513,
+      "retrieved_chunks": [
+        11,
+        12,
+        0,
+        17,
+        8,
+        18,
+        14,
+        16
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "answer_f1": 0.3902439024390244,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.33656287303892896,
+      "rerank_s": null,
+      "prejudge_s": 2.2226605900214054,
+      "generation_s": 1.226558422029484,
+      "judging_s": 0.7780375150032341,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1910.07973",
+      "question_id": "53a8c3cf22d6bf6477bc576a85a83d8447ee0484",
+      "question": "Which NLI data was used to improve the quality of the embeddings?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.07973",
+      "question_id": "3a33512d253005ac280ee9ca4f9dfa69aa38d48f",
+      "question": "Which four QA datasets are examined?",
+      "references": [
+        {
+          "answer": "(1) WikiPassageQA BIBREF13, (2) InsuranceQA (version 1.0) BIBREF14, (3) Quasar-t BIBREF15, (4) SearchQA BIBREF16",
+          "evidence": [
+            "Datasets: We experimented on four datasets: (1) WikiPassageQA BIBREF13, (2) InsuranceQA (version 1.0) BIBREF14, (3) Quasar-t BIBREF15, and (4) SearchQA BIBREF16. They cover both factoid and non-factoid QA and different average passage length. The statistics of the four datasets are provided in the Appendix. To generate passage-level question-answering data from Quasart-t and SearchQA, we used the retrieved passages for each question from OpenQA, and generated question-passage relevance label based on whether the ground truth answer is contained in the passage."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "WikiPassageQA, InsuranceQA, Quasar-t, SearchQA",
+          "evidence": [
+            "Datasets: We experimented on four datasets: (1) WikiPassageQA BIBREF13, (2) InsuranceQA (version 1.0) BIBREF14, (3) Quasar-t BIBREF15, and (4) SearchQA BIBREF16. They cover both factoid and non-factoid QA and different average passage length. The statistics of the four datasets are provided in the Appendix. To generate passage-level question-answering data from Quasart-t and SearchQA, we used the retrieved passages for each question from OpenQA, and generated question-passage relevance label based on whether the ground truth answer is contained in the passage."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "WikiPassageQA, InsuranceQA , Quasar-t , SearchQA",
+          "evidence": [
+            "Datasets: We experimented on four datasets: (1) WikiPassageQA BIBREF13, (2) InsuranceQA (version 1.0) BIBREF14, (3) Quasar-t BIBREF15, and (4) SearchQA BIBREF16. They cover both factoid and non-factoid QA and different average passage length. The statistics of the four datasets are provided in the Appendix. To generate passage-level question-answering data from Quasart-t and SearchQA, we used the retrieved passages for each question from OpenQA, and generated question-passage relevance label based on whether the ground truth answer is contained in the passage."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The four QA datasets examined are: (1) WikiPassageQA, (2) InsuranceQA (version 1.0), (3) Quasar-t, and (4) SearchQA [1].",
+      "predicted_answer": "The four QA datasets examined are: (1) WikiPassageQA, (2) InsuranceQA (version 1.0), (3) Quasar-t, and (4) SearchQA .",
+      "bm25_hits": 14,
+      "vector_hits": 19,
+      "vector_score_min": 0.5794384479522705,
+      "vector_score_max": 0.7481510639190674,
+      "retrieved_chunks": [
+        13,
+        5,
+        1,
+        16,
+        18,
+        17,
+        0,
+        15
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.6666666666666666,
+      "answer_type": "extractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.286866202019155,
+      "rerank_s": null,
+      "prejudge_s": 1.8386579770012759,
+      "generation_s": 1.3348269070265815,
+      "judging_s": 1.0069072510232218,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1910.07973",
+      "question_id": "f7f2968feb28c2907266c892f051ae9f7d6286e6",
+      "question": "Which two tasks from SentEval are the sentence embeddings evaluated against?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.09942",
+      "question_id": "58df55002fbcba76b9aeb2181d78378b8c01a827",
+      "question": "Which part of their architecture provides the most speedup in comparison to existing approaches?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.09942",
+      "question_id": "7a60f29e28063f50c2a7afd1c2a7668fb615cd53",
+      "question": "Do they consistently outperform existing systems in terms of accuracy?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.12203",
+      "question_id": "0c247a04f235a4375dd3b0fd0ce8d0ec72ef2256",
+      "question": "What other evaluation metrics are reported?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.12203",
+      "question_id": "66dfcdab1db6a8fcdf392157a478b4cca0d87961",
+      "question": "What out of domain scenarios did they evaluate on?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.12203",
+      "question_id": "7ef34b4996ada33a4965f164a8f96e20af7470c0",
+      "question": "What was their state of the art accuracy score?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1910.12203",
+      "question_id": "6e80386b33fbfba8bc1ab811a597d844ae67c578",
+      "question": "Which datasets did they use?",
+      "references": [
+        {
+          "answer": "Satirical and Legitimate News Database, Random Political News Dataset, Labeled Unreliable News Dataset",
+          "evidence": [
+            "We use SLN: Satirical and Legitimate News Database BIBREF2, RPN: Random Political News Dataset BIBREF10 and LUN: Labeled Unreliable News Dataset BIBREF0 for our experiments. Table TABREF4 shows the statistics. Since all of the previous methods on the aforementioned datasets are non-neural, we implement the following neural baselines,"
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "Satirical and Legitimate News Database BIBREF2, RPN: Random Political News Dataset BIBREF10, LUN: Labeled Unreliable News Dataset BIBREF0",
+          "evidence": [
+            "We use SLN: Satirical and Legitimate News Database BIBREF2, RPN: Random Political News Dataset BIBREF10 and LUN: Labeled Unreliable News Dataset BIBREF0 for our experiments. Table TABREF4 shows the statistics. Since all of the previous methods on the aforementioned datasets are non-neural, we implement the following neural baselines,"
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "They used three datasets: **SLN** (Satirical and Legitimate News Database), **RPN** (Random Political News Dataset), and **LUN** (Labeled Unreliable News Dataset) [1].",
+      "predicted_answer": "They used three datasets: **SLN** (Satirical and Legitimate News Database), **RPN** (Random Political News Dataset), and **LUN** (Labeled Unreliable News Dataset) .",
+      "bm25_hits": 17,
+      "vector_hits": 20,
+      "vector_score_min": 0.6018298864364624,
+      "vector_score_max": 0.7625391483306885,
+      "retrieved_chunks": [
+        6,
+        14,
+        7,
+        3,
+        4,
+        16,
+        15,
+        13
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.7692307692307692,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.2157206810079515,
+      "rerank_s": null,
+      "prejudge_s": 2.0574561950052157,
+      "generation_s": 0.40087995200883597,
+      "judging_s": 0.5121227360214107,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1910.12203",
+      "question_id": "1c182b4805b336bd6e1a3f43dc84b07db3908d4a",
+      "question": "What are the neural baselines mentioned?",
+      "references": [
+        {
+          "answer": "CNN, LSTM, BERT",
+          "evidence": [
+            "We use SLN: Satirical and Legitimate News Database BIBREF2, RPN: Random Political News Dataset BIBREF10 and LUN: Labeled Unreliable News Dataset BIBREF0 for our experiments. Table TABREF4 shows the statistics. Since all of the previous methods on the aforementioned datasets are non-neural, we implement the following neural baselines,",
+            "CNN: In this model, we apply a 1-d CNN (Convolutional Neural Network) layer BIBREF11 with filter size 3 over the word embeddings of the sentences within a document. This is followed by a max-pooling layer to get a single document vector which is passed to a fully connected projection layer to get the logits over output classes.",
+            "LSTM: In this model, we encode the document using a LSTM (Long Short-Term Memory) layer BIBREF12. We use the hidden state at the last time step as the document vector which is passed to a fully connected projection layer to get the logits over output classes.",
+            "BERT: In this model, we extract the sentence vector (representation corresponding to [CLS] token) using BERT (Bidirectional Encoder Representations from Transformers) BIBREF4 for each sentence in the document. We then apply a LSTM layer on the sentence embeddings, followed by a projection layer to make the prediction for each document."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "CNN, LSTM, BERT",
+          "evidence": [
+            "We use SLN: Satirical and Legitimate News Database BIBREF2, RPN: Random Political News Dataset BIBREF10 and LUN: Labeled Unreliable News Dataset BIBREF0 for our experiments. Table TABREF4 shows the statistics. Since all of the previous methods on the aforementioned datasets are non-neural, we implement the following neural baselines,",
+            "CNN: In this model, we apply a 1-d CNN (Convolutional Neural Network) layer BIBREF11 with filter size 3 over the word embeddings of the sentences within a document. This is followed by a max-pooling layer to get a single document vector which is passed to a fully connected projection layer to get the logits over output classes.",
+            "LSTM: In this model, we encode the document using a LSTM (Long Short-Term Memory) layer BIBREF12. We use the hidden state at the last time step as the document vector which is passed to a fully connected projection layer to get the logits over output classes.",
+            "BERT: In this model, we extract the sentence vector (representation corresponding to [CLS] token) using BERT (Bidirectional Encoder Representations from Transformers) BIBREF4 for each sentence in the document. We then apply a LSTM layer on the sentence embeddings, followed by a projection layer to make the prediction for each document."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The neural baselines mentioned are:\n\n- **CNN**: a 1-d CNN layer with filter size 3 applied over the word embeddings of the sentences within a document, followed by a max-pooling layer to get a single document vector, which is passed to a fully connected projection layer to get the logits over output classes [2].\n- **LSTM**: the document is encoded using an LSTM layer, using the hidden state at the last time step as the document vector, which is passed to a fully connected projection layer to get the logits over output classes [2].\n- **BERT**: the sentence vector (representation corresponding to the [CLS] token) is extracted using BERT for each sentence in the document, then an LSTM layer is applied on the sentence embeddings, followed by a projection layer to make the prediction for each document [1].",
+      "predicted_answer": "The neural baselines mentioned are:\n\n- **CNN**: a 1-d CNN layer with filter size 3 applied over the word embeddings of the sentences within a document, followed by a max-pooling layer to get a single document vector, which is passed to a fully connected projection layer to get the logits over output classes .\n- **LSTM**: the document is encoded using an LSTM layer, using the hidden state at the last time step as the document vector, which is passed to a fully connected projection layer to get the logits over output classes .\n- **BERT**: the sentence vector (representation corresponding to the [CLS] token) is extracted using BERT for each sentence in the document, then an LSTM layer is applied on the sentence embeddings, followed by a projection layer to make the prediction for each document .",
+      "bm25_hits": 13,
+      "vector_hits": 20,
+      "vector_score_min": 0.6080297231674194,
+      "vector_score_max": 0.787792444229126,
+      "retrieved_chunks": [
+        7,
+        6,
+        5,
+        10,
+        8,
+        0,
+        3,
+        16
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        2
+      ],
+      "answer_f1": 0.05357142857142857,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.1999123030109331,
+      "rerank_s": null,
+      "prejudge_s": 3.28593054699013,
+      "generation_s": 1.8372663909685798,
+      "judging_s": 0.19772180798463523,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "1911.12559",
+      "question_id": "bc7081aaa207de2362e0bea7bc8108d338aee36f",
+      "question": "Do they report results only on English data?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1911.12559",
+      "question_id": "c72e05dd41ed5a85335ffeca5a03e71514e60e84",
+      "question": "Where do the news texts come from?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1911.12559",
+      "question_id": "07edc082eb86aecef3db5cad2534459c1310d6e8",
+      "question": "What baseline is used for this task?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1911.12559",
+      "question_id": "eaacee4246f003d29a108fe857b5dd317287ecf1",
+      "question": "What type of nerual keyphrase generation models are trained?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1911.12559",
+      "question_id": "3ea82a5ca495ffbd1e30e8655aef1be4ba423efe",
+      "question": "How do the editors' annotations differ from those in existing datasets?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1912.07076",
+      "question_id": "654306d26ca1d9e77f4cdbeb92b3802aa9961da1",
+      "question": "By how much did the new model outperform multilingual BERT?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1912.07076",
+      "question_id": "5a7d1ae6796e09299522ebda7bfcfad312d6d128",
+      "question": "What previous proposed methods did they explore?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "1912.07076",
+      "question_id": "bd191d95806cee4cf80295e9ce1cd227aba100ab",
+      "question": "What was the new Finnish model trained on?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2002.04326",
+      "question_id": "6371c6863fe9a14bf67560e754ce531d70de10ab",
+      "question": "How big is this dataset?",
+      "references": [
+        {
+          "answer": "6,138 logical reasoning questions",
+          "evidence": [
+            "We construct a dataset containing 6,138 logical reasoning questions sourced from open websites and books. In the original problems, there are five answer options in which only one is right. To comply with fair use of law, we shuffle the order of answer options and randomly delete one of the wrong options for each data point, which results in four options with one right option and three wrong options. Furthermore, similar to ImageNet dataset, ReClor is available for non-commercial research purpose only. We are also hosting a public evaluation server on EvalAI BIBREF37 to benchmark progress on Reclor."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "6,138 pieces of logical reasoning questions",
+          "evidence": [
+            "A typical example of logical reasoning questions is shown in Table TABREF5. Similar to the format of multiple-choice reading comprehension datasets BIBREF10, BIBREF5, it contains a context, a question and four options with only one right answer. To answer the question in this example, readers need to identify the logical connections between the lines to pinpoint the conflict, then understand each of the options and select an option that solves the conflict. Human minds need extensive training and practice to get used to complex reasoning, and it will take immense efforts for crowdsourcing workers to design such logical reasoning questions. Inspired by the datasets extracted from standardized examinations BIBREF5, BIBREF12, we build a dataset by selecting such logical reasoning questions from standardized exams such as GMAT and LSAT . We finally collect 6,138 pieces of logical reasoning questions, which constitute a Reading Comprehension dataset requiring logical reasoning (ReClor)."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The dataset contains **6,138 data points** [1][4][5]. Of these, 91.22% come from actual GMAT and LSAT exams, with the rest from high-quality practice exams [1]. It is split into a training set of 4,638, a validation set of 500, and a testing set of 1,000 data points [1].",
+      "predicted_answer": "The dataset contains **6,138 data points** . Of these, 91.22% come from actual GMAT and LSAT exams, with the rest from high-quality practice exams . It is split into a training set of 4,638, a validation set of 500, and a testing set of 1,000 data points .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.5796444416046143,
+      "vector_score_max": 0.6962239742279053,
+      "retrieved_chunks": [
+        15,
+        12,
+        17,
+        14,
+        5,
+        0,
+        8,
+        24
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        4,
+        5
+      ],
+      "answer_f1": 0.08695652173913045,
+      "answer_type": "extractive",
+      "evidence_f1": 0.4,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.34257559501565993,
+      "rerank_s": null,
+      "prejudge_s": 3.866568890050985,
+      "generation_s": 0.5289968000142835,
+      "judging_s": 0.17623366601765156,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2002.04326",
+      "question_id": "28a8a1542b45f67674a2f1d54fff7a1e45bfad66",
+      "question": "How are biases identified in the dataset?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.04707",
+      "question_id": "58259f2e22363aab20c448e5dd7b6f432556b32d",
+      "question": "How do they interpret the model?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.04707",
+      "question_id": "b9e0b1940805a5056f71c66d176cc87829e314d4",
+      "question": "Do they compare their approach to data-driven only methods?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.04707",
+      "question_id": "b54525a0057aa82b73773fa4dacfd115d8f86f1c",
+      "question": "What are the two applications of neuro-symbolism?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "9465d96a1368299fd3662d91aa94ba85347b4ccd",
+      "question": "What is the performance of the best model?",
+      "references": [
+        {
+          "answer": "F1 Macro of 0.89",
+          "evidence": [],
+          "type": "abstractive"
+        },
+        {
+          "answer": "LSTMs and GRU with attention which achieved 0.89 F1 score",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "0.89 F1 score",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The best model (LSTM and GRU with Attention) achieved a macro-F1 of 0.89 [2], and it is described as achieving 0.89 F1 score [8].",
+      "predicted_answer": "The best model (LSTM and GRU with Attention) achieved a macro-F1 of 0.89 , and it is described as achieving 0.89 F1 score .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.5537557601928711,
+      "vector_score_max": 0.7160968780517578,
+      "retrieved_chunks": [
+        27,
+        28,
+        23,
+        30,
+        26,
+        22,
+        25,
+        2
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        2,
+        8
+      ],
+      "answer_f1": 0.5333333333333333,
+      "answer_type": "extractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.34417458495590836,
+      "rerank_s": null,
+      "prejudge_s": 2.369488388998434,
+      "generation_s": 0.4772908289451152,
+      "judging_s": 0.16120094299549237,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "e8c3f59313df20db0cdd49b84a37c44da849fe17",
+      "question": "What are the models tested on the dataset?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "f61268905626c0b2a715282478a5e373adda516c",
+      "question": "Which method best performs on the offensive language identification task?",
+      "references": [
+        {
+          "answer": "LSTM and GRU with Attention can be considered as the best model trained for OGTD",
+          "evidence": [
+            "The performance of the deep learning models is presented in table TABREF18. As we can see LSTM and GRU with Attention outperformed all the other models in-terms of macro-f1. Notably it outperformed all other classifical models and deep learning models in precision, recall and f1 for Offensive class as well as the Not Offensive class. However, fine tuning BERT-Base Multilingual Cased model did not achieve good results. For this task monolingual Greek word embeddings perform significantly better than the multilingual bert embeddings. LSTM and GRU with Attention can be considered as the best model trained for OGTD."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "LSTMs and GRU with attention",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": " a system using LSTMs and GRU with attention",
+          "evidence": [
+            "In this paper we contribute in this direction presenting the first Greek annotated dataset for offensive language identification: the Offensive Greek Tweet Dataset (OGTD). OGTD uses a working definition of offensive language inspired by the OLID dataset for English BIBREF5 used in the recent OffensEval (SemEval-2019 Task 6) BIBREF6. In its version, 1.0 OGTD contains nearly 4,800 posts collected from Twitter and manually annotated by a team of volunteers, resulting in a high-quality annotated dataset. We trained a number of systems on this dataset and our best results have been obtained from a system using LSTMs and GRU with attention which achieved 0.89 F1 score."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the best-performing method is the **LSTM and GRU with Attention** model.\n\n- It outperformed all other models in terms of macro-F1, and notably outperformed all classical and deep learning models in precision, recall, and F1 for both the Offensive and Not Offensive classes [1].\n- It is considered the best model trained for OGTD, achieving an F1-macro of 0.89 [1][2].\n- The paper's conclusion also states that the best results were achieved by an LSTM and GRU with Attention model [5], and the introduction reports the same 0.89 F1 score for this system [8].\n\nAmong classical machine learning approaches, the Linear SVM achieved the best results (0.80) [2], and it can be considered the marginally best model trained with OGTD among those [3].",
+      "predicted_answer": "Based on the document, the best-performing method is the **LSTM and GRU with Attention** model.\n\n- It outperformed all other models in terms of macro-F1, and notably outperformed all classical and deep learning models in precision, recall, and F1 for both the Offensive and Not Offensive classes .\n- It is considered the best model trained for OGTD, achieving an F1-macro of 0.89 .\n- The paper's conclusion also states that the best results were achieved by an LSTM and GRU with Attention model , and the introduction reports the same 0.89 F1 score for this system .\n\nAmong classical machine learning approaches, the Linear SVM achieved the best results (0.80) , and it can be considered the marginally best model trained with OGTD among those .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.6711857318878174,
+      "vector_score_max": 0.794650673866272,
+      "retrieved_chunks": [
+        27,
+        28,
+        23,
+        22,
+        30,
+        26,
+        5,
+        2
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        2,
+        3,
+        5,
+        8
+      ],
+      "answer_f1": 0.22033898305084745,
+      "answer_type": "extractive",
+      "evidence_f1": 0.2222222222222222,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.43142787500983104,
+      "rerank_s": null,
+      "prejudge_s": 2.3326867319992743,
+      "generation_s": 1.2869507010327652,
+      "judging_s": 0.49003361898940057,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "d9949dd4865e79c53284932d868ca8fd10d55e70",
+      "question": "Did they use crowdsourcing for the annotations?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "de689a17b0b9fb6bbb80e9b85fb44b36b56de2fd",
+      "question": "How many annotators did they have?",
+      "references": [
+        {
+          "answer": "Three, plus 2 in case of disagreement below 66%.",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "three",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "three volunteers ",
+          "evidence": [
+            "Based on explicit annotation guidelines written in Greek and our proposal of the definition of offensive language, a team of three volunteers were asked to classify each tweet found in the dataset with one of the following tags: Offensive, Not Offensive and Spam, which was introduced to filter out spam from the dataset. Inter-annotator agreement was subsequently calculated and labels with 100% agreement were deemed acceptable annotations. In cases of disagreement, labels with majority agreement above 66% were selected as the actual annotations of the tweets in question. For labels with complete disagreement between annotators, one of the authors of this paper reviewed the tweets with two extra human judges, to get the desired majority agreement above 66%. Figure FIGREF6 is a confusion matrix that shows the inter-annotator agreement or reliability, statistically measured by Cohen's kappa coefficient. The benchmark annotated dataset produced contained 4,779 tweets, containing over 29% offensive content. The final distribution of labels in the new Offensive Greek Tweet Dataset (OGTD), along with the breakdown of the data into training and testing, is showing in Table TABREF5."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the context, the annotation team consisted of **three volunteers** [1]. In addition, when there was complete disagreement between annotators, one of the authors reviewed the tweets with **two extra human judges** [1]. The acknowledgements also name three volunteer annotators (Maria, Raphael and Anastasia) plus Fotini, who helped review tweets with ambivalent labels [3].",
+      "predicted_answer": "Based on the context, the annotation team consisted of **three volunteers** . In addition, when there was complete disagreement between annotators, one of the authors reviewed the tweets with **two extra human judges** . The acknowledgements also name three volunteer annotators (Maria, Raphael and Anastasia) plus Fotini, who helped review tweets with ambivalent labels .",
+      "bm25_hits": 18,
+      "vector_hits": 30,
+      "vector_score_min": 0.5841944217681885,
+      "vector_score_max": 0.7443082332611084,
+      "retrieved_chunks": [
+        13,
+        12,
+        33,
+        15,
+        30,
+        14,
+        0,
+        8
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        3
+      ],
+      "answer_f1": 0.17857142857142855,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.6666666666666666,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.26606568903662264,
+      "rerank_s": null,
+      "prejudge_s": 1.550477524055168,
+      "generation_s": 1.7058902280405164,
+      "judging_s": 1.098811811010819,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "5a90871856beeefaa69a1080e1b3c8b5d4b2b937",
+      "question": "Is the dataset balanced?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.07459",
+      "question_id": "6cb3007a09ab0f1602cdad20cc0437fbdd4d7f3e",
+      "question": "What models do they experiment on?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.13028",
+      "question_id": "bd53399be8ff59060792da4c8e42a7fc1e6cbd85",
+      "question": "What is the previous state-of-the-art?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2003.13028",
+      "question_id": "a7313c29b154e84b571322532f5cab08e9d49e51",
+      "question": "What is the architecture of the decoder?",
+      "references": [
+        {
+          "answer": "self-attention module, a context-attention module, and a two-layer feed-forward network",
+          "evidence": [
+            "The decoder consists of $M$ layer decoder blocks. The inputs of the decoder are the output of the encoder $H_e^M$ and the output of the previous step of the decoder $\\lbrace y_1,...,y_{t-1} \\rbrace $. The output through the $M$ layer Transformer decoder blocks is defined as",
+            "In each step $t$, the $h_{dt}^M$ is projected to blackthe vocabulary space and the decoder outputs the highest probability token as the next token. The Transformer decoder block consists of a self-attention module, a context-attention module, and a two-layer feed-forward network."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "M blocks, each consisting of self-attention module, context-attention module, and a two-layer feed-forward network.",
+          "evidence": [
+            "The decoder consists of $M$ layer decoder blocks. The inputs of the decoder are the output of the encoder $H_e^M$ and the output of the previous step of the decoder $\\lbrace y_1,...,y_{t-1} \\rbrace $. The output through the $M$ layer Transformer decoder blocks is defined as",
+            "In each step $t$, the $h_{dt}^M$ is projected to blackthe vocabulary space and the decoder outputs the highest probability token as the next token. The Transformer decoder block consists of a self-attention module, a context-attention module, and a two-layer feed-forward network."
+          ],
+          "type": "abstractive"
+        }
+      ],
+      "response": "# Decoder Architecture\n\nThe decoder consists of $M$ layer decoder blocks [1]. Its inputs are the output of the encoder $H_e^M$ and the output of the previous decoder step $\\{y_1, ..., y_{t-1}\\}$ [1].\n\nEach Transformer decoder block is composed of three components [1]:\n- a self-attention module\n- a context-attention module\n- a two-layer feed-forward network\n\nAt each step $t$, the output $h_{dt}^M$ is projected to the vocabulary space, and the decoder outputs the highest-probability token as the next token [1].\n\nRegarding attention, the decoder blocks use multi-head attention, which combines $K$ attention heads [4]. In the context-attention, $H_d^m$ is given to $Q$, while $H_e^M$ is given to $K$ and $V$ [4].",
+      "predicted_answer": "# Decoder Architecture\n\nThe decoder consists of $M$ layer decoder blocks . Its inputs are the output of the encoder $H_e^M$ and the output of the previous decoder step $\\{y_1, ..., y_{t-1}\\}$ .\n\nEach Transformer decoder block is composed of three components :\n- a self-attention module\n- a context-attention module\n- a two-layer feed-forward network\n\nAt each step $t$, the output $h_{dt}^M$ is projected to the vocabulary space, and the decoder outputs the highest-probability token as the next token .\n\nRegarding attention, the decoder blocks use multi-head attention, which combines $K$ attention heads . In the context-attention, $H_d^m$ is given to $Q$, while $H_e^M$ is given to $K$ and $V$ .",
+      "bm25_hits": 12,
+      "vector_hits": 30,
+      "vector_score_min": 0.5963598489761353,
+      "vector_score_max": 0.7967416048049927,
+      "retrieved_chunks": [
+        9,
+        24,
+        8,
+        10,
+        6,
+        26,
+        13,
+        23
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        4
+      ],
+      "answer_f1": 0.24242424242424243,
+      "answer_type": "abstractive",
+      "evidence_f1": 0.5,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.8231008960283361,
+      "rerank_s": null,
+      "prejudge_s": 1.9420936009846628,
+      "generation_s": 2.481163428979926,
+      "judging_s": 0.873110375017859,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.13028",
+      "question_id": "cfe21b979a6c851bdafb2e414622f61e62b1d98c",
+      "question": "What is the architecture of the encoder?",
+      "references": [
+        {
+          "answer": "M blocks, each consisting of self-attention module and a two-layer feed-forward network.",
+          "evidence": [
+            "The encoder consists of $M$ layer encoder blocks. The input of the encoder is $X = \\lbrace x_i, x_2, ... x_L \\rbrace $. The output through the $M$ layer encoder blocks is defined as",
+            "The encoder block consists of a self-attention module and a two-layer feed-forward network."
+          ],
+          "type": "abstractive"
+        },
+        {
+          "answer": "encoder block consists of a self-attention module and a two-layer feed-forward network",
+          "evidence": [
+            "The encoder consists of $M$ layer encoder blocks. The input of the encoder is $X = \\lbrace x_i, x_2, ... x_L \\rbrace $. The output through the $M$ layer encoder blocks is defined as",
+            "The encoder block consists of a self-attention module and a two-layer feed-forward network."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "Based on the document, the encoder consists of $M$ layer encoder blocks, and each encoder block consists of a self-attention module and a two-layer feed-forward network [1]. Its input is $X = \\lbrace x_i, x_2, ... x_L \\rbrace $, and the output is produced through the $M$ layer encoder blocks [1].",
+      "predicted_answer": "Based on the document, the encoder consists of $M$ layer encoder blocks, and each encoder block consists of a self-attention module and a two-layer feed-forward network . Its input is $X = \\lbrace x_i, x_2, ... x_L \\rbrace $, and the output is produced through the $M$ layer encoder blocks .",
+      "bm25_hits": 18,
+      "vector_hits": 30,
+      "vector_score_min": 0.615231990814209,
+      "vector_score_max": 0.8268622159957886,
+      "retrieved_chunks": [
+        8,
+        13,
+        24,
+        15,
+        9,
+        6,
+        23,
+        21
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1
+      ],
+      "answer_f1": 0.4,
+      "answer_type": "extractive",
+      "evidence_f1": 1.0,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.20882005395833403,
+      "rerank_s": null,
+      "prejudge_s": 1.8649406830081716,
+      "generation_s": 1.433396456995979,
+      "judging_s": 0.9485241310321726,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.13028",
+      "question_id": "3e3d123960e40bcb1618e11999bd2031ccc1d155",
+      "question": "What are the languages of the datasets?",
+      "references": [
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        },
+        {
+          "answer": "Unanswerable",
+          "evidence": [],
+          "type": "none"
+        }
+      ],
+      "response": "There isn't enough content in the document to answer this question.",
+      "predicted_answer": "Unanswerable",
+      "bm25_hits": 13,
+      "vector_hits": 30,
+      "vector_score_min": 0.5834697484970093,
+      "vector_score_max": 0.7182451486587524,
+      "retrieved_chunks": [
+        33,
+        38,
+        2,
+        34,
+        40,
+        37,
+        4,
+        1
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [],
+      "answer_f1": 1.0,
+      "answer_type": "none",
+      "evidence_f1": 1.0,
+      "retrieval_recall": null,
+      "candidate_recall": null,
+      "prejudge_can_answer": false,
+      "prejudge_verdict": "none",
+      "gold_unanswerable": true,
+      "retrieval_s": 0.2220597049454227,
+      "rerank_s": null,
+      "prejudge_s": 2.31773026305018,
+      "generation_s": null,
+      "judging_s": 0.7751847929903306,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2003.13028",
+      "question_id": "2e37eb2a2a9ad80391e57acb53616eab048ab640",
+      "question": "What is the architecture of the saliency model?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2004.02363",
+      "question_id": "37ac705166fa87dc74fe86575bf04bea56cc4930",
+      "question": "what evaluation metrics were used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2004.02363",
+      "question_id": "90aba75508aa145475d7cc9a501bbe987c0e8413",
+      "question": "What datasets are used?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2004.04478",
+      "question_id": "468eb961215a554ace8088fa9097a7ad239f2d71",
+      "question": "What datasets are available for CDSA task?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2004.04478",
+      "question_id": "57d07d2b509c5860880583efe2ed4c5620a96747",
+      "question": "What two novel metrics proposed?",
+      "references": [
+        {
+          "answer": "ULM4, ULM5",
+          "evidence": [
+            "We devise two different metrics out of FastText models to calculate the similarity between domain-pairs. In the first metric (ULM4), we compute the Angular Similarity between the word vectors for all the common adjectives, and for each domain pair just like Word2Vec and GloVe. Overall, similarity for a domain pair is calculated using equation (DISPLAY_FORM29). As an additional metric (ULM5), we extract sentence vectors for reviews and follow a procedure similar to Doc2Vec. SentiWordnet is used to filter out train and test data using the same threshold window of $\\pm 0.01$."
+          ],
+          "type": "extractive"
+        },
+        {
+          "answer": "LM3 (Chameleon Words Similarity) and LM4 (Entropy Change)",
+          "evidence": [
+            "In order to compare the benefit of a domain with similarity metrics between the source and target domains, we describe a set of symmetric and asymmetric similarity metrics. These also include two novel metrics to evaluate domain adaptability: namely as LM3 (Chameleon Words Similarity) and LM4 (Entropy Change). These metrics perform at par with the metrics that use previously proposed methods. We observe that, amongst word embedding-based metrics, ULM6 (ELMo) performs the best, and amongst sentence embedding-based metrics, ULM7 (Universal Sentence Encoder) is the clear winner. We discuss various metrics, their results and provide a set of recommendations to the problem of source domain selection for CDSA."
+          ],
+          "type": "extractive"
+        }
+      ],
+      "response": "The two novel metrics proposed are **LM3 (Chameleon Words Similarity)** and **LM4 (Entropy Change)** [1]. Both are described as novel contributions for evaluating domain adaptability [3][4].",
+      "predicted_answer": "The two novel metrics proposed are **LM3 (Chameleon Words Similarity)** and **LM4 (Entropy Change)** . Both are described as novel contributions for evaluating domain adaptability .",
+      "bm25_hits": 20,
+      "vector_hits": 30,
+      "vector_score_min": 0.651464581489563,
+      "vector_score_max": 0.7112863063812256,
+      "retrieved_chunks": [
+        42,
+        11,
+        20,
+        21,
+        33,
+        5,
+        22,
+        0
+      ],
+      "fused_ranks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "cited_passages": [
+        1,
+        3,
+        4
+      ],
+      "answer_f1": 0.5161290322580645,
+      "answer_type": "extractive",
+      "evidence_f1": 0.2222222222222222,
+      "retrieval_recall": 1.0,
+      "candidate_recall": null,
+      "prejudge_can_answer": true,
+      "prejudge_verdict": "all",
+      "gold_unanswerable": false,
+      "retrieval_s": 0.21194733498850837,
+      "rerank_s": null,
+      "prejudge_s": 1.7057147559826262,
+      "generation_s": 1.2281116879894398,
+      "judging_s": 0.7147636879817583,
+      "judge_correct": true,
+      "judge_output": "CORRECT"
+    },
+    {
+      "paper_id": "2004.04478",
+      "question_id": "d126d5d6b7cfaacd58494f1879547be9e91d1364",
+      "question": "What similarity metrics have been tried?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    },
+    {
+      "paper_id": "2004.04478",
+      "question_id": "7dca806426058d59f4a9a4873e9219d65aea0987",
+      "question": "What 20 domains are available for selection of source domain?",
+      "error": "rag: typesafe/jev-router returned no text (finish reason: length)"
+    }
+  ]
+}
