@@ -302,25 +302,44 @@ highlighting exact rather than a text search.
 
 ## 4. What I would do next
 
-In order of value:
+The first five are the directions I would explore first; the rest is engineering work I already know is needed.
 
-1. **Questions across several documents.** Upload a set, retrieve across it, and show the source document in each
+**Explore**
+
+1. **The full potential of cloud mode.** Most of my tuning time went into private mode, and cloud mode inherited its
+   settings. It is already the stronger mode (89.6 against 74.1 judge-correct), and it has no GPU or memory limit, so
+   there is room to go further: measure the shipped 30 + 30 setting, try a stronger reranker now that MiniLM has been
+   shown to hurt there, tune the unused similarity cutoff, use the full 3072-dimension embeddings, and for documents
+   that fit the context window, compare retrieval against simply sending the whole document.
+2. **Long conversations.** Today each question carries the last 6 messages, each cut to 4,000 characters, and the
+   follow-up rewrite reads 1,500 characters of each. Anything older is forgotten, and I have not measured where answer
+   quality starts to drop. I would look at summarising older turns, retrieving from the chat's own history, and
+   reusing passages already retrieved earlier in the conversation.
+3. **A long-conversation benchmark.** QASPER questions are independent single questions, so the follow-up rewrite and
+   the history handling have never been scored, only tried by hand. I would add a conversational benchmark (QuAC,
+   CoQA or TopiOCQA for follow-ups over a document; LoCoMo or LongMemEval for long histories) and report the same
+   metrics per turn, to see how they change as the conversation grows.
+4. **Different models and different content.** The evaluation makes a model swap a one-line change, but I only compared
+   a few. I would run a grid of answering, embedding and context models in both modes, graded by a judge that is
+   stronger than the models being graded. I would also test content other than English NLP papers: manuals, reports,
+   contracts, tables and German documents, each with their own questions, and vary chunk size by content type.
+5. **Image and video embeddings.** Pictures, charts and scanned pages are skipped today. I would embed page images and
+   figures with a multimodal embedding model so they can be retrieved alongside text, pass them to a vision-capable
+   answering model, and show the cited figure in the viewer. Video would follow the same pattern: embed transcript
+   segments and sampled frames, and cite a timestamp instead of a passage.
+
+**Build**
+
+6. **Questions across several documents.** Upload a set, retrieve across it, and show the source document in each
    citation. The brief asks for "one or more documents"; today that means one per chat.
-2. **Whole-document questions.** "Summarise this" and "list every…" can't be answered from 8 passages. I would route
-   those to a map-reduce summary, or for documents that fit the context window, send the whole document.
-3. **An independent judge and a second dataset.** Grade with a stronger model than the one being graded, and add a set
-   of manuals and reports with their own questions, since the real documents won't be NLP papers.
-4. **Tests and CI.** Unit tests for the chunker, converter and fusion, an API test against a tiny document, and the
+7. **Whole-document questions.** "Summarise this" and "list every…" can't be answered from 8 passages. I would route
+   those to a map-reduce summary.
+8. **Tests and CI.** Unit tests for the chunker, converter and fusion, an API test against a tiny document, and the
    5-paper evaluation as a regression check with thresholds.
-5. **Faster uploads.** Chunk contexts are most of the upload time and are written one by one. Batching several chunks
+9. **Faster uploads.** Chunk contexts are most of the upload time and are written one by one. Batching several chunks
    per call, or running calls in parallel in cloud mode, would cut it considerably.
-6. **OCR, tables and images.** Add OCR for scanned PDFs and describe figures with a vision model.
-7. **Other languages.** Private mode's embeddings and BM25 stemming are English-only. A multilingual embedding model
-   and language-aware tokenising would fix that; it matters for German documents.
-8. **Re-tune cloud mode.** Measure the 30 + 30 setting, try a stronger reranker now that MiniLM has been shown to hurt
-   there, and tune the unused similarity cutoff.
-9. **Production hardening.** Authentication, per-user data, secrets out of `.env`, upload scanning, rate limits, and
-   an ingestion queue in place of in-process background tasks, which lose work if the backend restarts.
+10. **Production hardening.** Authentication, per-user data, secrets out of `.env`, upload scanning, rate limits, and
+    an ingestion queue in place of in-process background tasks, which lose work if the backend restarts.
 
 ## Reference
 
